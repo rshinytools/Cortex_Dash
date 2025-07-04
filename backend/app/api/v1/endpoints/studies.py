@@ -1,7 +1,7 @@
 # ABOUTME: API endpoints for study management
 # ABOUTME: Handles CRUD operations for clinical studies with RBAC
 
-from typing import List, Any
+from typing import List, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlmodel import Session
 import uuid

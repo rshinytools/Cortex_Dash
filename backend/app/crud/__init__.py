@@ -1,6 +1,14 @@
 # ABOUTME: CRUD operations module for Clinical Dashboard Platform
 # ABOUTME: Exports all CRUD functions for easy access
 
+from .user import (
+    get_user_by_email,
+    create_user,
+    update_user,
+    get_user,
+    authenticate
+)
+
 from .organization import (
     create_organization,
     get_organization,
@@ -33,6 +41,12 @@ from .activity_log import (
 )
 
 __all__ = [
+    # User
+    "get_user_by_email",
+    "create_user", 
+    "update_user",
+    "get_user",
+    "authenticate",
     # Organization
     "create_organization",
     "get_organization",

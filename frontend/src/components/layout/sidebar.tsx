@@ -144,7 +144,7 @@ export function Sidebar() {
   });
 
   return (
-    <aside className="w-64 border-r bg-background">
+    <aside className="w-64 border-r bg-background dark:bg-gray-900">
       <ScrollArea className="h-full py-6">
         <nav className="space-y-2 px-3">
           {filteredNavItems.map((item) => (

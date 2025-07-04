@@ -21,7 +21,7 @@ export function MainLayout({ children }: MainLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background dark:bg-gray-950">
       <Header />
       <div className="flex h-[calc(100vh-4rem)]">
         <Sidebar />

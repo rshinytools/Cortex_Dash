@@ -15,6 +15,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Bell, LogOut, Settings, User } from 'lucide-react';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 import Link from 'next/link';
 
 export function Header() {
@@ -36,6 +37,8 @@ export function Header() {
         </div>
 
         <div className="flex items-center space-x-4">
+          <ThemeToggle />
+          
           <Button variant="ghost" size="icon">
             <Bell className="h-5 w-5" />
           </Button>

@@ -1,0 +1,75 @@
+# ABOUTME: Simplified Docker Compose for local development and testing
+# ABOUTME: Includes PostgreSQL, Redis, and optional services for the Clinical Dashboard
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: changethis
+      POSTGRES_DB: clinical_dashboard
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for Celery
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Adminer - Database UI (Optional)
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    environment:
+      - ADMINER_DESIGN=pepa-linha-dark
+
+  # Flower - Celery Monitoring UI (Optional)
+  flower:
+    image: mher/flower:2.0
+    environment:
+      - CELERY_BROKER_URL=redis://localhost:6379/0
+      - FLOWER_PORT=5555
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+
+volumes:
+  postgres_data:
+
+# To run the backend locally with these services:
+# 1. Start the services: docker-compose -f docker-compose.local.yml up -d
+# 2. In your backend directory:
+#    - Create virtual environment: python3 -m venv venv
+#    - Activate it: source venv/bin/activate
+#    - Install dependencies: pip install -r requirements.txt
+#    - Run migrations: alembic upgrade head
+#    - Start FastAPI: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+#    - (Optional) Start Celery Worker: celery -A app.core.celery_app worker --loglevel=info
+#    - (Optional) Start Celery Beat: celery -A app.core.celery_app beat --loglevel=info
+#
+# Access points:
+# - API: http://localhost:8000
+# - API Docs: http://localhost:8000/docs
+# - Adminer (DB UI): http://localhost:8080
+# - Flower (Celery UI): http://localhost:5555

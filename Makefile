@@ -97,9 +97,14 @@ restart-all: ## Complete restart: Stop, remove, rebuild, and start all services
 	
 	@echo -n "   Waiting for API..."
 	@for i in $$(seq 1 30); do \
-		if curl -s http://localhost:8000/health > /dev/null 2>&1; then \
+		if curl -s http://localhost:8000/api/v1/utils/health-check/ > /dev/null 2>&1 || curl -s http://localhost:8000/health > /dev/null 2>&1; then \
 			echo " $(GREEN)✓ Ready$(NC)"; \
 			break; \
+		fi; \
+		if [ $$i -eq 30 ]; then \
+			echo " $(RED)✗ Failed to start$(NC)"; \
+			echo "   $(YELLOW)Check logs with: tail backend/api.log$(NC)"; \
+			exit 1; \
 		fi; \
 		echo -n "."; \
 		sleep 1; \
@@ -109,7 +114,7 @@ restart-all: ## Complete restart: Stop, remove, rebuild, and start all services
 	@echo "$(YELLOW)7. Creating default admin user...$(NC)"
 	@cd backend && \
 	. venv/bin/activate && \
-	python -c "from app.core.db import init_db; from sqlmodel import Session, create_engine; from app.core.config import settings; engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI)); with Session(engine) as session: init_db(session)" && \
+	PYTHONPATH=. python -c "from app.core.db import init_db; from sqlmodel import Session, create_engine; from app.core.config import settings; engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI)); session = Session(engine); init_db(session); session.close()" && \
 	echo "$(GREEN)✓ Admin user created (admin@example.com / changethis)$(NC)"
 	@echo ""
 	
@@ -296,7 +301,7 @@ health: ## Health check for all services
 	fi
 	
 	@echo -n "   API Backend: "
-	@if curl -s http://localhost:8000/health > /dev/null 2>&1; then \
+	@if curl -s http://localhost:8000/api/v1/utils/health-check/ > /dev/null 2>&1 || curl -s http://localhost:8000/health > /dev/null 2>&1; then \
 		echo "$(GREEN)✓ Healthy$(NC)"; \
 	else \
 		echo "$(RED)✗ Unhealthy$(NC)"; \

@@ -78,11 +78,12 @@ restart-all: ## Complete restart: Stop, remove, rebuild, and start all services
 		python3 -m venv venv; \
 	fi && \
 	. venv/bin/activate && \
-	pip install -q psycopg2-binary alembic sqlmodel && \
+	echo "   Installing dependencies..." && \
+	pip install -q -r requirements.txt && \
 	echo "   Creating database..." && \
 	PGPASSWORD=changethis psql -h localhost -U postgres -c "CREATE DATABASE clinical_dashboard" 2>/dev/null || echo "   Database already exists" && \
 	echo "   Running migrations..." && \
-	alembic upgrade head && \
+	PYTHONPATH=. alembic upgrade head && \
 	echo "$(GREEN)✓ Database setup complete$(NC)"
 	@echo ""
 	
@@ -312,7 +313,7 @@ migrate: ## Run database migrations
 	@echo "$(YELLOW)Running database migrations...$(NC)"
 	@cd backend && \
 	. venv/bin/activate && \
-	alembic upgrade head
+	PYTHONPATH=. alembic upgrade head
 	@echo "$(GREEN)✓ Migrations complete$(NC)"
 
 seed-data: ## Generate test data

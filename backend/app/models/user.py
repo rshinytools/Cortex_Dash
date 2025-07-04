@@ -7,7 +7,7 @@ from datetime import datetime
 
 from pydantic import EmailStr
 from sqlmodel import Field, Relationship, SQLModel, Column
-from sqlalchemy import DateTime
+from sqlalchemy import DateTime, JSON
 
 if TYPE_CHECKING:
     from .organization import Organization
@@ -22,8 +22,10 @@ class UserBase(SQLModel):
     is_active: bool = True
     is_superuser: bool = False
     full_name: Optional[str] = Field(default=None, max_length=255)
-    # Multi-tenant field
+    # Multi-tenant fields
     org_id: Optional[uuid.UUID] = Field(default=None, foreign_key="organization.id")
+    role: str = Field(default="viewer", max_length=50)
+    department: Optional[str] = Field(default=None, max_length=100)
 
 
 # Properties to receive via API on creation
@@ -75,7 +77,12 @@ class User(UserBase, table=True):
     # 21 CFR Part 11 compliance
     failed_login_attempts: int = Field(default=0)
     locked_until: Optional[datetime] = Field(default=None, sa_column=Column(DateTime))
-    must_change_password: bool = Field(default=False)
+    force_password_change: bool = Field(default=False)
+    
+    # Additional audit fields
+    created_by: Optional[uuid.UUID] = Field(default=None, foreign_key="user.id")
+    updated_by: Optional[uuid.UUID] = Field(default=None, foreign_key="user.id")
+    preferences: dict = Field(default_factory=dict, sa_column=Column("preferences", JSON))
     
     # Relationships
     organization: Optional["Organization"] = Relationship(back_populates="users")

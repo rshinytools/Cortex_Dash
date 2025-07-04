@@ -3,6 +3,7 @@ from typing import Any
 
 import jwt
 from passlib.context import CryptContext
+from fastapi import HTTPException
 
 from app.core.config import settings
 
@@ -25,3 +26,10 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
+
+
+def get_current_active_user(current_user):
+    """Get current active user - used by permission system"""
+    if not current_user.is_active:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user

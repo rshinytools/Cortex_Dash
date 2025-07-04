@@ -115,7 +115,7 @@ restart-all: ## Complete restart: Stop, remove, rebuild, and start all services
 	@cd backend && \
 	. venv/bin/activate && \
 	PYTHONPATH=. python -c "from app.core.db import init_db; from sqlmodel import Session, create_engine; from app.core.config import settings; engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI)); session = Session(engine); init_db(session); session.close()" && \
-	echo "$(GREEN)✓ Admin user created (admin@example.com / changethis)$(NC)"
+	echo "$(GREEN)✓ Admin user created (admin@sagarmatha.ai / adadad123)$(NC)"
 	@echo ""
 	
 	@echo "$(YELLOW)8. Health check results:$(NC)"
@@ -134,8 +134,8 @@ restart-all: ## Complete restart: Stop, remove, rebuild, and start all services
 	@echo "   $(GREEN)Flower:$(NC)      http://localhost:5555"
 	@echo ""
 	@echo "$(BLUE)🔑 Default credentials:$(NC)"
-	@echo "   Email: $(GREEN)admin@example.com$(NC)"
-	@echo "   Password: $(GREEN)changethis$(NC)"
+	@echo "   Email: $(GREEN)admin@sagarmatha.ai$(NC)"
+	@echo "   Password: $(GREEN)adadad123$(NC)"
 	@echo ""
 	@echo "$(YELLOW)💡 Go to $(GREEN)http://localhost:8000/docs$(YELLOW) to test the API$(NC)"
 	@echo ""

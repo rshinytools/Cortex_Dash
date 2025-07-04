@@ -88,7 +88,7 @@ def main():
     
     # Test 2: Login
     print("2️⃣ Testing Authentication...")
-    if not tester.login("admin@example.com", "changethis"):
+    if not tester.login("admin@sagarmatha.ai", "adadad123"):
         print("Cannot continue without authentication")
         return
     print()

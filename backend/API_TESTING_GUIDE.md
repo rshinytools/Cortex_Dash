@@ -63,7 +63,7 @@ Once the server is running, you can access:
 # Login to get access token
 curl -X POST "http://localhost:8000/api/v1/login/access-token" \
   -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "username=admin@example.com&password=changethis"
+  -d "username=admin@sagarmatha.ai&password=adadad123"
 
 # Use the token for authenticated requests
 export TOKEN="your_access_token_here"
@@ -84,7 +84,7 @@ BASE_URL = "http://localhost:8000/api/v1"
 # Login
 response = requests.post(
     f"{BASE_URL}/login/access-token",
-    data={"username": "admin@example.com", "password": "changethis"}
+    data={"username": "admin@sagarmatha.ai", "password": "adadad123"}
 )
 token = response.json()["access_token"]
 
@@ -110,8 +110,8 @@ print(response.json())
 POST /api/v1/login/access-token
 Content-Type: application/x-www-form-urlencoded
 
-username=admin@example.com
-password=changethis
+username=admin@sagarmatha.ai
+password=adadad123
 ```
 
 Response:
@@ -320,7 +320,7 @@ def login(email, password):
 
 def create_test_data():
     # Login as superuser
-    token = login("admin@example.com", "changethis")
+    token = login("admin@sagarmatha.ai", "adadad123")
     headers = {"Authorization": f"Bearer {token}"}
     
     # Create organization

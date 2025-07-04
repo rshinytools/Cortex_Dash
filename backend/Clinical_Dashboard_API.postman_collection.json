@@ -80,12 +80,12 @@
               "urlencoded": [
                 {
                   "key": "username",
-                  "value": "admin@example.com",
+                  "value": "admin@sagarmatha.ai",
                   "type": "text"
                 },
                 {
                   "key": "password",
-                  "value": "changethis",
+                  "value": "adadad123",
                   "type": "text"
                 }
               ]

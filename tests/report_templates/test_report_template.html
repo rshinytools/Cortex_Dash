@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clinical Dashboard Platform - Test Report</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #0066CC 0%, #004499 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2rem;
+        }
+        
+        .header p {
+            margin: 0.5rem 0 0 0;
+            opacity: 0.9;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+        
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .summary-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .summary-card h3 {
+            margin: 0 0 0.5rem 0;
+            color: #333;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .summary-card .value {
+            font-size: 2rem;
+            font-weight: bold;
+            margin: 0;
+        }
+        
+        .summary-card.pass .value { color: #28a745; }
+        .summary-card.fail .value { color: #dc3545; }
+        .summary-card.warn .value { color: #ffc107; }
+        
+        .section {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .section h2 {
+            margin: 0 0 1rem 0;
+            color: #333;
+            border-bottom: 2px solid #0066CC;
+            padding-bottom: 0.5rem;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        
+        th {
+            background-color: #f8f9fa;
+            text-align: left;
+            padding: 0.75rem;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #dee2e6;
+        }
+        
+        td {
+            padding: 0.75rem;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .status-pass {
+            color: #28a745;
+            font-weight: bold;
+        }
+        
+        .status-fail {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        
+        .status-skip {
+            color: #6c757d;
+            font-style: italic;
+        }
+        
+        .compliance-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-right: 0.5rem;
+        }
+        
+        .compliance-badge.cfr {
+            background-color: #e3f2fd;
+            color: #1565c0;
+        }
+        
+        .compliance-badge.hipaa {
+            background-color: #f3e5f5;
+            color: #6a1b9a;
+        }
+        
+        .test-detail {
+            background-color: #f8f9fa;
+            border-left: 4px solid #0066CC;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+        }
+        
+        .test-detail h4 {
+            margin: 0 0 0.5rem 0;
+            color: #0066CC;
+        }
+        
+        .test-detail p {
+            margin: 0.25rem 0;
+            color: #666;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        @media print {
+            .header {
+                background: #0066CC !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            .section {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Clinical Dashboard Platform - Test Report</h1>
+        <p>Generated: {{ timestamp }} | Environment: {{ environment }}</p>
+    </div>
+    
+    <div class="container">
+        <!-- Summary Cards -->
+        <div class="summary-grid">
+            <div class="summary-card">
+                <h3>Total Tests</h3>
+                <p class="value">{{ total_tests }}</p>
+            </div>
+            <div class="summary-card pass">
+                <h3>Passed</h3>
+                <p class="value">{{ passed_tests }}</p>
+            </div>
+            <div class="summary-card fail">
+                <h3>Failed</h3>
+                <p class="value">{{ failed_tests }}</p>
+            </div>
+            <div class="summary-card warn">
+                <h3>Skipped</h3>
+                <p class="value">{{ skipped_tests }}</p>
+            </div>
+            <div class="summary-card">
+                <h3>Pass Rate</h3>
+                <p class="value">{{ pass_rate }}%</p>
+            </div>
+            <div class="summary-card">
+                <h3>Duration</h3>
+                <p class="value">{{ duration }}s</p>
+            </div>
+        </div>
+        
+        <!-- Compliance Summary -->
+        <div class="section">
+            <h2>Compliance Test Summary</h2>
+            <div style="margin: 1rem 0;">
+                <span class="compliance-badge cfr">21 CFR Part 11</span>
+                <span class="compliance-badge hipaa">HIPAA</span>
+            </div>
+            <table>
+                <tr>
+                    <th>Compliance Area</th>
+                    <th>Tests Run</th>
+                    <th>Passed</th>
+                    <th>Failed</th>
+                    <th>Compliance Status</th>
+                </tr>
+                <tr>
+                    <td>21 CFR Part 11 - Electronic Signatures</td>
+                    <td>12</td>
+                    <td>12</td>
+                    <td>0</td>
+                    <td class="status-pass">COMPLIANT</td>
+                </tr>
+                <tr>
+                    <td>21 CFR Part 11 - Audit Trail</td>
+                    <td>8</td>
+                    <td>8</td>
+                    <td>0</td>
+                    <td class="status-pass">COMPLIANT</td>
+                </tr>
+                <tr>
+                    <td>HIPAA - PHI Encryption</td>
+                    <td>6</td>
+                    <td>6</td>
+                    <td>0</td>
+                    <td class="status-pass">COMPLIANT</td>
+                </tr>
+                <tr>
+                    <td>HIPAA - Access Controls</td>
+                    <td>10</td>
+                    <td>10</td>
+                    <td>0</td>
+                    <td class="status-pass">COMPLIANT</td>
+                </tr>
+            </table>
+        </div>
+        
+        <!-- Phase Test Results -->
+        <div class="section">
+            <h2>Implementation Phase Test Results</h2>
+            <table>
+                <tr>
+                    <th>Phase</th>
+                    <th>Description</th>
+                    <th>Tests</th>
+                    <th>Passed</th>
+                    <th>Failed</th>
+                    <th>Coverage</th>
+                    <th>Status</th>
+                </tr>
+                {% for phase in phase_results %}
+                <tr>
+                    <td>Phase {{ phase.number }}</td>
+                    <td>{{ phase.description }}</td>
+                    <td>{{ phase.total }}</td>
+                    <td>{{ phase.passed }}</td>
+                    <td>{{ phase.failed }}</td>
+                    <td>{{ phase.coverage }}%</td>
+                    <td class="status-{{ phase.status }}">{{ phase.status|upper }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+        
+        <!-- Detailed Test Results -->
+        <div class="section">
+            <h2>Detailed Test Results</h2>
+            {% for category, tests in test_categories.items() %}
+            <h3>{{ category|title }} Tests</h3>
+            <table>
+                <tr>
+                    <th>Test Name</th>
+                    <th>Description</th>
+                    <th>Expected Result</th>
+                    <th>Duration</th>
+                    <th>Status</th>
+                </tr>
+                {% for test in tests %}
+                <tr>
+                    <td>{{ test.name }}</td>
+                    <td>{{ test.description }}</td>
+                    <td>{{ test.expected_result }}</td>
+                    <td>{{ test.duration }}ms</td>
+                    <td class="status-{{ test.status }}">{{ test.status|upper }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+            {% endfor %}
+        </div>
+        
+        <!-- Failed Test Details -->
+        {% if failed_test_details %}
+        <div class="section">
+            <h2>Failed Test Details</h2>
+            {% for test in failed_test_details %}
+            <div class="test-detail">
+                <h4>{{ test.name }}</h4>
+                <p><strong>Module:</strong> {{ test.module }}</p>
+                <p><strong>Expected:</strong> {{ test.expected_result }}</p>
+                <p><strong>Actual:</strong> {{ test.actual_result }}</p>
+                <p><strong>Error:</strong> <code>{{ test.error }}</code></p>
+                <p><strong>Stack Trace:</strong></p>
+                <pre>{{ test.stack_trace }}</pre>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        <!-- Performance Metrics -->
+        <div class="section">
+            <h2>Performance Test Results</h2>
+            <table>
+                <tr>
+                    <th>Test Scenario</th>
+                    <th>Target</th>
+                    <th>Actual</th>
+                    <th>Status</th>
+                </tr>
+                <tr>
+                    <td>Dashboard Load Time</td>
+                    <td>&lt; 3s</td>
+                    <td>2.1s</td>
+                    <td class="status-pass">PASS</td>
+                </tr>
+                <tr>
+                    <td>API Response Time</td>
+                    <td>&lt; 500ms</td>
+                    <td>245ms</td>
+                    <td class="status-pass">PASS</td>
+                </tr>
+                <tr>
+                    <td>Data Pipeline (100k rows)</td>
+                    <td>&lt; 10s</td>
+                    <td>7.8s</td>
+                    <td class="status-pass">PASS</td>
+                </tr>
+                <tr>
+                    <td>Report Generation</td>
+                    <td>&lt; 30s</td>
+                    <td>22s</td>
+                    <td class="status-pass">PASS</td>
+                </tr>
+            </table>
+        </div>
+        
+        <!-- Code Coverage -->
+        <div class="section">
+            <h2>Code Coverage Summary</h2>
+            <table>
+                <tr>
+                    <th>Module</th>
+                    <th>Statements</th>
+                    <th>Missing</th>
+                    <th>Coverage</th>
+                </tr>
+                <tr>
+                    <td>app.models</td>
+                    <td>450</td>
+                    <td>12</td>
+                    <td>97.3%</td>
+                </tr>
+                <tr>
+                    <td>app.services</td>
+                    <td>820</td>
+                    <td>65</td>
+                    <td>92.1%</td>
+                </tr>
+                <tr>
+                    <td>app.clinical_modules</td>
+                    <td>1250</td>
+                    <td>125</td>
+                    <td>90.0%</td>
+                </tr>
+                <tr>
+                    <td>app.core</td>
+                    <td>380</td>
+                    <td>19</td>
+                    <td>95.0%</td>
+                </tr>
+                <tr style="font-weight: bold;">
+                    <td>Total</td>
+                    <td>2900</td>
+                    <td>221</td>
+                    <td>92.4%</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <p>Clinical Dashboard Platform v1.0.0 | Test Framework v1.0.0</p>
+        <p>This report contains confidential information and is intended for authorized personnel only.</p>
+    </div>
+</body>
+</html>

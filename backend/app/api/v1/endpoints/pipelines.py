@@ -1,18 +1,21 @@
 # ABOUTME: API endpoints for data pipeline management
 # ABOUTME: Handles pipeline execution, monitoring, and configuration
 
-from typing import List, Any, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Request, BackgroundTasks
-from sqlmodel import Session
+from typing import List, Any, Optional, Dict
+from fastapi import APIRouter, Depends, HTTPException, status, Request, BackgroundTasks, Query
+from sqlmodel import Session, select
 import uuid
+from datetime import datetime, timedelta
 
 from app.api.deps import get_db, get_current_user
 from app.models import Study, User, Message
 from app.crud import study as crud_study
 from app.crud import activity_log as crud_activity
-from app.core.permissions import Permission, PermissionChecker
+from app.core.permissions import Permission, PermissionChecker, require_permission
 from app.clinical_modules.pipeline.tasks import execute_pipeline, get_pipeline_status
 from app.clinical_modules.data_sources.tasks import test_data_source, sync_data_source
+from app.core.celery_app import celery_app
+from celery.result import AsyncResult
 
 router = APIRouter()
 
@@ -278,5 +281,233 @@ async def sync_data_source_data(
     }
 
 
-# Import datetime
-from datetime import datetime
+@router.get("/pipelines/{pipeline_id}/status", response_model=Dict[str, Any])
+async def get_pipeline_status_detailed(
+    pipeline_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _: None = Depends(require_permission(Permission.VIEW_PIPELINE_LOGS))
+) -> Any:
+    """
+    Get detailed status of a pipeline execution.
+    """
+    task_result = AsyncResult(pipeline_id, app=celery_app)
+    
+    if not task_result:
+        raise HTTPException(status_code=404, detail="Pipeline execution not found")
+    
+    # Get basic task info
+    status_info = {
+        "task_id": pipeline_id,
+        "status": task_result.status,
+        "ready": task_result.ready(),
+        "successful": task_result.successful() if task_result.ready() else None,
+        "failed": task_result.failed() if task_result.ready() else None
+    }
+    
+    # Add result or error info
+    if task_result.ready():
+        if task_result.successful():
+            status_info["result"] = task_result.result
+        elif task_result.failed():
+            status_info["error"] = str(task_result.info)
+            status_info["traceback"] = task_result.traceback
+    else:
+        # Task is still running, get progress info if available
+        status_info["info"] = task_result.info
+    
+    return status_info
+
+
+@router.get("/pipelines/{pipeline_id}/logs", response_model=List[Dict[str, Any]])
+async def get_pipeline_logs(
+    pipeline_id: str,
+    limit: int = Query(100, description="Maximum number of log entries to return"),
+    offset: int = Query(0, description="Number of log entries to skip"),
+    level: Optional[str] = Query(None, description="Filter by log level (DEBUG, INFO, WARNING, ERROR)"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _: None = Depends(require_permission(Permission.VIEW_PIPELINE_LOGS))
+) -> Any:
+    """
+    Get execution logs for a pipeline.
+    """
+    # In a real implementation, this would query a logging database or service
+    # For now, return mock data
+    logs = [
+        {
+            "timestamp": datetime.utcnow().isoformat(),
+            "level": "INFO",
+            "message": f"Pipeline {pipeline_id} execution started",
+            "context": {"step": "initialization"}
+        },
+        {
+            "timestamp": (datetime.utcnow() + timedelta(seconds=1)).isoformat(),
+            "level": "INFO",
+            "message": "Connecting to data source",
+            "context": {"step": "data_acquisition"}
+        },
+        {
+            "timestamp": (datetime.utcnow() + timedelta(seconds=2)).isoformat(),
+            "level": "INFO",
+            "message": "Data download completed",
+            "context": {"step": "data_acquisition", "records": 1000}
+        }
+    ]
+    
+    # Filter by level if specified
+    if level:
+        logs = [log for log in logs if log["level"] == level]
+    
+    # Apply pagination
+    return logs[offset:offset + limit]
+
+
+@router.post("/pipelines/{pipeline_id}/cancel")
+async def cancel_pipeline_execution(
+    pipeline_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _: None = Depends(require_permission(Permission.EXECUTE_PIPELINE))
+) -> Any:
+    """
+    Cancel a running pipeline execution.
+    """
+    task_result = AsyncResult(pipeline_id, app=celery_app)
+    
+    if not task_result:
+        raise HTTPException(status_code=404, detail="Pipeline execution not found")
+    
+    if task_result.ready():
+        return {
+            "message": "Pipeline has already completed",
+            "status": task_result.status
+        }
+    
+    # Revoke the task
+    task_result.revoke(terminate=True)
+    
+    # Log the cancellation
+    # TODO: Add proper activity logging
+    
+    return {
+        "message": "Pipeline cancellation requested",
+        "task_id": pipeline_id,
+        "status": "REVOKED"
+    }
+
+
+@router.post("/pipelines/{pipeline_id}/retry")
+async def retry_pipeline_execution(
+    pipeline_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _: None = Depends(require_permission(Permission.EXECUTE_PIPELINE))
+) -> Any:
+    """
+    Retry a failed pipeline execution.
+    """
+    task_result = AsyncResult(pipeline_id, app=celery_app)
+    
+    if not task_result:
+        raise HTTPException(status_code=404, detail="Pipeline execution not found")
+    
+    if not task_result.failed():
+        return {
+            "message": "Pipeline has not failed, cannot retry",
+            "status": task_result.status
+        }
+    
+    # Get the original task arguments
+    # In a real implementation, we would store these in a database
+    # For now, return a mock response
+    return {
+        "message": "Pipeline retry functionality not yet implemented",
+        "original_task_id": pipeline_id,
+        "status": "pending_implementation"
+    }
+
+
+@router.get("/pipelines/executions", response_model=List[Dict[str, Any]])
+async def list_pipeline_executions(
+    study_id: Optional[uuid.UUID] = Query(None, description="Filter by study ID"),
+    status: Optional[str] = Query(None, description="Filter by status"),
+    start_date: Optional[datetime] = Query(None, description="Filter by start date"),
+    end_date: Optional[datetime] = Query(None, description="Filter by end date"),
+    limit: int = Query(100, description="Maximum number of executions to return"),
+    offset: int = Query(0, description="Number of executions to skip"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _: None = Depends(require_permission(Permission.VIEW_PIPELINE_LOGS))
+) -> Any:
+    """
+    List pipeline executions with filtering and pagination.
+    """
+    # In a real implementation, this would query a pipeline execution history table
+    # For now, return mock data
+    executions = [
+        {
+            "id": str(uuid.uuid4()),
+            "study_id": str(study_id) if study_id else str(uuid.uuid4()),
+            "status": "SUCCESS",
+            "started_at": datetime.utcnow().isoformat(),
+            "completed_at": (datetime.utcnow() + timedelta(minutes=5)).isoformat(),
+            "duration_seconds": 300,
+            "records_processed": 1000,
+            "created_by": str(current_user.id)
+        }
+    ]
+    
+    return executions[offset:offset + limit]
+
+
+@router.get("/pipelines/executions/{execution_id}", response_model=Dict[str, Any])
+async def get_pipeline_execution_details(
+    execution_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _: None = Depends(require_permission(Permission.VIEW_PIPELINE_LOGS))
+) -> Any:
+    """
+    Get detailed information about a specific pipeline execution.
+    """
+    # In a real implementation, this would query execution details from database
+    # For now, return mock data
+    return {
+        "id": execution_id,
+        "study_id": str(uuid.uuid4()),
+        "status": "SUCCESS",
+        "started_at": datetime.utcnow().isoformat(),
+        "completed_at": (datetime.utcnow() + timedelta(minutes=5)).isoformat(),
+        "duration_seconds": 300,
+        "pipeline_config": {
+            "data_sources": ["medidata_rave"],
+            "transformations": ["standardize", "validate"],
+            "output_format": "parquet"
+        },
+        "execution_steps": [
+            {
+                "step": "data_acquisition",
+                "status": "SUCCESS",
+                "started_at": datetime.utcnow().isoformat(),
+                "completed_at": (datetime.utcnow() + timedelta(minutes=2)).isoformat(),
+                "records": 1000
+            },
+            {
+                "step": "transformation",
+                "status": "SUCCESS",
+                "started_at": (datetime.utcnow() + timedelta(minutes=2)).isoformat(),
+                "completed_at": (datetime.utcnow() + timedelta(minutes=4)).isoformat(),
+                "records": 950
+            },
+            {
+                "step": "validation",
+                "status": "SUCCESS",
+                "started_at": (datetime.utcnow() + timedelta(minutes=4)).isoformat(),
+                "completed_at": (datetime.utcnow() + timedelta(minutes=5)).isoformat(),
+                "issues": 0
+            }
+        ],
+        "created_by": str(current_user.id),
+        "error": None
+    }

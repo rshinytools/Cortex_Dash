@@ -1,0 +1,651 @@
+# ABOUTME: API endpoints for dashboard widget management
+# ABOUTME: Handles widget types, configurations, and data retrieval
+
+from typing import List, Dict, Any, Optional
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
+from sqlmodel import Session, select
+from datetime import datetime, timedelta
+import uuid
+import random
+
+from app.api.deps import get_db, get_current_user
+from app.models import User, Study, Message
+from app.core.permissions import Permission, require_permission
+
+router = APIRouter()
+
+
+@router.get("/widget-types", response_model=List[Dict[str, Any]])
+async def list_widget_types(
+    category: Optional[str] = Query(None, description="Filter by widget category"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> Any:
+    """
+    Get available widget types and their configurations.
+    """
+    widget_types = [
+        {
+            "id": "metric",
+            "name": "Metric Card",
+            "description": "Display a single metric with trend",
+            "category": "basic",
+            "icon": "chart-bar",
+            "default_size": {"w": 3, "h": 2},
+            "min_size": {"w": 2, "h": 2},
+            "max_size": {"w": 6, "h": 4},
+            "configurable_properties": [
+                {
+                    "name": "metric",
+                    "type": "select",
+                    "label": "Metric",
+                    "required": True,
+                    "options": ["count", "sum", "average", "percentage"]
+                },
+                {
+                    "name": "dataset",
+                    "type": "select",
+                    "label": "Dataset",
+                    "required": True
+                },
+                {
+                    "name": "field",
+                    "type": "select",
+                    "label": "Field",
+                    "required": False
+                },
+                {
+                    "name": "show_trend",
+                    "type": "boolean",
+                    "label": "Show Trend",
+                    "default": True
+                }
+            ]
+        },
+        {
+            "id": "chart",
+            "name": "Chart",
+            "description": "Various chart types for data visualization",
+            "category": "visualization",
+            "icon": "chart-line",
+            "default_size": {"w": 6, "h": 4},
+            "min_size": {"w": 4, "h": 3},
+            "max_size": {"w": 12, "h": 8},
+            "configurable_properties": [
+                {
+                    "name": "chart_type",
+                    "type": "select",
+                    "label": "Chart Type",
+                    "required": True,
+                    "options": ["line", "bar", "scatter", "pie", "area", "heatmap"]
+                },
+                {
+                    "name": "dataset",
+                    "type": "select",
+                    "label": "Dataset",
+                    "required": True
+                },
+                {
+                    "name": "x_axis",
+                    "type": "select",
+                    "label": "X Axis",
+                    "required": True
+                },
+                {
+                    "name": "y_axis",
+                    "type": "select",
+                    "label": "Y Axis",
+                    "required": True
+                },
+                {
+                    "name": "group_by",
+                    "type": "select",
+                    "label": "Group By",
+                    "required": False
+                }
+            ]
+        },
+        {
+            "id": "table",
+            "name": "Data Table",
+            "description": "Tabular data display with sorting and filtering",
+            "category": "data",
+            "icon": "table",
+            "default_size": {"w": 8, "h": 4},
+            "min_size": {"w": 4, "h": 3},
+            "max_size": {"w": 12, "h": 8},
+            "configurable_properties": [
+                {
+                    "name": "dataset",
+                    "type": "select",
+                    "label": "Dataset",
+                    "required": True
+                },
+                {
+                    "name": "columns",
+                    "type": "multiselect",
+                    "label": "Columns",
+                    "required": True
+                },
+                {
+                    "name": "page_size",
+                    "type": "number",
+                    "label": "Rows per Page",
+                    "default": 10,
+                    "min": 5,
+                    "max": 100
+                },
+                {
+                    "name": "enable_export",
+                    "type": "boolean",
+                    "label": "Enable Export",
+                    "default": True
+                }
+            ]
+        },
+        {
+            "id": "kpi_grid",
+            "name": "KPI Grid",
+            "description": "Grid of multiple KPI metrics",
+            "category": "composite",
+            "icon": "grid",
+            "default_size": {"w": 6, "h": 3},
+            "min_size": {"w": 4, "h": 2},
+            "max_size": {"w": 12, "h": 6},
+            "configurable_properties": [
+                {
+                    "name": "metrics",
+                    "type": "array",
+                    "label": "Metrics",
+                    "required": True,
+                    "item_schema": {
+                        "dataset": "select",
+                        "field": "select",
+                        "calculation": "select",
+                        "label": "text"
+                    }
+                },
+                {
+                    "name": "columns",
+                    "type": "number",
+                    "label": "Grid Columns",
+                    "default": 3,
+                    "min": 2,
+                    "max": 4
+                }
+            ]
+        },
+        {
+            "id": "timeline",
+            "name": "Timeline",
+            "description": "Event timeline visualization",
+            "category": "specialized",
+            "icon": "calendar",
+            "default_size": {"w": 8, "h": 3},
+            "min_size": {"w": 6, "h": 2},
+            "max_size": {"w": 12, "h": 6},
+            "configurable_properties": [
+                {
+                    "name": "dataset",
+                    "type": "select",
+                    "label": "Dataset",
+                    "required": True
+                },
+                {
+                    "name": "date_field",
+                    "type": "select",
+                    "label": "Date Field",
+                    "required": True
+                },
+                {
+                    "name": "event_field",
+                    "type": "select",
+                    "label": "Event Field",
+                    "required": True
+                },
+                {
+                    "name": "group_field",
+                    "type": "select",
+                    "label": "Group By",
+                    "required": False
+                }
+            ]
+        },
+        {
+            "id": "map",
+            "name": "Geographic Map",
+            "description": "Geographic distribution visualization",
+            "category": "specialized",
+            "icon": "map",
+            "default_size": {"w": 6, "h": 4},
+            "min_size": {"w": 4, "h": 3},
+            "max_size": {"w": 12, "h": 8},
+            "configurable_properties": [
+                {
+                    "name": "dataset",
+                    "type": "select",
+                    "label": "Dataset",
+                    "required": True
+                },
+                {
+                    "name": "location_field",
+                    "type": "select",
+                    "label": "Location Field",
+                    "required": True
+                },
+                {
+                    "name": "value_field",
+                    "type": "select",
+                    "label": "Value Field",
+                    "required": True
+                },
+                {
+                    "name": "map_type",
+                    "type": "select",
+                    "label": "Map Type",
+                    "options": ["world", "usa", "europe"],
+                    "default": "world"
+                }
+            ]
+        }
+    ]
+    
+    # Apply category filter
+    if category:
+        widget_types = [w for w in widget_types if w["category"] == category]
+    
+    return widget_types
+
+
+@router.post("/widgets/validate-config", response_model=Dict[str, Any])
+async def validate_widget_config(
+    widget_config: Dict[str, Any] = Body(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> Any:
+    """
+    Validate widget configuration before saving.
+    """
+    widget_type = widget_config.get("type")
+    config = widget_config.get("config", {})
+    
+    # TODO: Implement actual validation logic
+    validation_result = {
+        "is_valid": True,
+        "errors": [],
+        "warnings": [],
+        "suggestions": []
+    }
+    
+    # Example validation checks
+    if not widget_type:
+        validation_result["is_valid"] = False
+        validation_result["errors"].append({
+            "field": "type",
+            "message": "Widget type is required"
+        })
+    
+    if widget_type == "chart" and not config.get("chart_type"):
+        validation_result["is_valid"] = False
+        validation_result["errors"].append({
+            "field": "config.chart_type",
+            "message": "Chart type is required for chart widgets"
+        })
+    
+    # Add warnings
+    if widget_type == "table" and config.get("page_size", 10) > 50:
+        validation_result["warnings"].append({
+            "field": "config.page_size",
+            "message": "Large page sizes may impact performance"
+        })
+    
+    # Add suggestions
+    if widget_type == "metric" and not config.get("show_trend"):
+        validation_result["suggestions"].append({
+            "field": "config.show_trend",
+            "message": "Consider enabling trend display for better context"
+        })
+    
+    return validation_result
+
+
+@router.get("/widgets/{widget_id}/data", response_model=Dict[str, Any])
+async def get_widget_data(
+    widget_id: uuid.UUID,
+    dashboard_id: uuid.UUID = Query(..., description="Dashboard ID"),
+    refresh: bool = Query(False, description="Force refresh data"),
+    filters: Optional[str] = Query(None, description="JSON encoded filters"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> Any:
+    """
+    Get data for a specific widget.
+    """
+    # TODO: Implement actual data retrieval logic
+    # For now, return mock data based on widget type
+    
+    # Generate mock data
+    mock_data = {
+        "widget_id": str(widget_id),
+        "dashboard_id": str(dashboard_id),
+        "timestamp": datetime.utcnow().isoformat(),
+        "cache_status": "hit" if not refresh else "miss",
+        "data_version": "v5.0"
+    }
+    
+    # Add type-specific mock data
+    # Simulating different widget types
+    widget_types = ["metric", "chart", "table", "timeline"]
+    widget_type = random.choice(widget_types)
+    
+    if widget_type == "metric":
+        mock_data["data"] = {
+            "value": 1234,
+            "previous_value": 1189,
+            "change": 45,
+            "change_percent": 3.78,
+            "trend": "up",
+            "unit": "subjects",
+            "last_updated": datetime.utcnow().isoformat()
+        }
+    
+    elif widget_type == "chart":
+        # Generate time series data
+        dates = [(datetime.utcnow() - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(30, 0, -1)]
+        mock_data["data"] = {
+            "labels": dates,
+            "datasets": [
+                {
+                    "label": "Enrolled",
+                    "data": [random.randint(100, 150) for _ in dates],
+                    "color": "#3b82f6"
+                },
+                {
+                    "label": "Screened",
+                    "data": [random.randint(150, 200) for _ in dates],
+                    "color": "#10b981"
+                }
+            ]
+        }
+    
+    elif widget_type == "table":
+        mock_data["data"] = {
+            "columns": ["Subject ID", "Site", "Visit", "Date", "Status"],
+            "rows": [
+                [f"SUBJ-{i:04d}", f"SITE-{i % 10 + 1:02d}", f"V{i % 5 + 1}", 
+                 (datetime.utcnow() - timedelta(days=i)).strftime("%Y-%m-%d"),
+                 random.choice(["Completed", "In Progress", "Scheduled"])]
+                for i in range(1, 11)
+            ],
+            "total_count": 245,
+            "page": 1,
+            "page_size": 10
+        }
+    
+    elif widget_type == "timeline":
+        mock_data["data"] = {
+            "events": [
+                {
+                    "id": str(uuid.uuid4()),
+                    "date": (datetime.utcnow() - timedelta(days=i*5)).isoformat(),
+                    "event": f"Event {i}",
+                    "type": random.choice(["milestone", "visit", "assessment"]),
+                    "description": f"Description for event {i}"
+                }
+                for i in range(10)
+            ]
+        }
+    
+    mock_data["metadata"] = {
+        "execution_time_ms": random.randint(50, 200),
+        "row_count": random.randint(100, 1000),
+        "filters_applied": bool(filters)
+    }
+    
+    return mock_data
+
+
+@router.post("/widgets/batch-data", response_model=Dict[str, Any])
+async def get_batch_widget_data(
+    widget_ids: List[str] = Body(..., description="List of widget IDs"),
+    dashboard_id: str = Body(..., description="Dashboard ID"),
+    filters: Optional[Dict[str, Any]] = Body(None, description="Global filters"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> Any:
+    """
+    Get data for multiple widgets in a single request.
+    """
+    # TODO: Implement actual batch data retrieval
+    # This is more efficient than multiple individual requests
+    
+    results = {}
+    errors = {}
+    
+    for widget_id in widget_ids:
+        try:
+            # Mock data for each widget
+            results[widget_id] = {
+                "data": {
+                    "value": random.randint(100, 1000),
+                    "trend": random.choice(["up", "down", "stable"])
+                },
+                "timestamp": datetime.utcnow().isoformat(),
+                "status": "success"
+            }
+        except Exception as e:
+            errors[widget_id] = {
+                "error": "Failed to load data",
+                "message": str(e),
+                "timestamp": datetime.utcnow().isoformat()
+            }
+    
+    return {
+        "dashboard_id": dashboard_id,
+        "requested_widgets": len(widget_ids),
+        "successful": len(results),
+        "failed": len(errors),
+        "results": results,
+        "errors": errors,
+        "execution_time_ms": random.randint(100, 500)
+    }
+
+
+@router.post("/widgets/{widget_id}/refresh", response_model=Dict[str, Any])
+async def refresh_widget_data(
+    widget_id: uuid.UUID,
+    dashboard_id: uuid.UUID = Body(..., embed=True),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> Any:
+    """
+    Force refresh data for a specific widget.
+    """
+    # TODO: Implement actual refresh logic
+    # This would clear cache and fetch fresh data
+    
+    return {
+        "widget_id": str(widget_id),
+        "dashboard_id": str(dashboard_id),
+        "status": "refreshing",
+        "job_id": str(uuid.uuid4()),
+        "estimated_completion": (datetime.utcnow() + timedelta(seconds=5)).isoformat(),
+        "cache_cleared": True
+    }
+
+
+@router.get("/widgets/data-sources", response_model=List[Dict[str, Any]])
+async def get_widget_data_sources(
+    study_id: uuid.UUID = Query(..., description="Study ID"),
+    widget_type: Optional[str] = Query(None, description="Filter by widget type"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> Any:
+    """
+    Get available data sources for widgets in a study.
+    """
+    # TODO: Implement actual data source retrieval
+    # This would return datasets and fields available for the study
+    
+    data_sources = [
+        {
+            "dataset": "ADSL",
+            "name": "Subject Level Analysis Dataset",
+            "type": "ADaM",
+            "fields": [
+                {
+                    "name": "USUBJID",
+                    "label": "Unique Subject ID",
+                    "type": "string",
+                    "is_identifier": True
+                },
+                {
+                    "name": "AGE",
+                    "label": "Age",
+                    "type": "numeric",
+                    "is_continuous": True
+                },
+                {
+                    "name": "SEX",
+                    "label": "Sex",
+                    "type": "categorical",
+                    "categories": ["M", "F"]
+                },
+                {
+                    "name": "TRT01P",
+                    "label": "Planned Treatment",
+                    "type": "categorical",
+                    "categories": ["Placebo", "Drug A 10mg", "Drug A 20mg"]
+                }
+            ],
+            "compatible_widgets": ["metric", "chart", "table", "kpi_grid"]
+        },
+        {
+            "dataset": "ADAE",
+            "name": "Adverse Events Analysis Dataset",
+            "type": "ADaM",
+            "fields": [
+                {
+                    "name": "USUBJID",
+                    "label": "Unique Subject ID",
+                    "type": "string",
+                    "is_identifier": True
+                },
+                {
+                    "name": "AEDECOD",
+                    "label": "AE Preferred Term",
+                    "type": "categorical"
+                },
+                {
+                    "name": "AESOC",
+                    "label": "System Organ Class",
+                    "type": "categorical"
+                },
+                {
+                    "name": "AESER",
+                    "label": "Serious AE",
+                    "type": "categorical",
+                    "categories": ["Y", "N"]
+                },
+                {
+                    "name": "ASTDT",
+                    "label": "AE Start Date",
+                    "type": "date"
+                }
+            ],
+            "compatible_widgets": ["metric", "chart", "table", "timeline"]
+        },
+        {
+            "dataset": "LB",
+            "name": "Laboratory Test Results",
+            "type": "SDTM",
+            "fields": [
+                {
+                    "name": "USUBJID",
+                    "label": "Unique Subject ID",
+                    "type": "string",
+                    "is_identifier": True
+                },
+                {
+                    "name": "LBTEST",
+                    "label": "Lab Test Name",
+                    "type": "categorical"
+                },
+                {
+                    "name": "LBSTRESN",
+                    "label": "Numeric Result",
+                    "type": "numeric",
+                    "is_continuous": True
+                },
+                {
+                    "name": "LBDTC",
+                    "label": "Date/Time of Collection",
+                    "type": "datetime"
+                }
+            ],
+            "compatible_widgets": ["chart", "table", "timeline"]
+        }
+    ]
+    
+    # Filter by widget type compatibility if specified
+    if widget_type:
+        data_sources = [
+            ds for ds in data_sources 
+            if widget_type in ds["compatible_widgets"]
+        ]
+    
+    return data_sources
+
+
+@router.post("/widgets/preview", response_model=Dict[str, Any])
+async def preview_widget(
+    widget_config: Dict[str, Any] = Body(...),
+    sample_size: int = Query(10, description="Number of sample records"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> Any:
+    """
+    Preview widget with sample data before saving.
+    """
+    widget_type = widget_config.get("type")
+    config = widget_config.get("config", {})
+    
+    # Generate preview based on widget type
+    preview_data = {
+        "widget_type": widget_type,
+        "config": config,
+        "preview_generated_at": datetime.utcnow().isoformat()
+    }
+    
+    if widget_type == "metric":
+        preview_data["sample_data"] = {
+            "value": 156,
+            "previous_value": 142,
+            "change": 14,
+            "change_percent": 9.86,
+            "trend": "up"
+        }
+    elif widget_type == "chart":
+        preview_data["sample_data"] = {
+            "labels": ["Week 1", "Week 2", "Week 3", "Week 4"],
+            "datasets": [{
+                "label": "Sample Data",
+                "data": [65, 72, 78, 85]
+            }]
+        }
+    elif widget_type == "table":
+        preview_data["sample_data"] = {
+            "columns": config.get("columns", ["Col1", "Col2", "Col3"]),
+            "rows": [
+                [f"Row{i}-Col1", f"Row{i}-Col2", f"Row{i}-Col3"]
+                for i in range(1, min(sample_size + 1, 6))
+            ]
+        }
+    
+    preview_data["render_info"] = {
+        "estimated_render_time_ms": 150,
+        "recommended_size": {"w": 6, "h": 4},
+        "responsive": True
+    }
+    
+    return preview_data

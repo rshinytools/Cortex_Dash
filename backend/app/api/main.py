@@ -1,8 +1,14 @@
 from fastapi import APIRouter
 
 from app.api.routes import items, login, private, users, utils
-from app.api.v1.endpoints import organizations, studies, pipelines
-from app.api.v1.endpoints import users as users_v1
+from app.api.v1.endpoints import organizations, studies, pipelines, data_sources, transformations, data_catalog
+from app.api.v1.endpoints import data_versions, data_quality, data_archival
+from app.api.v1.endpoints import dashboards, widgets, visualizations, advanced_visualizations
+from app.api.v1.endpoints import reports, exports
+from app.api.v1.endpoints import system_settings, notification_settings, integrations, custom_fields, workflows
+from app.api.v1.endpoints import audit_trail, electronic_signatures, data_integrity, access_control, regulatory_compliance
+from app.api.v1.endpoints import system_health, performance_monitoring, backup_recovery, job_monitoring
+from app.api.v1.endpoints import users as users_v1, branding
 from app.core.config import settings
 
 api_router = APIRouter()
@@ -16,6 +22,47 @@ api_router.include_router(organizations.router, prefix="/organizations", tags=["
 api_router.include_router(studies.router, prefix="/studies", tags=["studies"])
 api_router.include_router(users_v1.router, prefix="/v1/users", tags=["users-clinical"])
 api_router.include_router(pipelines.router, prefix="/pipelines", tags=["pipelines"])
+api_router.include_router(data_sources.router, prefix="/data-sources", tags=["data-sources"])
+api_router.include_router(transformations.router, prefix="/transformations", tags=["transformations"])
+api_router.include_router(data_catalog.router, prefix="/data-catalog", tags=["data-catalog"])
+
+# Phase 4: Data Management & Storage APIs
+api_router.include_router(data_versions.router, prefix="/data-versions", tags=["data-versions"])
+api_router.include_router(data_quality.router, prefix="/data-quality", tags=["data-quality"])
+api_router.include_router(data_archival.router, prefix="/archival", tags=["archival"])
+
+# Phase 5: Dashboard & Visualization APIs
+api_router.include_router(dashboards.router, prefix="/dashboards", tags=["dashboards"])
+api_router.include_router(widgets.router, prefix="/widgets", tags=["widgets"])
+api_router.include_router(visualizations.router, prefix="/visualizations", tags=["visualizations"])
+api_router.include_router(advanced_visualizations.router, prefix="/advanced-visualizations", tags=["advanced-visualizations"])
+
+# Phase 6: Reporting & Export APIs
+api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
+api_router.include_router(exports.router, prefix="/exports", tags=["exports"])
+
+# Phase 7: Admin & Configuration APIs
+api_router.include_router(system_settings.router, prefix="/system-settings", tags=["system-settings"])
+api_router.include_router(notification_settings.router, prefix="/notification-settings", tags=["notification-settings"])
+api_router.include_router(integrations.router, prefix="/integrations", tags=["integrations"])
+api_router.include_router(custom_fields.router, prefix="/custom-fields", tags=["custom-fields"])
+api_router.include_router(workflows.router, prefix="/workflows", tags=["workflows"])
+
+# Phase 8: Compliance & Audit APIs
+api_router.include_router(audit_trail.router, prefix="/audit-trail", tags=["audit-trail"])
+api_router.include_router(electronic_signatures.router, prefix="/electronic-signatures", tags=["electronic-signatures"])
+api_router.include_router(data_integrity.router, prefix="/data-integrity", tags=["data-integrity"])
+api_router.include_router(access_control.router, prefix="/access-control", tags=["access-control"])
+api_router.include_router(regulatory_compliance.router, prefix="/regulatory-compliance", tags=["regulatory-compliance"])
+
+# Phase 9: Monitoring & Operations APIs
+api_router.include_router(system_health.router, prefix="/system-health", tags=["system-health"])
+api_router.include_router(performance_monitoring.router, prefix="/performance", tags=["performance"])
+api_router.include_router(backup_recovery.router, prefix="/backup-recovery", tags=["backup-recovery"])
+api_router.include_router(job_monitoring.router, prefix="/jobs", tags=["jobs"])
+
+# Branding APIs
+api_router.include_router(branding.router, prefix="/branding", tags=["branding"])
 
 if settings.ENVIRONMENT == "local":
     api_router.include_router(private.router)

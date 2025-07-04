@@ -6,7 +6,7 @@ from .user import User, UserBase, UserCreate, UserUpdate, UserRegister, UserPubl
 from .organization import Organization, OrganizationCreate, OrganizationUpdate, OrganizationPublic
 from .study import Study, StudyCreate, StudyUpdate, StudyPublic
 from .activity_log import ActivityLog, ActivityLogCreate, ActivityLogPublic
-from .data_source import DataSource, DataSourceCreate, DataSourceUpdate, DataSourceConfig
+from .data_source import DataSource, DataSourceCreate, DataSourceUpdate, DataSourceConfig, DataSourceType
 from .item import Item, ItemBase, ItemCreate, ItemUpdate, ItemPublic, ItemsPublic, Message
 from .token import Token, TokenPayload, NewPassword
 
@@ -22,7 +22,7 @@ __all__ = [
     # Activity logging
     "ActivityLog", "ActivityLogCreate", "ActivityLogPublic",
     # Data sources
-    "DataSource", "DataSourceCreate", "DataSourceUpdate", "DataSourceConfig",
+    "DataSource", "DataSourceCreate", "DataSourceUpdate", "DataSourceConfig", "DataSourceType",
     # Items (from template)
     "Item", "ItemBase", "ItemCreate", "ItemUpdate", "ItemPublic", "ItemsPublic", "Message",
     # Auth tokens

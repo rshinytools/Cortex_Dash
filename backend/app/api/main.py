@@ -8,7 +8,7 @@ from app.api.v1.endpoints import reports, exports
 from app.api.v1.endpoints import system_settings, notification_settings, integrations, custom_fields, workflows
 from app.api.v1.endpoints import audit_trail, electronic_signatures, data_integrity, access_control, regulatory_compliance
 from app.api.v1.endpoints import system_health, performance_monitoring, backup_recovery, job_monitoring
-from app.api.v1.endpoints import users as users_v1, branding
+from app.api.v1.endpoints import users as users_v1, branding, documentation
 from app.core.config import settings
 
 api_router = APIRouter()
@@ -63,6 +63,9 @@ api_router.include_router(job_monitoring.router, prefix="/jobs", tags=["jobs"])
 
 # Branding APIs
 api_router.include_router(branding.router, prefix="/branding", tags=["branding"])
+
+# Documentation APIs
+api_router.include_router(documentation.router, prefix="/documentation", tags=["documentation"])
 
 if settings.ENVIRONMENT == "local":
     api_router.include_router(private.router)

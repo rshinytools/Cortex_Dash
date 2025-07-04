@@ -328,6 +328,43 @@ api-logs: ## View API logs
 celery-logs: ## View Celery worker logs
 	@tail -f backend/celery-worker.log 2>/dev/null || echo "No Celery logs found. Start dev mode with 'make dev'"
 
+# Code quality commands
+format: ## Format code with black and isort
+	@echo "$(YELLOW)Formatting backend code...$(NC)"
+	@cd backend && \
+	if [ -d "venv" ]; then \
+		. venv/bin/activate && \
+		black app && \
+		isort app; \
+		echo "$(GREEN)✓ Code formatted$(NC)"; \
+	else \
+		echo "$(RED)Virtual environment not found. Run 'make up' first$(NC)"; \
+	fi
+
+lint: ## Run linting checks
+	@echo "$(YELLOW)Running linting checks...$(NC)"
+	@cd backend && \
+	if [ -d "venv" ]; then \
+		. venv/bin/activate && \
+		mypy app && \
+		ruff check app && \
+		ruff format app --check; \
+		echo "$(GREEN)✓ Linting complete$(NC)"; \
+	else \
+		echo "$(RED)Virtual environment not found. Run 'make up' first$(NC)"; \
+	fi
+
+test-backend: ## Run backend tests with pytest
+	@echo "$(YELLOW)Running backend tests...$(NC)"
+	@cd backend && \
+	if [ -d "venv" ]; then \
+		. venv/bin/activate && \
+		pytest -v; \
+		echo "$(GREEN)✓ Tests complete$(NC)"; \
+	else \
+		echo "$(RED)Virtual environment not found. Run 'make up' first$(NC)"; \
+	fi
+
 # Aliases
 start: up ## Alias for 'up'
 stop: down ## Alias for 'down'

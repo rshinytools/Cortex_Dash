@@ -27,54 +27,63 @@ A multi-tenant, enterprise-grade clinical data dashboard platform for pharmaceut
 - Docker Compose 2.20+
 - PostgreSQL 15+
 - Redis 7+
+- Make (for running commands)
 
 ## 🚦 Getting Started
 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/yourusername/clinical-dashboard.git
-cd clinical-dashboard
+git clone https://github.com/rshinytools/Cortex_Dash.git
+cd Cortex_Dash
 ```
 
-### 2. Set up environment variables
+### 2. Quick Start with Make
 
 ```bash
-cp .env.example .env
-# Edit .env with your configuration
+# Complete system setup and start
+make restart-all
+
+# Or for a quick start with test data
+make quickstart
 ```
 
-### 3. Run with Docker Compose
+### 3. Access the application
 
-```bash
-docker-compose up -d
-```
-
-### 4. Run database migrations
-
-```bash
-docker-compose exec backend alembic upgrade head
-```
-
-### 5. Access the application
-
-- Frontend: http://localhost:3000
 - Backend API: http://localhost:8000
 - API Documentation: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
+- Adminer (DB UI): http://localhost:8080
+- Flower (Celery UI): http://localhost:5555
+
+### 4. Available Make Commands
+
+```bash
+make help           # Show all available commands
+make up             # Start all services
+make down           # Stop all services
+make restart-all    # Complete restart with setup
+make dev            # Start in development mode
+make test           # Run API tests
+make status         # Check service status
+make logs           # View logs
+make clean          # Remove all data (with confirmation)
+```
 
 ## 🧪 Testing
 
-Run the comprehensive test suite:
+Run tests using Make commands:
 
 ```bash
-# Run all tests
-python run_tests.py
+# Run API tests
+make test
 
-# Run specific phase tests
-python run_tests.py --phase 1
+# Run backend unit tests
+make test-backend
 
-# Run compliance tests
-python run_tests.py --compliance
+# Format and lint code
+make format
+make lint
 ```
 
 Test reports are generated in the `Reports/` directory.

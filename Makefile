@@ -122,11 +122,38 @@ restart-all: ## Complete restart: Stop, remove, rebuild, and start all services
 	@make health
 	@echo ""
 	
+	@echo "$(YELLOW)9. Starting frontend...$(NC)"
+	@cd frontend && \
+	if [ ! -d "node_modules" ]; then \
+		echo "   Installing frontend dependencies..."; \
+		npm install; \
+	fi && \
+	echo "   Starting Next.js server..." && \
+	nohup npm run dev > frontend.log 2>&1 & \
+	echo $$! > frontend.pid && \
+	echo "$(GREEN)✓ Frontend server started (PID: $$(cat frontend.pid))$(NC)"
+	
+	@echo -n "   Waiting for Frontend..."
+	@for i in $$(seq 1 30); do \
+		if curl -s http://localhost:3000 > /dev/null 2>&1; then \
+			echo " $(GREEN)✓ Ready$(NC)"; \
+			break; \
+		fi; \
+		if [ $$i -eq 30 ]; then \
+			echo " $(RED)✗ Failed to start$(NC)"; \
+			echo "   $(YELLOW)Check logs with: tail frontend/frontend.log$(NC)"; \
+		fi; \
+		echo -n "."; \
+		sleep 1; \
+	done
+	@echo ""
+	
 	@echo "$(GREEN)═══════════════════════════════════════════════════════$(NC)"
 	@echo "$(GREEN)🎉 CLINICAL DASHBOARD IS UP AND RUNNING!$(NC)"
 	@echo "$(GREEN)═══════════════════════════════════════════════════════$(NC)"
 	@echo ""
 	@echo "$(BLUE)📍 Service URLs:$(NC)"
+	@echo "   $(GREEN)Frontend:$(NC)    http://localhost:3000"
 	@echo "   $(GREEN)API:$(NC)         http://localhost:8000"
 	@echo "   $(GREEN)API Docs:$(NC)    http://localhost:8000/docs"
 	@echo "   $(GREEN)ReDoc:$(NC)       http://localhost:8000/redoc"
@@ -146,12 +173,18 @@ build: ## Build all Docker images
 		docker build -t clinical-dashboard-backend ./backend; \
 		echo "$(GREEN)✓ Backend image built$(NC)"; \
 	else \
-		echo "$(YELLOW)No Dockerfile found, skipping build$(NC)"; \
+		echo "$(YELLOW)No backend Dockerfile found, skipping backend build$(NC)"; \
+	fi
+	@if [ -f frontend/Dockerfile ]; then \
+		docker build -t clinical-dashboard-frontend ./frontend; \
+		echo "$(GREEN)✓ Frontend image built$(NC)"; \
+	else \
+		echo "$(YELLOW)No frontend Dockerfile found, skipping frontend build$(NC)"; \
 	fi
 
 up: ## Start all services
 	@echo "$(GREEN)Starting Clinical Dashboard...$(NC)"
-	@$(DOCKER_COMPOSE) -f docker-compose.local.yml up -d
+	@$(DOCKER_COMPOSE) -f docker-compose.local.yml up -d postgres redis adminer flower
 	@echo ""
 	@echo "$(YELLOW)Starting backend API...$(NC)"
 	@cd backend && \
@@ -163,8 +196,18 @@ up: ## Start all services
 	. venv/bin/activate && \
 	nohup uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 > api.log 2>&1 & \
 	echo $$! > api.pid
-	@echo "$(GREEN)✓ Services started!$(NC)"
+	@echo "$(GREEN)✓ Backend started!$(NC)"
 	@echo ""
+	@echo "$(YELLOW)Starting frontend...$(NC)"
+	@cd frontend && \
+	if [ ! -d "node_modules" ]; then \
+		npm install; \
+	fi && \
+	nohup npm run dev > frontend.log 2>&1 & \
+	echo $$! > frontend.pid
+	@echo "$(GREEN)✓ Frontend started!$(NC)"
+	@echo ""
+	@echo "Frontend: http://localhost:3000"
 	@echo "API: http://localhost:8000"
 	@echo "API Docs: http://localhost:8000/docs"
 	@echo "Adminer: http://localhost:8080"
@@ -175,6 +218,19 @@ down: ## Stop all services
 		kill $$(cat backend/api.pid) 2>/dev/null || true; \
 		rm backend/api.pid; \
 		echo "$(GREEN)✓ API server stopped$(NC)"; \
+	fi
+	@if [ -f frontend/frontend.pid ]; then \
+		kill $$(cat frontend/frontend.pid) 2>/dev/null || true; \
+		rm frontend/frontend.pid; \
+		echo "$(GREEN)✓ Frontend server stopped$(NC)"; \
+	fi
+	@if [ -f backend/celery-worker.pid ]; then \
+		kill $$(cat backend/celery-worker.pid) 2>/dev/null || true; \
+		rm backend/celery-worker.pid; \
+	fi
+	@if [ -f backend/celery-beat.pid ]; then \
+		kill $$(cat backend/celery-beat.pid) 2>/dev/null || true; \
+		rm backend/celery-beat.pid; \
 	fi
 	@$(DOCKER_COMPOSE) -f docker-compose.local.yml down
 	@echo "$(GREEN)✓ All services stopped$(NC)"
@@ -269,6 +325,11 @@ status: ## Check service status
 	@$(DOCKER_COMPOSE) -f docker-compose.local.yml ps
 	@echo ""
 	@echo "$(BLUE)Application:$(NC)"
+	@if [ -f frontend/frontend.pid ] && kill -0 $$(cat frontend/frontend.pid) 2>/dev/null; then \
+		echo "   Frontend Server: $(GREEN)✓ Running$(NC) (PID: $$(cat frontend/frontend.pid))"; \
+	else \
+		echo "   Frontend Server: $(RED)✗ Stopped$(NC)"; \
+	fi
 	@if [ -f backend/api.pid ] && kill -0 $$(cat backend/api.pid) 2>/dev/null; then \
 		echo "   API Server: $(GREEN)✓ Running$(NC) (PID: $$(cat backend/api.pid))"; \
 	else \
@@ -306,6 +367,13 @@ health: ## Health check for all services
 	else \
 		echo "$(RED)✗ Unhealthy$(NC)"; \
 	fi
+	
+	@echo -n "   Frontend: "
+	@if curl -s http://localhost:3000 > /dev/null 2>&1; then \
+		echo "$(GREEN)✓ Healthy$(NC)"; \
+	else \
+		echo "$(RED)✗ Unhealthy$(NC)"; \
+	fi
 
 restart: ## Restart all services
 	@echo "$(YELLOW)Restarting services...$(NC)"
@@ -330,6 +398,9 @@ seed-data: ## Generate test data
 
 api-logs: ## View API logs
 	@tail -f backend/api.log 2>/dev/null || echo "No API logs found. Start the API first with 'make up'"
+
+frontend-logs: ## View Frontend logs
+	@tail -f frontend/frontend.log 2>/dev/null || echo "No Frontend logs found. Start the frontend first with 'make up'"
 
 celery-logs: ## View Celery worker logs
 	@tail -f backend/celery-worker.log 2>/dev/null || echo "No Celery logs found. Start dev mode with 'make dev'"
@@ -369,6 +440,36 @@ test-backend: ## Run backend tests with pytest
 		echo "$(GREEN)✓ Tests complete$(NC)"; \
 	else \
 		echo "$(RED)Virtual environment not found. Run 'make up' first$(NC)"; \
+	fi
+
+test-frontend: ## Run frontend tests
+	@echo "$(YELLOW)Running frontend tests...$(NC)"
+	@cd frontend && \
+	if [ -d "node_modules" ]; then \
+		npm test; \
+		echo "$(GREEN)✓ Tests complete$(NC)"; \
+	else \
+		echo "$(RED)node_modules not found. Run 'make up' first$(NC)"; \
+	fi
+
+build-frontend: ## Build frontend for production
+	@echo "$(YELLOW)Building frontend for production...$(NC)"
+	@cd frontend && \
+	if [ -d "node_modules" ]; then \
+		npm run build; \
+		echo "$(GREEN)✓ Frontend build complete$(NC)"; \
+	else \
+		echo "$(RED)node_modules not found. Run 'npm install' first$(NC)"; \
+	fi
+
+lint-frontend: ## Run frontend linting
+	@echo "$(YELLOW)Running frontend linting...$(NC)"
+	@cd frontend && \
+	if [ -d "node_modules" ]; then \
+		npm run lint; \
+		echo "$(GREEN)✓ Linting complete$(NC)"; \
+	else \
+		echo "$(RED)node_modules not found. Run 'npm install' first$(NC)"; \
 	fi
 
 # Aliases

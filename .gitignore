@@ -68,6 +68,13 @@ htmlcov/
 logs/
 log/
 
+# Process files
+*.pid
+backend/api.pid
+backend/celery-worker.pid
+backend/celery-beat.pid
+frontend/frontend.pid
+
 # OS files
 .DS_Store
 .DS_Store?

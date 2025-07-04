@@ -54,10 +54,30 @@ services:
     depends_on:
       - redis
 
+  # Frontend - Next.js Application
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=your-secret-key-here-change-in-production
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - postgres
+      - redis
+    command: npm run dev
+
 volumes:
   postgres_data:
 
-# To run the backend locally with these services:
+# To run the full stack locally:
 # 1. Start the services: docker-compose -f docker-compose.local.yml up -d
 # 2. In your backend directory:
 #    - Create virtual environment: python3 -m venv venv
@@ -67,8 +87,14 @@ volumes:
 #    - Start FastAPI: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 #    - (Optional) Start Celery Worker: celery -A app.core.celery_app worker --loglevel=info
 #    - (Optional) Start Celery Beat: celery -A app.core.celery_app beat --loglevel=info
+# 3. In your frontend directory:
+#    - Install dependencies: npm install
+#    - Start Next.js: npm run dev
+#
+# Or simply run: make restart-all
 #
 # Access points:
+# - Frontend: http://localhost:3000
 # - API: http://localhost:8000
 # - API Docs: http://localhost:8000/docs
 # - Adminer (DB UI): http://localhost:8080

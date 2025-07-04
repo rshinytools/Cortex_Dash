@@ -1,2 +1,39 @@
+# Dependencies
 node_modules
-dist
+
+# Next.js build output
+.next
+out
+
+# Testing
+coverage
+.nyc_output
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Environment files
+.env*.local
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store
+*.swp
+
+# Documentation
+README.md
+docs
+
+# Git
+.git
+.gitignore
+
+# Development files
+*.log
+*.pid

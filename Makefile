@@ -31,26 +31,38 @@ restart-all: ## Complete restart: Stop, remove, rebuild, and start all services
 	@echo "$(RED)═══════════════════════════════════════════════════════$(NC)"
 	@echo ""
 	
-	@echo "$(YELLOW)1. Stopping all containers...$(NC)"
+	@echo "$(YELLOW)1. Stopping all running processes...$(NC)"
+	@if [ -f backend/api.pid ] && kill -0 $$(cat backend/api.pid) 2>/dev/null; then \
+		kill $$(cat backend/api.pid) 2>/dev/null || true; \
+		rm backend/api.pid; \
+		echo "   $(GREEN)✓ Stopped host API server$(NC)"; \
+	fi
+	@if [ -f frontend/frontend.pid ] && kill -0 $$(cat frontend/frontend.pid) 2>/dev/null; then \
+		kill $$(cat frontend/frontend.pid) 2>/dev/null || true; \
+		rm frontend/frontend.pid; \
+		echo "   $(GREEN)✓ Stopped host frontend server$(NC)"; \
+	fi
+	@echo ""
+	
+	@echo "$(YELLOW)2. Stopping all containers...$(NC)"
 	@$(DOCKER_COMPOSE) -f docker-compose.local.yml down --remove-orphans || true
-	@docker stop clinical-postgres clinical-redis clinical-backend clinical-celery-worker clinical-celery-beat 2>/dev/null || true
 	@echo "$(GREEN)✓ All containers stopped$(NC)"
 	@echo ""
 	
-	@echo "$(YELLOW)2. Removing all containers...$(NC)"
-	@docker rm clinical-postgres clinical-redis clinical-backend clinical-celery-worker clinical-celery-beat 2>/dev/null || true
-	@echo "$(GREEN)✓ All containers removed$(NC)"
+	@echo "$(YELLOW)3. Building Docker images...$(NC)"
+	@$(DOCKER_COMPOSE) -f docker-compose.local.yml build
+	@echo "$(GREEN)✓ Docker images built$(NC)"
 	@echo ""
 	
-	@echo "$(YELLOW)3. Starting infrastructure services...$(NC)"
-	@$(DOCKER_COMPOSE) -f docker-compose.local.yml up -d postgres redis
-	@echo "$(GREEN)✓ Infrastructure services started$(NC)"
+	@echo "$(YELLOW)4. Starting all services in Docker...$(NC)"
+	@$(DOCKER_COMPOSE) -f docker-compose.local.yml up -d
+	@echo "$(GREEN)✓ All services started$(NC)"
 	@echo ""
 	
-	@echo "$(YELLOW)4. Waiting for services to be ready...$(NC)"
+	@echo "$(YELLOW)5. Waiting for services to be ready...$(NC)"
 	@echo -n "   Waiting for PostgreSQL..."
 	@for i in $$(seq 1 30); do \
-		if docker exec -t $$(docker ps -qf "name=postgres") pg_isready -U postgres > /dev/null 2>&1; then \
+		if docker exec cortex_dash-postgres-1 pg_isready -U postgres > /dev/null 2>&1; then \
 			echo " $(GREEN)✓ Ready$(NC)"; \
 			break; \
 		fi; \
@@ -60,92 +72,46 @@ restart-all: ## Complete restart: Stop, remove, rebuild, and start all services
 	
 	@echo -n "   Waiting for Redis..."
 	@for i in $$(seq 1 30); do \
-		if docker exec -t $$(docker ps -qf "name=redis") redis-cli ping > /dev/null 2>&1; then \
+		if docker exec cortex_dash-redis-1 redis-cli ping > /dev/null 2>&1; then \
 			echo " $(GREEN)✓ Ready$(NC)"; \
 			break; \
 		fi; \
 		echo -n "."; \
 		sleep 1; \
 	done
-	@echo ""
 	
-	@echo "$(YELLOW)5. Setting up database...$(NC)"
-	@cd backend && \
-	if [ -d "venv" ]; then \
-		echo "   Using existing virtual environment"; \
-	else \
-		echo "   Creating virtual environment..."; \
-		python3 -m venv venv; \
-	fi && \
-	. venv/bin/activate && \
-	echo "   Installing dependencies..." && \
-	pip install -q -r requirements.txt && \
-	echo "   Creating database..." && \
-	PGPASSWORD=changethis psql -h localhost -U postgres -c "CREATE DATABASE clinical_dashboard" 2>/dev/null || echo "   Database already exists" && \
-	echo "   Running migrations..." && \
-	PYTHONPATH=. alembic upgrade head && \
-	echo "$(GREEN)✓ Database setup complete$(NC)"
-	@echo ""
-	
-	@echo "$(YELLOW)6. Starting application...$(NC)"
-	@cd backend && \
-	. venv/bin/activate && \
-	echo "   Starting FastAPI server..." && \
-	nohup uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 > api.log 2>&1 & \
-	echo $$! > api.pid && \
-	echo "$(GREEN)✓ API server started (PID: $$(cat api.pid))$(NC)"
-	
-	@echo -n "   Waiting for API..."
-	@for i in $$(seq 1 30); do \
-		if curl -s http://localhost:8000/api/v1/utils/health-check/ > /dev/null 2>&1 || curl -s http://localhost:8000/health > /dev/null 2>&1; then \
+	@echo -n "   Waiting for Backend API..."
+	@for i in $$(seq 1 60); do \
+		if curl -s http://localhost:8000/api/v1/utils/health-check/ > /dev/null 2>&1; then \
 			echo " $(GREEN)✓ Ready$(NC)"; \
 			break; \
 		fi; \
-		if [ $$i -eq 30 ]; then \
+		if [ $$i -eq 60 ]; then \
 			echo " $(RED)✗ Failed to start$(NC)"; \
-			echo "   $(YELLOW)Check logs with: tail backend/api.log$(NC)"; \
+			echo "   $(YELLOW)Check logs with: docker logs cortex_dash-backend-1$(NC)"; \
 			exit 1; \
 		fi; \
 		echo -n "."; \
-		sleep 1; \
+		sleep 2; \
 	done
-	@echo ""
-	
-	@echo "$(YELLOW)7. Creating default admin user...$(NC)"
-	@cd backend && \
-	. venv/bin/activate && \
-	PYTHONPATH=. python -c "from app.core.db import init_db; from sqlmodel import Session, create_engine; from app.core.config import settings; engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI)); session = Session(engine); init_db(session); session.close()" && \
-	echo "$(GREEN)✓ Admin user created (admin@sagarmatha.ai / adadad123)$(NC)"
-	@echo ""
-	
-	@echo "$(YELLOW)8. Health check results:$(NC)"
-	@make health
-	@echo ""
-	
-	@echo "$(YELLOW)9. Starting frontend...$(NC)"
-	@cd frontend && \
-	if [ ! -d "node_modules" ]; then \
-		echo "   Installing frontend dependencies..."; \
-		npm install; \
-	fi && \
-	echo "   Starting Next.js server..." && \
-	nohup npm run dev > frontend.log 2>&1 & \
-	echo $$! > frontend.pid && \
-	echo "$(GREEN)✓ Frontend server started (PID: $$(cat frontend.pid))$(NC)"
 	
 	@echo -n "   Waiting for Frontend..."
-	@for i in $$(seq 1 30); do \
+	@for i in $$(seq 1 60); do \
 		if curl -s http://localhost:3000 > /dev/null 2>&1; then \
 			echo " $(GREEN)✓ Ready$(NC)"; \
 			break; \
 		fi; \
-		if [ $$i -eq 30 ]; then \
+		if [ $$i -eq 60 ]; then \
 			echo " $(RED)✗ Failed to start$(NC)"; \
-			echo "   $(YELLOW)Check logs with: tail frontend/frontend.log$(NC)"; \
+			echo "   $(YELLOW)Check logs with: docker logs cortex_dash-frontend-1$(NC)"; \
 		fi; \
 		echo -n "."; \
-		sleep 1; \
+		sleep 2; \
 	done
+	@echo ""
+	
+	@echo "$(YELLOW)6. Health check results:$(NC)"
+	@make health
 	@echo ""
 	
 	@echo "$(GREEN)═══════════════════════════════════════════════════════$(NC)"
@@ -184,74 +150,35 @@ build: ## Build all Docker images
 
 up: ## Start all services
 	@echo "$(GREEN)Starting Clinical Dashboard...$(NC)"
-	@$(DOCKER_COMPOSE) -f docker-compose.local.yml up -d postgres redis adminer flower
+	@$(DOCKER_COMPOSE) -f docker-compose.local.yml up -d
+	@echo "$(GREEN)✓ All services started in Docker!$(NC)"
 	@echo ""
-	@echo "$(YELLOW)Starting backend API...$(NC)"
-	@cd backend && \
-	if [ ! -d "venv" ]; then \
-		python3 -m venv venv && \
-		. venv/bin/activate && \
-		pip install -q -r requirements.txt; \
-	fi && \
-	. venv/bin/activate && \
-	nohup uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 > api.log 2>&1 & \
-	echo $$! > api.pid
-	@echo "$(GREEN)✓ Backend started!$(NC)"
-	@echo ""
-	@echo "$(YELLOW)Starting frontend...$(NC)"
-	@cd frontend && \
-	if [ ! -d "node_modules" ]; then \
-		npm install; \
-	fi && \
-	nohup npm run dev > frontend.log 2>&1 & \
-	echo $$! > frontend.pid
-	@echo "$(GREEN)✓ Frontend started!$(NC)"
+	@echo "Waiting for services to be ready..."
+	@sleep 5
+	@make health
 	@echo ""
 	@echo "Frontend: http://localhost:3000"
 	@echo "API: http://localhost:8000"
 	@echo "API Docs: http://localhost:8000/docs"
 	@echo "Adminer: http://localhost:8080"
+	@echo "Flower: http://localhost:5555"
 
 down: ## Stop all services
 	@echo "$(YELLOW)Stopping services...$(NC)"
-	@if [ -f backend/api.pid ]; then \
-		kill $$(cat backend/api.pid) 2>/dev/null || true; \
-		rm backend/api.pid; \
-		echo "$(GREEN)✓ API server stopped$(NC)"; \
-	fi
-	@if [ -f frontend/frontend.pid ]; then \
-		kill $$(cat frontend/frontend.pid) 2>/dev/null || true; \
-		rm frontend/frontend.pid; \
-		echo "$(GREEN)✓ Frontend server stopped$(NC)"; \
-	fi
-	@if [ -f backend/celery-worker.pid ]; then \
-		kill $$(cat backend/celery-worker.pid) 2>/dev/null || true; \
-		rm backend/celery-worker.pid; \
-	fi
-	@if [ -f backend/celery-beat.pid ]; then \
-		kill $$(cat backend/celery-beat.pid) 2>/dev/null || true; \
-		rm backend/celery-beat.pid; \
-	fi
 	@$(DOCKER_COMPOSE) -f docker-compose.local.yml down
 	@echo "$(GREEN)✓ All services stopped$(NC)"
 
-logs: ## View logs (use: make logs service=postgres)
+logs: ## View logs (use: make logs service=backend)
 	@if [ -z "$(service)" ]; then \
-		echo "$(YELLOW)Showing API logs (use 'make logs service=<name>' for specific service)$(NC)"; \
-		tail -f backend/api.log 2>/dev/null || echo "No API logs found"; \
+		echo "$(YELLOW)Showing all logs (use 'make logs service=<name>' for specific service)$(NC)"; \
+		$(DOCKER_COMPOSE) -f docker-compose.local.yml logs -f; \
 	else \
 		$(DOCKER_COMPOSE) -f docker-compose.local.yml logs -f $(service); \
 	fi
 
 test: ## Run API tests
 	@echo "$(YELLOW)Running API tests...$(NC)"
-	@cd backend && \
-	if [ -d "venv" ]; then \
-		. venv/bin/activate && \
-		python test_api.py; \
-	else \
-		echo "$(RED)Virtual environment not found. Run 'make up' first$(NC)"; \
-	fi
+	@docker exec cortex_dash-backend-1 python test_api.py
 
 clean: ## Remove all containers and volumes (WARNING: Deletes ALL data!)
 	@echo "$(RED)╔════════════════════════════════════════════════════════════╗$(NC)"
@@ -263,6 +190,7 @@ clean: ## Remove all containers and volumes (WARNING: Deletes ALL data!)
 	@echo "$(RED)║  • All user accounts and settings                          ║$(NC)"
 	@echo "$(RED)║  • All pipeline configurations                             ║$(NC)"
 	@echo "$(RED)║  • All Redis cache data                                    ║$(NC)"
+	@echo "$(RED)║  • All Docker images                                       ║$(NC)"
 	@echo "$(RED)║                                                            ║$(NC)"
 	@echo "$(RED)╚════════════════════════════════════════════════════════════╝$(NC)"
 	@echo ""
@@ -272,10 +200,8 @@ clean: ## Remove all containers and volumes (WARNING: Deletes ALL data!)
 		[yY]) \
 			echo "$(YELLOW)Stopping all services...$(NC)"; \
 			make down; \
-			echo "$(YELLOW)Removing all containers and volumes...$(NC)"; \
-			$(DOCKER_COMPOSE) -f docker-compose.local.yml down -v --remove-orphans; \
-			echo "$(YELLOW)Dropping database...$(NC)"; \
-			PGPASSWORD=changethis psql -h localhost -U postgres -c "DROP DATABASE IF EXISTS clinical_dashboard" 2>/dev/null || true; \
+			echo "$(YELLOW)Removing all containers, volumes, and images...$(NC)"; \
+			$(DOCKER_COMPOSE) -f docker-compose.local.yml down -v --remove-orphans --rmi local; \
 			echo "$(GREEN)✓ All data has been deleted!$(NC)"; \
 			;; \
 		*) \
@@ -287,22 +213,10 @@ dev: ## Start in development mode with hot reload
 	@echo "$(GREEN)Starting in development mode...$(NC)"
 	@make up
 	@echo ""
-	@echo "$(YELLOW)Starting Celery worker...$(NC)"
-	@cd backend && \
-	. venv/bin/activate && \
-	nohup celery -A app.core.celery_app worker --loglevel=info > celery-worker.log 2>&1 & \
-	echo $$! > celery-worker.pid
-	@echo "$(GREEN)✓ Celery worker started$(NC)"
-	@echo ""
-	@echo "$(YELLOW)Starting Celery beat...$(NC)"
-	@cd backend && \
-	. venv/bin/activate && \
-	nohup celery -A app.core.celery_app beat --loglevel=info > celery-beat.log 2>&1 & \
-	echo $$! > celery-beat.pid
-	@echo "$(GREEN)✓ Celery beat started$(NC)"
-	@echo ""
 	@echo "$(GREEN)Development mode started!$(NC)"
+	@echo "All services are running in Docker containers with hot reload enabled."
 	@echo "API: http://localhost:8000 (with hot reload)"
+	@echo "Frontend: http://localhost:3000 (with hot reload)"
 	@echo "Flower: http://localhost:5555 (Celery monitoring)"
 
 prod: ## Start in production mode
@@ -311,58 +225,33 @@ prod: ## Start in production mode
 	@make up
 
 shell-api: ## Open Python shell with app context
-	@cd backend && \
-	. venv/bin/activate && \
-	python -c "from app.models import *; from app.crud import *; from sqlmodel import Session, create_engine; from app.core.config import settings; engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI)); session = Session(engine); import IPython; IPython.embed()"
+	@docker exec -it cortex_dash-backend-1 python -c "from app.models import *; from app.crud import *; from sqlmodel import Session, create_engine; from app.core.config import settings; engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI)); session = Session(engine); import IPython; IPython.embed()"
 
 shell-db: ## Open PostgreSQL shell
-	@PGPASSWORD=changethis psql -h localhost -U postgres -d clinical_dashboard
+	@docker exec -it cortex_dash-postgres-1 psql -U postgres -d clinical_dashboard
 
 status: ## Check service status
 	@echo "$(YELLOW)Service Status:$(NC)"
 	@echo ""
-	@echo "$(BLUE)Infrastructure:$(NC)"
 	@$(DOCKER_COMPOSE) -f docker-compose.local.yml ps
-	@echo ""
-	@echo "$(BLUE)Application:$(NC)"
-	@if [ -f frontend/frontend.pid ] && kill -0 $$(cat frontend/frontend.pid) 2>/dev/null; then \
-		echo "   Frontend Server: $(GREEN)✓ Running$(NC) (PID: $$(cat frontend/frontend.pid))"; \
-	else \
-		echo "   Frontend Server: $(RED)✗ Stopped$(NC)"; \
-	fi
-	@if [ -f backend/api.pid ] && kill -0 $$(cat backend/api.pid) 2>/dev/null; then \
-		echo "   API Server: $(GREEN)✓ Running$(NC) (PID: $$(cat backend/api.pid))"; \
-	else \
-		echo "   API Server: $(RED)✗ Stopped$(NC)"; \
-	fi
-	@if [ -f backend/celery-worker.pid ] && kill -0 $$(cat backend/celery-worker.pid) 2>/dev/null; then \
-		echo "   Celery Worker: $(GREEN)✓ Running$(NC) (PID: $$(cat backend/celery-worker.pid))"; \
-	else \
-		echo "   Celery Worker: $(YELLOW)○ Not running$(NC)"; \
-	fi
-	@if [ -f backend/celery-beat.pid ] && kill -0 $$(cat backend/celery-beat.pid) 2>/dev/null; then \
-		echo "   Celery Beat: $(GREEN)✓ Running$(NC) (PID: $$(cat backend/celery-beat.pid))"; \
-	else \
-		echo "   Celery Beat: $(YELLOW)○ Not running$(NC)"; \
-	fi
 
 health: ## Health check for all services
 	@echo -n "   PostgreSQL: "
-	@if docker exec -t $$(docker ps -qf "name=postgres") pg_isready -U postgres > /dev/null 2>&1; then \
+	@if docker exec cortex_dash-postgres-1 pg_isready -U postgres > /dev/null 2>&1; then \
 		echo "$(GREEN)✓ Healthy$(NC)"; \
 	else \
 		echo "$(RED)✗ Unhealthy$(NC)"; \
 	fi
 	
 	@echo -n "   Redis: "
-	@if docker exec -t $$(docker ps -qf "name=redis") redis-cli ping > /dev/null 2>&1; then \
+	@if docker exec cortex_dash-redis-1 redis-cli ping > /dev/null 2>&1; then \
 		echo "$(GREEN)✓ Healthy$(NC)"; \
 	else \
 		echo "$(RED)✗ Unhealthy$(NC)"; \
 	fi
 	
 	@echo -n "   API Backend: "
-	@if curl -s http://localhost:8000/api/v1/utils/health-check/ > /dev/null 2>&1 || curl -s http://localhost:8000/health > /dev/null 2>&1; then \
+	@if curl -s http://localhost:8000/api/v1/utils/health-check/ > /dev/null 2>&1; then \
 		echo "$(GREEN)✓ Healthy$(NC)"; \
 	else \
 		echo "$(RED)✗ Unhealthy$(NC)"; \
@@ -384,93 +273,53 @@ restart: ## Restart all services
 
 migrate: ## Run database migrations
 	@echo "$(YELLOW)Running database migrations...$(NC)"
-	@cd backend && \
-	. venv/bin/activate && \
-	PYTHONPATH=. alembic upgrade head
+	@docker exec cortex_dash-backend-1 alembic upgrade head
 	@echo "$(GREEN)✓ Migrations complete$(NC)"
 
 seed-data: ## Generate test data
 	@echo "$(YELLOW)Generating test data...$(NC)"
-	@cd backend && \
-	. venv/bin/activate && \
-	python test_api.py
+	@docker exec cortex_dash-backend-1 python test_api.py
 	@echo "$(GREEN)✓ Test data created$(NC)"
 
 api-logs: ## View API logs
-	@tail -f backend/api.log 2>/dev/null || echo "No API logs found. Start the API first with 'make up'"
+	@docker logs -f cortex_dash-backend-1
 
 frontend-logs: ## View Frontend logs
-	@tail -f frontend/frontend.log 2>/dev/null || echo "No Frontend logs found. Start the frontend first with 'make up'"
+	@docker logs -f cortex_dash-frontend-1
 
 celery-logs: ## View Celery worker logs
-	@tail -f backend/celery-worker.log 2>/dev/null || echo "No Celery logs found. Start dev mode with 'make dev'"
+	@docker logs -f cortex_dash-celery-worker-1
 
 # Code quality commands
 format: ## Format code with black and isort
 	@echo "$(YELLOW)Formatting backend code...$(NC)"
-	@cd backend && \
-	if [ -d "venv" ]; then \
-		. venv/bin/activate && \
-		black app && \
-		isort app; \
-		echo "$(GREEN)✓ Code formatted$(NC)"; \
-	else \
-		echo "$(RED)Virtual environment not found. Run 'make up' first$(NC)"; \
-	fi
+	@docker exec cortex_dash-backend-1 sh -c "black app && isort app"
+	@echo "$(GREEN)✓ Code formatted$(NC)"
 
 lint: ## Run linting checks
 	@echo "$(YELLOW)Running linting checks...$(NC)"
-	@cd backend && \
-	if [ -d "venv" ]; then \
-		. venv/bin/activate && \
-		mypy app && \
-		ruff check app && \
-		ruff format app --check; \
-		echo "$(GREEN)✓ Linting complete$(NC)"; \
-	else \
-		echo "$(RED)Virtual environment not found. Run 'make up' first$(NC)"; \
-	fi
+	@docker exec cortex_dash-backend-1 sh -c "mypy app && ruff check app && ruff format app --check"
+	@echo "$(GREEN)✓ Linting complete$(NC)"
 
 test-backend: ## Run backend tests with pytest
 	@echo "$(YELLOW)Running backend tests...$(NC)"
-	@cd backend && \
-	if [ -d "venv" ]; then \
-		. venv/bin/activate && \
-		pytest -v; \
-		echo "$(GREEN)✓ Tests complete$(NC)"; \
-	else \
-		echo "$(RED)Virtual environment not found. Run 'make up' first$(NC)"; \
-	fi
+	@docker exec cortex_dash-backend-1 pytest -v
+	@echo "$(GREEN)✓ Tests complete$(NC)"
 
 test-frontend: ## Run frontend tests
 	@echo "$(YELLOW)Running frontend tests...$(NC)"
-	@cd frontend && \
-	if [ -d "node_modules" ]; then \
-		npm test; \
-		echo "$(GREEN)✓ Tests complete$(NC)"; \
-	else \
-		echo "$(RED)node_modules not found. Run 'make up' first$(NC)"; \
-	fi
+	@docker exec cortex_dash-frontend-1 npm test
+	@echo "$(GREEN)✓ Tests complete$(NC)"
 
 build-frontend: ## Build frontend for production
 	@echo "$(YELLOW)Building frontend for production...$(NC)"
-	@cd frontend && \
-	if [ -d "node_modules" ]; then \
-		npm run build; \
-		echo "$(GREEN)✓ Frontend build complete$(NC)"; \
-	else \
-		echo "$(RED)node_modules not found. Run 'npm install' first$(NC)"; \
-	fi
+	@docker exec cortex_dash-frontend-1 npm run build
+	@echo "$(GREEN)✓ Frontend build complete$(NC)"
 
 lint-frontend: ## Run frontend linting
 	@echo "$(YELLOW)Running frontend linting...$(NC)"
-	@cd frontend && \
-	if [ -d "node_modules" ]; then \
-		npm run lint; \
-		echo "$(GREEN)✓ Linting complete$(NC)"; \
-	else \
-		echo "$(RED)node_modules not found. Run 'npm install' first$(NC)"; \
-	fi
+	@docker exec cortex_dash-frontend-1 npm run lint
+	@echo "$(GREEN)✓ Linting complete$(NC)"
 
 # Aliases
 start: up ## Alias for 'up'

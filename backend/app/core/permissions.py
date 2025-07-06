@@ -8,8 +8,8 @@ from fastapi import HTTPException, Depends, status
 from sqlmodel import Session
 
 from app.core.db import engine
-from app.core.security import get_current_active_user
 from app.models import User
+from app.api.deps import get_current_user
 
 
 class Role(str, Enum):
@@ -67,27 +67,12 @@ ROLE_PERMISSIONS: Dict[Role, Set[Permission]] = {
     Role.SYSTEM_ADMIN: set(Permission),  # All permissions
     
     Role.ORG_ADMIN: {
-        Permission.MANAGE_ORG,
         Permission.VIEW_ORG,
-        Permission.MANAGE_ORG_USERS,
-        Permission.MANAGE_ORG_SETTINGS,
-        Permission.CREATE_STUDY,
+        Permission.MANAGE_ORG_USERS,  # Only user management
         Permission.VIEW_STUDY,
-        Permission.EDIT_STUDY,
-        Permission.DELETE_STUDY,
-        Permission.MANAGE_STUDY_DATA,
-        Permission.EXPORT_STUDY_DATA,
-        Permission.CONFIGURE_PIPELINE,
-        Permission.EXECUTE_PIPELINE,
-        Permission.VIEW_PIPELINE_LOGS,
         Permission.VIEW_DASHBOARD,
-        Permission.EDIT_DASHBOARD,
-        Permission.CREATE_WIDGETS,
         Permission.VIEW_REPORTS,
-        Permission.CREATE_REPORTS,
-        Permission.SCHEDULE_REPORTS,
         Permission.VIEW_ACTIVITY_LOG,
-        Permission.VIEW_AUDIT_TRAIL,
     },
     
     Role.STUDY_MANAGER: {
@@ -286,7 +271,7 @@ class PermissionChecker:
     def __init__(self, permission: Permission):
         self.permission = permission
     
-    def __call__(self, current_user: User = Depends(get_current_active_user)):
+    def __call__(self, current_user: User = Depends(get_current_user)):
         if not has_permission(current_user, self.permission):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -302,7 +287,7 @@ class MultiPermissionChecker:
         self.permissions = permissions
         self.require_all = require_all
     
-    def __call__(self, current_user: User = Depends(get_current_active_user)):
+    def __call__(self, current_user: User = Depends(get_current_user)):
         if self.require_all:
             if not has_all_permissions(current_user, self.permissions):
                 raise HTTPException(

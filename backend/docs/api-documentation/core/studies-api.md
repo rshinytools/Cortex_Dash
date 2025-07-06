@@ -233,6 +233,130 @@ POST /api/v1/studies/{study_id}/users
 - Site authorization (if site-specific)
 - Delegation log updated
 
+### 8. Get Study Configuration
+```http
+GET /api/v1/studies/{study_id}/configuration
+```
+
+**Purpose**: Retrieve study configuration including dashboard widgets, data sources, and pipeline settings.
+
+**Business Need**:
+- View current study setup
+- Dashboard customization settings
+- Data pipeline configuration
+- Integration settings review
+
+**Response Example**:
+```json
+{
+  "config": {
+    "display_settings": {
+      "theme": "clinical-blue",
+      "logo_position": "top-left",
+      "show_protocol_number": true
+    },
+    "data_standards": {
+      "sdtm_version": "3.4",
+      "adam_version": "1.3",
+      "terminology_version": "2023-09-29"
+    }
+  },
+  "pipeline_config": {
+    "refresh_schedule": "0 2 * * *",
+    "data_sources": ["rave", "central-lab", "imaging"],
+    "transformation_steps": ["sdtm", "adam", "custom"],
+    "validation_enabled": true
+  },
+  "dashboard_config": {
+    "default_view": "enrollment-overview",
+    "widgets": [
+      {
+        "id": "enrollment-chart",
+        "type": "line-chart",
+        "position": {"x": 0, "y": 0, "w": 6, "h": 4},
+        "data_source": "enrollment_metrics"
+      }
+    ],
+    "refresh_interval": 300
+  },
+  "updated_at": "2024-03-15T10:30:00Z"
+}
+```
+
+### 9. Update Study Configuration
+```http
+PUT /api/v1/studies/{study_id}/configuration
+```
+
+**Purpose**: Update study configuration including dashboard widgets, data sources, and pipeline settings.
+
+**Business Need**:
+- Customize study dashboards
+- Configure data pipeline settings
+- Update integration parameters
+- Modify display preferences
+
+**Request Body**:
+```json
+{
+  "config": {
+    "display_settings": {
+      "theme": "clinical-dark",
+      "show_enrollment_target": true
+    }
+  },
+  "pipeline_config": {
+    "refresh_schedule": "0 */6 * * *",
+    "notification_email": "study-team@example.com"
+  },
+  "dashboard_config": {
+    "widgets": [
+      {
+        "id": "safety-metrics",
+        "type": "metric-card",
+        "position": {"x": 6, "y": 0, "w": 3, "h": 2},
+        "data_source": "adverse_events",
+        "config": {
+          "metric": "serious_ae_count",
+          "threshold": 5,
+          "alert_on_exceed": true
+        }
+      }
+    ]
+  }
+}
+```
+
+**Validation Rules**:
+- Widget positions must not overlap
+- Data sources must exist and be accessible
+- Refresh schedules must be valid cron expressions
+- Configuration changes are audited
+
+### 10. Activate Study
+```http
+POST /api/v1/studies/{study_id}/activate
+```
+
+**Purpose**: Activate a study for data collection and monitoring.
+
+**Business Need**:
+- Study ready to start enrollment
+- All setup complete
+- Regulatory approvals obtained
+
+### 11. Deactivate Study
+```http
+POST /api/v1/studies/{study_id}/deactivate
+```
+
+**Purpose**: Temporarily deactivate a study while preserving all data.
+
+**Business Need**:
+- Study on hold
+- Enrollment pause
+- Regulatory review
+
 ## Compliance Features
 
 ### Good Clinical Practice (GCP) Compliance

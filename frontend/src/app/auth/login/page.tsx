@@ -52,7 +52,8 @@ export default function LoginPage() {
         return;
       }
 
-      router.push('/dashboard');
+      // Redirect will be handled by middleware based on role
+      router.push('/');
       router.refresh();
     } catch (error) {
       setError('An unexpected error occurred');

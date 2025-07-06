@@ -1,11 +1,41 @@
 // ABOUTME: NextAuth middleware for protecting routes and handling authentication
-// ABOUTME: Redirects unauthenticated users to login page
+// ABOUTME: Redirects users based on their role and enforces access control
 
 import { withAuth } from 'next-auth/middleware';
 import { NextResponse } from 'next/server';
+import { UserRole } from '@/types';
 
 export default withAuth(
   function middleware(req) {
+    const token = req.nextauth.token;
+    const pathname = req.nextUrl.pathname;
+    
+    // Get user role
+    const userRole = token?.user?.role as UserRole;
+    
+    // Handle root path redirect based on role
+    if (pathname === '/') {
+      if (userRole === UserRole.SYSTEM_ADMIN || userRole === UserRole.ORG_ADMIN) {
+        return NextResponse.redirect(new URL('/admin', req.url));
+      } else {
+        return NextResponse.redirect(new URL('/dashboard', req.url));
+      }
+    }
+    
+    // Protect admin routes
+    if (pathname.startsWith('/admin')) {
+      if (userRole !== UserRole.SYSTEM_ADMIN && userRole !== UserRole.ORG_ADMIN) {
+        return NextResponse.redirect(new URL('/dashboard', req.url));
+      }
+    }
+    
+    // Protect dashboard route - only for regular users
+    if (pathname === '/dashboard') {
+      if (userRole === UserRole.SYSTEM_ADMIN || userRole === UserRole.ORG_ADMIN) {
+        return NextResponse.redirect(new URL('/admin', req.url));
+      }
+    }
+    
     return NextResponse.next();
   },
   {

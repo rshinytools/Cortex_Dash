@@ -9,6 +9,7 @@ from app.models import DataSource, Study
 from .base import DataSourceConnector
 from .medidata_rave import MedidataRaveConnector
 from .zip_upload import ZipUploadConnector
+from .sftp import SFTPConnector
 
 
 class DataSourceFactory:
@@ -17,7 +18,9 @@ class DataSourceFactory:
     # Mapping of data source types to connector classes
     CONNECTOR_MAP = {
         "medidata_rave": MedidataRaveConnector,
+        "medidata_api": MedidataRaveConnector,  # Alias for consistency
         "zip_upload": ZipUploadConnector,
+        "sftp": SFTPConnector,
     }
     
     @classmethod

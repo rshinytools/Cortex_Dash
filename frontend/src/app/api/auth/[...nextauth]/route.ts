@@ -1,5 +1,5 @@
-// ABOUTME: NextAuth API route handler for authentication endpoints
-// ABOUTME: Handles login, logout, and session management
+// ABOUTME: NextAuth route handler for authentication endpoints
+// ABOUTME: Handles signin, signout, session, and callback routes
 
 import NextAuth from 'next-auth';
 import { authOptions } from '@/lib/auth';

@@ -19,6 +19,8 @@ import {
   Activity,
   Calendar,
   ClipboardList,
+  Plus,
+  Building2,
 } from 'lucide-react';
 import { UserRole } from '@/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -36,56 +38,25 @@ const navItems: NavItem[] = [
     title: 'Dashboard',
     href: '/dashboard',
     icon: LayoutDashboard,
+    roles: [UserRole.STUDY_MANAGER, UserRole.DATA_ANALYST, UserRole.VIEWER], // Only for non-admin users
+  },
+  {
+    title: 'Overview',
+    href: '/admin',
+    icon: LayoutDashboard,
+    roles: [UserRole.SYSTEM_ADMIN, UserRole.ORG_ADMIN], // Admin users see this instead
   },
   {
     title: 'Studies',
     href: '/studies',
     icon: FolderOpen,
-    children: [
-      {
-        title: 'All Studies',
-        href: '/studies',
-        icon: FileText,
-      },
-      {
-        title: 'Enrollment',
-        href: '/studies/enrollment',
-        icon: Users,
-      },
-      {
-        title: 'Milestones',
-        href: '/studies/milestones',
-        icon: Calendar,
-      },
-    ],
-  },
-  {
-    title: 'Data Management',
-    href: '/data',
-    icon: Database,
-    roles: [UserRole.SYSTEM_ADMIN, UserRole.ORG_ADMIN, UserRole.STUDY_MANAGER],
-    children: [
-      {
-        title: 'Data Sources',
-        href: '/data/sources',
-        icon: Database,
-      },
-      {
-        title: 'Pipelines',
-        href: '/data/pipelines',
-        icon: Activity,
-      },
-      {
-        title: 'Quality Checks',
-        href: '/data/quality',
-        icon: ClipboardList,
-      },
-    ],
+    roles: [UserRole.SYSTEM_ADMIN], // Only system admin sees this in sidebar
   },
   {
     title: 'Analytics',
     href: '/analytics',
     icon: BarChart3,
+    roles: [UserRole.SYSTEM_ADMIN], // System admin feature
     children: [
       {
         title: 'Reports',
@@ -100,37 +71,10 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    title: 'Admin',
-    href: '/admin',
-    icon: Shield,
-    roles: [UserRole.SYSTEM_ADMIN, UserRole.ORG_ADMIN],
-    children: [
-      {
-        title: 'Users',
-        href: '/admin/users',
-        icon: Users,
-      },
-      {
-        title: 'Roles & Permissions',
-        href: '/admin/roles',
-        icon: Shield,
-      },
-      {
-        title: 'Organization',
-        href: '/admin/organization',
-        icon: Settings,
-      },
-      {
-        title: 'Audit Logs',
-        href: '/admin/audit',
-        icon: FileText,
-      },
-    ],
-  },
-  {
     title: 'Settings',
     href: '/settings',
     icon: Settings,
+    roles: [UserRole.SYSTEM_ADMIN, UserRole.ORG_ADMIN],
   },
 ];
 
@@ -141,7 +85,13 @@ export function Sidebar() {
   const filteredNavItems = navItems.filter((item) => {
     if (!item.roles) return true;
     return item.roles.includes(session?.user?.role as UserRole);
-  });
+  }).map((item) => ({
+    ...item,
+    children: item.children?.filter((child) => {
+      if (!child.roles) return true;
+      return child.roles.includes(session?.user?.role as UserRole);
+    })
+  }));
 
   return (
     <aside className="w-64 border-r bg-background dark:bg-gray-900">

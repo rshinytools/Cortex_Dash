@@ -2,10 +2,14 @@
 # ABOUTME: Handles data source configuration, testing, and synchronization
 
 from typing import List, Any, Dict
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, UploadFile, File, Form
 from sqlmodel import Session, select
 from datetime import datetime
 import uuid
+import os
+import zipfile
+import shutil
+from pathlib import Path
 
 from app.api.deps import get_db, get_current_user
 from app.models import (
@@ -335,3 +339,143 @@ def trigger_data_source_sync(data_source_id: uuid.UUID, user_id: uuid.UUID):
         "app.tasks.sync_data_source",
         args=[str(data_source_id), str(user_id)]
     )
+
+
+@router.post("/studies/{study_id}/data-sources/{ds_id}/upload")
+async def upload_data_file(
+    study_id: uuid.UUID,
+    ds_id: uuid.UUID,
+    file: UploadFile = File(...),
+    password: str = Form(None),
+    extract_date: str = Form(...),  # EDC Extract Date in DDMMMYYYY format
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _: None = Depends(require_permission(Permission.MANAGE_STUDY_DATA))
+) -> Any:
+    """
+    Upload a ZIP file for manual data source.
+    """
+    # Verify data source exists and is manual upload type
+    data_source = db.exec(
+        select(DataSource).where(
+            DataSource.id == ds_id,
+            DataSource.study_id == study_id
+        )
+    ).first()
+    
+    if not data_source:
+        raise HTTPException(status_code=404, detail="Data source not found")
+    
+    if data_source.source_type != DataSourceType.ZIP_UPLOAD:
+        raise HTTPException(
+            status_code=400, 
+            detail="Upload is only supported for manual upload data sources"
+        )
+    
+    # Verify study and access
+    study = db.exec(select(Study).where(Study.id == study_id)).first()
+    if not study:
+        raise HTTPException(status_code=404, detail="Study not found")
+        
+    if not current_user.is_superuser and study.org_id != current_user.org_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Validate extract date format
+    import re
+    date_pattern = re.compile(r'^[0-9]{2}[A-Z]{3}[0-9]{4}$')
+    if not date_pattern.match(extract_date):
+        raise HTTPException(
+            status_code=400, 
+            detail="Invalid extract date format. Must be DDMMMYYYY (e.g., 05JUL2025)"
+        )
+    
+    # Check file extension
+    if not file.filename.endswith('.zip'):
+        raise HTTPException(status_code=400, detail="Only ZIP files are accepted")
+    
+    # Check file size (500MB limit)
+    if file.size > 500 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File size exceeds 500MB limit")
+    
+    # Create folder structure using extract date as subfolder
+    base_path = Path("/data/studies") / str(study.org_id) / str(study_id)
+    upload_path = base_path / "raw" / "uploads" / extract_date
+    upload_path.mkdir(parents=True, exist_ok=True)
+    
+    # Use original filename (can have multiple uploads for same date)
+    filename = file.filename
+    file_path = upload_path / filename
+    
+    try:
+        # Save the uploaded file
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        # Test if ZIP is valid and potentially password protected
+        with zipfile.ZipFile(file_path, 'r') as zip_ref:
+            # Try to list files - this will fail if password protected and no password given
+            try:
+                file_list = zip_ref.namelist()
+                if password:
+                    # If password provided but ZIP is not encrypted
+                    raise HTTPException(
+                        status_code=400, 
+                        detail="Password provided but ZIP file is not encrypted"
+                    )
+            except RuntimeError as e:
+                if "encrypted" in str(e).lower():
+                    if not password:
+                        os.remove(file_path)
+                        raise HTTPException(
+                            status_code=400, 
+                            detail="ZIP file is password protected. Please provide password."
+                        )
+                    # Try with password
+                    zip_ref.setpassword(password.encode())
+                    try:
+                        file_list = zip_ref.namelist()
+                    except Exception:
+                        os.remove(file_path)
+                        raise HTTPException(
+                            status_code=400, 
+                            detail="Invalid password for ZIP file"
+                        )
+                else:
+                    raise
+        
+        # Update data source with upload info
+        if not data_source.config:
+            data_source.config = {}
+        
+        data_source.config["last_upload"] = {
+            "filename": filename,
+            "original_filename": file.filename,
+            "extract_date": extract_date,
+            "uploaded_at": datetime.utcnow().isoformat(),
+            "uploaded_by": current_user.email,
+            "file_path": str(file_path),
+            "file_size": file.size
+        }
+        data_source.last_sync = datetime.utcnow()
+        data_source.updated_by = current_user.id
+        data_source.updated_at = datetime.utcnow()
+        
+        db.add(data_source)
+        db.commit()
+        
+        # TODO: Trigger data processing pipeline
+        
+        return {
+            "message": "File uploaded successfully",
+            "filename": filename,
+            "extract_date": extract_date,
+            "size": file.size,
+            "uploaded_at": datetime.utcnow().isoformat(),
+            "upload_path": str(upload_path)
+        }
+        
+    except Exception as e:
+        # Clean up file if something went wrong
+        if file_path.exists():
+            os.remove(file_path)
+        raise HTTPException(status_code=500, detail=str(e))

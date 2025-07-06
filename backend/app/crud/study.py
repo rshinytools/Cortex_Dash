@@ -28,14 +28,15 @@ async def create_study(
     db.commit()
     db.refresh(db_study)
     
-    # Initialize study folder structure
-    file_service = FileService()
-    await file_service.initialize_study_folders(db_study)
-    
-    # Update study with folder path
-    db.add(db_study)
-    db.commit()
-    db.refresh(db_study)
+    # TODO: Fix folder permissions issue
+    # # Initialize study folder structure
+    # file_service = FileService()
+    # await file_service.initialize_study_folders(db_study)
+    # 
+    # # Update study with folder path
+    # db.add(db_study)
+    # db.commit()
+    # db.refresh(db_study)
     
     return db_study
 
@@ -66,7 +67,10 @@ def get_studies(
     if org_id:
         conditions.append(Study.org_id == org_id)
     if active_only:
-        conditions.append(Study.status != "archived")
+        # Only show studies that are active AND not in planning or archived status
+        # Studies in setup, active, paused, or completed are shown
+        conditions.append(Study.is_active == True)
+        conditions.append(Study.status.in_(["setup", "active", "paused", "completed"]))
     
     if conditions:
         query = query.where(and_(*conditions))

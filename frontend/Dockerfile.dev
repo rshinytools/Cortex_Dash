@@ -1,0 +1,24 @@
+# ABOUTME: Development Dockerfile for frontend with hot reload support
+# ABOUTME: Includes all development tools and dependencies for Next.js
+
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Install dependencies for building native modules
+RUN apk add --no-cache python3 make g++ curl
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy application code
+COPY . .
+
+# Expose port
+EXPOSE 3000
+
+# Default command (can be overridden)
+CMD ["npm", "run", "dev"]

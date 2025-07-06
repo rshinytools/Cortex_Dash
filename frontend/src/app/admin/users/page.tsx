@@ -1,209 +1,298 @@
-// ABOUTME: Admin users management page for creating and managing system users
-// ABOUTME: Provides CRUD operations for users with role management
+// ABOUTME: User management page - system_admin sees all users, org_admin sees only their org users
+// ABOUTME: Allows user creation, role assignment, and user management
 
 'use client';
 
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { useQuery } from '@tanstack/react-query';
-import { MainLayout } from '@/components/layout/main-layout';
+import { useRouter } from 'next/navigation';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Search, Plus, MoreHorizontal, Edit, Trash2, UserCheck, UserX } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { 
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { 
+  Plus,
+  MoreHorizontal,
+  Shield,
+  UserX,
+  Mail,
+  Edit,
+  ArrowLeft
+} from 'lucide-react';
+import { UserRole } from '@/types';
 import { apiClient } from '@/lib/api/client';
-import { User, UserRole, PaginatedResponse } from '@/types';
 import { format } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
+import { UserMenu } from '@/components/user-menu';
 
-export default function AdminUsersPage() {
+interface User {
+  id: string;
+  email: string;
+  full_name: string;
+  role: string;
+  is_active: boolean;
+  created_at: string;
+  last_login?: string;
+  org_id?: string;
+  organization?: {
+    name: string;
+  };
+}
+
+export default function UsersPage() {
   const { data: session } = useSession();
+  const router = useRouter();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState<string>('all');
-  const [page, setPage] = useState(1);
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['users', searchTerm, roleFilter, page],
+  const canAccessPage = session?.user?.role && 
+    [UserRole.SYSTEM_ADMIN, UserRole.ORG_ADMIN].includes(session.user.role as UserRole);
+
+  const { data: usersResponse, isLoading } = useQuery({
+    queryKey: ['users'],
     queryFn: async () => {
-      const params = new URLSearchParams({
-        page: page.toString(),
-        size: '10',
-        ...(searchTerm && { search: searchTerm }),
-        ...(roleFilter !== 'all' && { role: roleFilter }),
-      });
-      const response = await apiClient.get<PaginatedResponse<User>>(`/users?${params}`);
+      const response = await apiClient.get<{ data: User[]; count: number }>('/users/');
       return response.data;
+    },
+    enabled: canAccessPage,
+  });
+
+  const users = usersResponse?.data || [];
+
+  const toggleUserStatus = useMutation({
+    mutationFn: async ({ userId, isActive }: { userId: string; isActive: boolean }) => {
+      const response = await apiClient.patch(`/users/${userId}/`, {
+        is_active: !isActive,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast({
+        title: 'User status updated',
+        description: 'The user status has been changed successfully.',
+      });
+    },
+    onError: () => {
+      toast({
+        title: 'Error',
+        description: 'Failed to update user status.',
+        variant: 'destructive',
+      });
     },
   });
 
-  const getRoleColor = (role: UserRole) => {
+  const filteredUsers = users.filter((user) => {
+    const matchesSearch = 
+      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.full_name.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Org admins only see users from their organization
+    if (session?.user?.role === UserRole.ORG_ADMIN) {
+      return matchesSearch && user.org_id === session.user.org_id;
+    }
+    
+    return matchesSearch;
+  });
+
+  const getRoleBadgeVariant = (role: string) => {
     switch (role) {
       case UserRole.SYSTEM_ADMIN:
-        return 'bg-red-100 text-red-800';
+        return 'destructive';
       case UserRole.ORG_ADMIN:
-        return 'bg-orange-100 text-orange-800';
-      case UserRole.STUDY_MANAGER:
-        return 'bg-blue-100 text-blue-800';
-      case UserRole.DATA_ANALYST:
-        return 'bg-green-100 text-green-800';
-      case UserRole.VIEWER:
-        return 'bg-gray-100 text-gray-800';
-      case UserRole.AUDITOR:
-        return 'bg-purple-100 text-purple-800';
+        return 'default';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'secondary';
     }
   };
 
-  return (
-    <MainLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Users</h1>
-            <p className="text-muted-foreground">
-              Manage system users and their permissions
-            </p>
-          </div>
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Add User
-          </Button>
-        </div>
-
+  // Check permissions after all hooks
+  if (!canAccessPage) {
+    return (
+      <div className="container mx-auto py-6">
         <Card>
-          <CardHeader>
-            <div className="flex items-center space-x-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search users..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={roleFilter} onValueChange={setRoleFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filter by role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Roles</SelectItem>
-                  <SelectItem value={UserRole.SYSTEM_ADMIN}>System Admin</SelectItem>
-                  <SelectItem value={UserRole.ORG_ADMIN}>Org Admin</SelectItem>
-                  <SelectItem value={UserRole.STUDY_MANAGER}>Study Manager</SelectItem>
-                  <SelectItem value={UserRole.DATA_ANALYST}>Data Analyst</SelectItem>
-                  <SelectItem value={UserRole.VIEWER}>Viewer</SelectItem>
-                  <SelectItem value={UserRole.AUDITOR}>Auditor</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="text-center py-8">Loading users...</div>
-            ) : error ? (
-              <div className="text-center py-8 text-destructive">
-                Failed to load users
-              </div>
-            ) : data?.items.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No users found
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>MFA</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data?.items.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.full_name}</TableCell>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className={getRoleColor(user.role)}>
-                          {user.role.replace('_', ' ')}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={user.is_active ? 'default' : 'secondary'}>
-                          {user.is_active ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {user.is_mfa_enabled ? (
-                          <UserCheck className="h-4 w-4 text-green-600" />
-                        ) : (
-                          <UserX className="h-4 w-4 text-gray-400" />
-                        )}
-                      </TableCell>
-                      <TableCell>{format(new Date(user.created_at), 'MMM d, yyyy')}</TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Open menu</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              className="text-destructive"
-                              disabled={user.id === session?.user?.id}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-
-            {data && data.pages > 1 && (
-              <div className="flex justify-center space-x-2 mt-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage(page - 1)}
-                  disabled={page === 1}
-                >
-                  Previous
-                </Button>
-                <span className="py-2 px-4 text-sm">
-                  Page {page} of {data.pages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage(page + 1)}
-                  disabled={page === data.pages}
-                >
-                  Next
-                </Button>
-              </div>
-            )}
+          <CardContent className="py-6">
+            <p className="text-center text-muted-foreground">
+              You don't have permission to access this page.
+            </p>
           </CardContent>
         </Card>
       </div>
-    </MainLayout>
+    );
+  }
+
+  return (
+    <div className="container mx-auto py-6">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+        <Button
+          variant="link"
+          className="p-0 h-auto font-normal"
+          onClick={() => router.push('/admin')}
+        >
+          Admin
+        </Button>
+        <span>/</span>
+        <span className="text-foreground">User Management</span>
+      </div>
+
+      <div className="flex items-center mb-6">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push('/admin')}
+          className="mr-4"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Admin
+        </Button>
+        <div className="flex-1">
+          <h1 className="text-3xl font-bold">User Management</h1>
+          <p className="text-muted-foreground mt-1">
+            {session?.user?.role === UserRole.SYSTEM_ADMIN 
+              ? 'Manage all users in the system'
+              : 'Manage users in your organization'
+            }
+          </p>
+        </div>
+        <div className="flex items-center gap-4">
+          <Button onClick={() => router.push('/admin/users/new')}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add User
+          </Button>
+          <UserMenu />
+        </div>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Users</CardTitle>
+          <CardDescription>
+            {filteredUsers?.length || 0} users found
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="mb-4">
+            <Input
+              placeholder="Search by name or email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="max-w-sm"
+            />
+          </div>
+
+          {isLoading ? (
+            <div className="flex items-center justify-center h-32">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : filteredUsers && filteredUsers.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead>Role</TableHead>
+                  {session?.user?.role === UserRole.SYSTEM_ADMIN && (
+                    <TableHead>Organization</TableHead>
+                  )}
+                  <TableHead>Status</TableHead>
+                  <TableHead>Last Login</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredUsers.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium">{user.full_name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {user.email}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={getRoleBadgeVariant(user.role)}>
+                        {user.role.replace('_', ' ')}
+                      </Badge>
+                    </TableCell>
+                    {session?.user?.role === UserRole.SYSTEM_ADMIN && (
+                      <TableCell>
+                        {user.organization?.name || '-'}
+                      </TableCell>
+                    )}
+                    <TableCell>
+                      <Badge variant={user.is_active ? 'default' : 'secondary'}>
+                        {user.is_active ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {user.last_login 
+                        ? format(new Date(user.last_login), 'MMM d, yyyy')
+                        : 'Never'
+                      }
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem
+                            onClick={() => router.push(`/admin/users/${user.id}/edit`)}
+                          >
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit User
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Mail className="mr-2 h-4 w-4" />
+                            Send Reset Email
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => toggleUserStatus.mutate({ 
+                              userId: user.id, 
+                              isActive: user.is_active 
+                            })}
+                          >
+                            <UserX className="mr-2 h-4 w-4" />
+                            {user.is_active ? 'Deactivate' : 'Activate'} User
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">No users found</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

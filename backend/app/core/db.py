@@ -29,5 +29,11 @@ def init_db(session: Session) -> None:
             email=settings.FIRST_SUPERUSER,
             password=settings.FIRST_SUPERUSER_PASSWORD,
             is_superuser=True,
+            role="system_admin",  # Set the correct role for the first superuser
         )
         user = crud.create_user(session=session, user_create=user_in)
+    elif user.role != "system_admin":
+        # Update existing superuser to have the correct role
+        user.role = "system_admin"
+        session.add(user)
+        session.commit()

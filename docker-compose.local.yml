@@ -47,18 +47,54 @@ services:
   flower:
     image: mher/flower:2.0
     environment:
-      - CELERY_BROKER_URL=redis://localhost:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
       - FLOWER_PORT=5555
     ports:
       - "5555:5555"
     depends_on:
       - redis
 
+  # Backend - FastAPI Application
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: cortex_dash-backend-1
+    ports:
+      - "8000:8000"
+    environment:
+      - PROJECT_NAME=Cortex Clinical Dashboard
+      - BACKEND_CORS_ORIGINS=["http://localhost:3000","http://localhost:3001","http://127.0.0.1:3000"]
+      - FRONTEND_HOST=http://localhost:3000
+      - POSTGRES_SERVER=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=changethis
+      - POSTGRES_DB=clinical_dashboard
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=your-secret-key-here-change-in-production
+      - FIRST_SUPERUSER=admin@sagarmatha.ai
+      - FIRST_SUPERUSER_PASSWORD=adadad123
+    volumes:
+      - ./backend:/app
+      - ./data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: sh -c "alembic upgrade head && python app/initial_data.py && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/utils/health-check/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # Frontend - Next.js Application
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
+    container_name: cortex_dash-frontend-1
     ports:
       - "3000:3000"
     environment:
@@ -70,9 +106,57 @@ services:
       - /app/node_modules
       - /app/.next
     depends_on:
-      - postgres
-      - redis
+      backend:
+        condition: service_healthy
     command: npm run dev
+
+  # Celery Worker
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: cortex_dash-celery-worker-1
+    environment:
+      - PROJECT_NAME=Cortex Clinical Dashboard
+      - POSTGRES_SERVER=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=changethis
+      - POSTGRES_DB=clinical_dashboard
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=your-secret-key-here-change-in-production
+    volumes:
+      - ./backend:/app
+      - ./data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A app.core.celery_app worker --loglevel=info
+
+  # Celery Beat
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: cortex_dash-celery-beat-1
+    environment:
+      - PROJECT_NAME=Cortex Clinical Dashboard
+      - POSTGRES_SERVER=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=changethis
+      - POSTGRES_DB=clinical_dashboard
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=your-secret-key-here-change-in-production
+    volumes:
+      - ./backend:/app
+      - ./data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A app.core.celery_app beat --loglevel=info
 
 volumes:
   postgres_data:

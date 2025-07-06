@@ -15,22 +15,13 @@ if TYPE_CHECKING:
 
 class OrganizationBase(SQLModel):
     name: str = Field(index=True, max_length=255)
-    code: str = Field(unique=True, index=True, max_length=50)  # Unique identifier like 'pharma-corp'
-    description: Optional[str] = Field(default=None, max_length=1000)
+    slug: str = Field(unique=True, index=True, max_length=100)  # Unique identifier like 'pharma-corp'
     
-    # Configuration and customization
-    config: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
-    theme: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
-    
-    # Feature flags for tenant-specific features
-    feature_flags: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
-    
-    # Contact information
-    contact_email: Optional[str] = Field(default=None, max_length=255)
-    contact_phone: Optional[str] = Field(default=None, max_length=50)
+    # Features for tenant-specific features
+    features: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
     
     # Status
-    is_active: bool = Field(default=True)
+    active: bool = Field(default=True)
     
 
 class OrganizationCreate(OrganizationBase):
@@ -39,13 +30,8 @@ class OrganizationCreate(OrganizationBase):
 
 class OrganizationUpdate(SQLModel):
     name: Optional[str] = Field(default=None, max_length=255)
-    description: Optional[str] = Field(default=None, max_length=1000)
-    config: Optional[Dict[str, Any]] = None
-    theme: Optional[Dict[str, Any]] = None
-    feature_flags: Optional[Dict[str, Any]] = None
-    contact_email: Optional[str] = Field(default=None, max_length=255)
-    contact_phone: Optional[str] = Field(default=None, max_length=50)
-    is_active: Optional[bool] = None
+    features: Optional[Dict[str, Any]] = None
+    active: Optional[bool] = None
 
 
 class Organization(OrganizationBase, table=True):
@@ -61,16 +47,11 @@ class Organization(OrganizationBase, table=True):
     
     # Subscription/License tracking
     license_type: str = Field(default="trial", max_length=50)  # trial, basic, professional, enterprise
-    license_valid_until: Optional[datetime] = Field(default=None, sa_column=Column(DateTime))
     max_users: int = Field(default=10)
     max_studies: int = Field(default=5)
     
-    # Storage limits
-    storage_quota_gb: int = Field(default=100)
-    storage_used_gb: float = Field(default=0.0)
-    
-    # Default settings that cascade to studies
-    default_study_config: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    # Compliance settings
+    compliance_settings: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
     
     # Relationships
     users: List["User"] = Relationship(back_populates="organization")
@@ -81,7 +62,6 @@ class OrganizationPublic(OrganizationBase):
     id: uuid.UUID
     created_at: datetime
     license_type: str
-    storage_used_gb: float
     user_count: Optional[int] = None
     study_count: Optional[int] = None
 

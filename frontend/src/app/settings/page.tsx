@@ -46,7 +46,7 @@ export default function SettingsPage() {
                   <Label htmlFor="name">Full Name</Label>
                   <Input
                     id="name"
-                    defaultValue={session?.user?.full_name}
+                    defaultValue={session?.user?.full_name || ''}
                   />
                 </div>
                 <div className="grid gap-2">
@@ -54,7 +54,7 @@ export default function SettingsPage() {
                   <Input
                     id="email"
                     type="email"
-                    defaultValue={session?.user?.email}
+                    defaultValue={session?.user?.email || ''}
                     disabled
                   />
                 </div>
@@ -62,7 +62,7 @@ export default function SettingsPage() {
                   <Label htmlFor="organization">Organization</Label>
                   <Input
                     id="organization"
-                    defaultValue={session?.user?.organization?.name}
+                    defaultValue={session?.user?.organization?.name || ''}
                     disabled
                   />
                 </div>
@@ -105,7 +105,7 @@ export default function SettingsPage() {
                         Add an extra layer of security to your account
                       </p>
                     </div>
-                    <Switch checked={session?.user?.is_mfa_enabled} />
+                    <Switch checked={session?.user?.is_mfa_enabled || false} />
                   </div>
                 </div>
               </CardContent>

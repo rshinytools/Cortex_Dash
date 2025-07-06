@@ -140,11 +140,18 @@ class DataSourceConnector(ABC):
     
     def get_download_path(self, dataset_id: str) -> Path:
         """Get standard download path for dataset"""
-        base_path = Path(self.study.folder_path) / "raw" / self.data_source.type
-        base_path.mkdir(parents=True, exist_ok=True)
+        # Import the folder structure utility
+        from app.clinical_modules.utils.folder_structure import get_study_data_path, ensure_folder_exists
         
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-        dataset_path = base_path / f"{dataset_id}_{timestamp}"
-        dataset_path.mkdir(parents=True, exist_ok=True)
+        # Get the standardized path with current date in DDMMMYYYY format
+        dataset_path = get_study_data_path(
+            org_id=self.study.org_id,
+            study_id=self.study.id,
+            extract_date=None,  # Will use current date in DDMMMYYYY format
+            data_type="raw"
+        )
+        
+        # Ensure the folder exists
+        ensure_folder_exists(dataset_path)
         
         return dataset_path

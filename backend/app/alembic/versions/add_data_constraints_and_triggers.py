@@ -14,7 +14,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic
 revision = 'add_data_constraints_and_triggers'
-down_revision = 'add_final_indexes_and_seed_data'
+down_revision = 'unify_dashboard_templates'
 branch_labels = None
 depends_on = None
 

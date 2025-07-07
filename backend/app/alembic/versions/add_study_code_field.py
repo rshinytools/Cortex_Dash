@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'add_study_code_field'
-down_revision = '80b1396a9695'
+down_revision = 'clinical_models_001'
 branch_labels = None
 depends_on = None
 

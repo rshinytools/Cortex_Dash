@@ -21,13 +21,21 @@ depends_on = None
 
 
 def upgrade():
+    # Create ENUM types first
+    templatestatus = sa.Enum('DRAFT', 'PUBLISHED', 'DEPRECATED', 'ARCHIVED', name='templatestatus')
+    inheritancetype = sa.Enum('NONE', 'EXTENDS', 'INCLUDES', name='inheritancetype')
+    
+    # Create the enums in the database
+    templatestatus.create(op.get_bind(), checkfirst=True)
+    inheritancetype.create(op.get_bind(), checkfirst=True)
+    
     # Add new columns to dashboard_templates table
     op.add_column('dashboard_templates', sa.Column('major_version', sa.Integer(), nullable=False, server_default='1'))
     op.add_column('dashboard_templates', sa.Column('minor_version', sa.Integer(), nullable=False, server_default='0'))
     op.add_column('dashboard_templates', sa.Column('patch_version', sa.Integer(), nullable=False, server_default='0'))
-    op.add_column('dashboard_templates', sa.Column('status', sa.Enum('DRAFT', 'PUBLISHED', 'DEPRECATED', 'ARCHIVED', name='templatestatus'), nullable=False, server_default='DRAFT'))
+    op.add_column('dashboard_templates', sa.Column('status', templatestatus, nullable=False, server_default='DRAFT'))
     op.add_column('dashboard_templates', sa.Column('parent_template_id', sa.UUID(), nullable=True))
-    op.add_column('dashboard_templates', sa.Column('inheritance_type', sa.Enum('NONE', 'EXTENDS', 'INCLUDES', name='inheritancetype'), nullable=False, server_default='NONE'))
+    op.add_column('dashboard_templates', sa.Column('inheritance_type', inheritancetype, nullable=False, server_default='NONE'))
     op.add_column('dashboard_templates', sa.Column('tags', sa.JSON(), nullable=True))
     op.add_column('dashboard_templates', sa.Column('screenshot_urls', sa.JSON(), nullable=True))
     op.add_column('dashboard_templates', sa.Column('documentation_url', sa.String(length=500), nullable=True))

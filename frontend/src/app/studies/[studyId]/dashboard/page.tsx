@@ -6,6 +6,7 @@
 import { useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useQuery } from '@tanstack/react-query';
+import { useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -20,13 +21,16 @@ import {
   TrendingUp,
   Users,
   RefreshCw,
-  Loader2
+  Loader2,
+  Edit
 } from 'lucide-react';
 import { studiesApi } from '@/lib/api/studies';
 import { format } from 'date-fns';
 import { DashboardRenderer } from '@/components/widgets';
+import { DashboardEditMode } from '@/components/widgets/dashboard-edit-mode';
 import { useDashboardData } from '@/hooks/use-dashboard-data';
 import { DashboardConfiguration, WidgetInstance } from '@/components/widgets/base-widget';
+import { useToast } from '@/hooks/use-toast';
 
 // Mock dashboard configuration - this would come from the API
 const mockDashboardConfig: DashboardConfiguration = {
@@ -214,7 +218,9 @@ const mockWidgetData = {
 export default function StudyDashboardPage() {
   const params = useParams();
   const { data: session } = useSession();
+  const { toast } = useToast();
   const studyId = params.studyId as string;
+  const [isEditMode, setIsEditMode] = useState(false);
 
   const { data: study, isLoading: studyLoading } = useQuery({
     queryKey: ['study', studyId],
@@ -228,6 +234,8 @@ export default function StudyDashboardPage() {
     widgetErrors,
     isLoadingConfig,
     refreshAllWidgets,
+    refreshWidget,
+    updateConfiguration,
   } = useDashboardData({
     studyId,
     enableAutoRefresh: true,
@@ -237,6 +245,29 @@ export default function StudyDashboardPage() {
   // Use mock data for now
   const dashboardConfig = configuration || mockDashboardConfig;
   const dashboardData = Object.keys(widgetData).length > 0 ? widgetData : mockWidgetData;
+
+  // Check if user has permission to edit (study manager role)
+  const canEdit = session?.user?.roles?.some(role => 
+    role.name === 'study_manager' || role.name === 'admin'
+  ) || true; // Allow editing for demo purposes
+
+  const handleSaveDashboard = useCallback(async (config: DashboardConfiguration) => {
+    try {
+      await updateConfiguration(config);
+      setIsEditMode(false);
+      toast({
+        title: 'Dashboard saved',
+        description: 'Your dashboard configuration has been saved successfully.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Save failed',
+        description: 'Failed to save dashboard configuration. Please try again.',
+        variant: 'destructive',
+      });
+      throw error; // Re-throw to let the edit mode component handle it
+    }
+  }, [updateConfiguration, toast]);
 
   if (studyLoading || isLoadingConfig) {
     return (
@@ -282,6 +313,12 @@ export default function StudyDashboardPage() {
             </div>
           </div>
           <div className="flex gap-2">
+            {canEdit && !isEditMode && (
+              <Button variant="outline" onClick={() => setIsEditMode(true)}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit Dashboard
+              </Button>
+            )}
             <Button variant="outline" onClick={refreshAllWidgets}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
@@ -295,13 +332,25 @@ export default function StudyDashboardPage() {
       </div>
 
       {/* Dashboard */}
-      <DashboardRenderer
-        configuration={dashboardConfig}
-        widgetData={dashboardData}
-        widgetLoading={widgetLoading}
-        widgetErrors={widgetErrors}
-        viewMode={true}
-      />
+      {isEditMode ? (
+        <DashboardEditMode
+          configuration={dashboardConfig}
+          widgetData={dashboardData}
+          widgetLoading={widgetLoading}
+          widgetErrors={widgetErrors}
+          onSave={handleSaveDashboard}
+          onCancel={() => setIsEditMode(false)}
+          onRefreshWidget={refreshWidget}
+        />
+      ) : (
+        <DashboardRenderer
+          configuration={dashboardConfig}
+          widgetData={dashboardData}
+          widgetLoading={widgetLoading}
+          widgetErrors={widgetErrors}
+          viewMode={true}
+        />
+      )}
     </div>
   );
 }

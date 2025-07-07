@@ -5,6 +5,7 @@ import { WidgetRegistry } from './widget-registry';
 import { MetricCard } from './metric-card';
 import { LineChart } from './line-chart';
 import { BarChart } from './bar-chart';
+import { PieChart } from './pie-chart';
 import { DataTable } from './data-table';
 import { EnrollmentMap } from './enrollment-map';
 import { SafetyMetrics } from './safety-metrics';
@@ -51,6 +52,21 @@ export function registerAllWidgets() {
       yAxisFields: { type: 'array', required: true },
       orientation: { type: 'string', enum: ['horizontal', 'vertical'] },
       showValues: { type: 'boolean' },
+    },
+  });
+
+  WidgetRegistry.register({
+    type: 'pie-chart',
+    component: PieChart,
+    name: 'Pie Chart',
+    description: 'Distribution and proportion visualization',
+    category: 'Charts',
+    configSchema: {
+      labelField: { type: 'string', required: true },
+      valueField: { type: 'string', required: true },
+      showLegend: { type: 'boolean' },
+      showPercentage: { type: 'boolean' },
+      innerRadius: { type: 'number', min: 0, max: 100 },
     },
   });
 
@@ -120,12 +136,19 @@ export function registerAllWidgets() {
 export { WidgetRegistry } from './widget-registry';
 export { DashboardRenderer } from './dashboard-renderer';
 export { WidgetRenderer } from './widget-renderer';
+export { WidgetContainer } from './widget-container';
+export { DashboardViewer } from './dashboard-viewer';
+export { DashboardToolbar } from './dashboard-toolbar';
+export { DashboardEditMode } from './dashboard-edit-mode';
+export { WidgetConfigDialog } from './widget-config-dialog';
+export { WidgetPalette } from './widget-palette';
 export type { 
   BaseWidgetProps, 
   WidgetComponent, 
   WidgetInstance, 
   DashboardConfiguration 
 } from './base-widget';
+export type { Dashboard } from './dashboard-viewer';
 
 // Initialize widgets on import
 registerAllWidgets();

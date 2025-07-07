@@ -14,7 +14,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useToast } from '@/components/ui/use-toast'
-import { ArrowLeft, Save, Loader2 } from 'lucide-react'
+import { Breadcrumbs, BreadcrumbItem } from '@/components/ui/breadcrumbs'
+import { ArrowLeft, Save, Loader2, Menu } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -151,20 +152,20 @@ export default function EditMenuTemplatePage({ params }: { params: { id: string 
     )
   }
 
+  const breadcrumbItems: BreadcrumbItem[] = [
+    { label: 'Menu Templates', href: '/admin/menus', icon: <Menu className="h-4 w-4" /> },
+    { label: template.name }
+  ]
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/admin/menus">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Edit Menu Template</h1>
-          <p className="text-muted-foreground">
-            Modify the navigation menu template
-          </p>
-        </div>
+      <Breadcrumbs items={breadcrumbItems} />
+      
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Edit Menu Template</h1>
+        <p className="text-muted-foreground">
+          Modify the navigation menu template
+        </p>
       </div>
 
       <div className="grid gap-6">

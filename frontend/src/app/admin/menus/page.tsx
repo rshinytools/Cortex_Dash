@@ -43,6 +43,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/components/ui/use-toast'
+import { Breadcrumbs, BreadcrumbItem } from '@/components/ui/breadcrumbs'
 import { Loader2, MoreHorizontal, Plus, Search, Menu, Eye, Edit, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { menusApi } from '@/lib/api/menus'
@@ -142,8 +143,14 @@ export default function MenuTemplatesPage() {
     )
   }
 
+  const breadcrumbItems: BreadcrumbItem[] = [
+    { label: 'Menu Templates', icon: <Menu className="h-4 w-4" /> }
+  ]
+
   return (
     <div className="space-y-6">
+      <Breadcrumbs items={breadcrumbItems} />
+      
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Menu Templates</h1>

@@ -685,6 +685,12 @@ export const patientTimelineDataContract: DataContract = {
   },
 };
 
+// Import the new data contracts
+import { dataQualityIndicatorDataContract } from './data-quality-indicator';
+import { complianceStatusDataContract } from './compliance-status';
+import { alertNotificationDataContract } from './alert-notification';
+import { statisticalSummaryDataContract } from './statistical-summary';
+
 /**
  * Export all data contracts
  */
@@ -698,6 +704,10 @@ export const widgetDataContracts = {
   heatmap: heatmapDataContract,
   kpi_comparison: kpiComparisonDataContract,
   patient_timeline: patientTimelineDataContract,
+  data_quality_indicator: dataQualityIndicatorDataContract,
+  compliance_status: complianceStatusDataContract,
+  alert_notification: alertNotificationDataContract,
+  statistical_summary: statisticalSummaryDataContract,
 };
 
 /**

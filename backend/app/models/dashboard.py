@@ -25,6 +25,21 @@ class DashboardCategory(str, Enum):
     CUSTOM = "custom"
 
 
+class TemplateStatus(str, Enum):
+    """Template status for lifecycle management"""
+    DRAFT = "draft"
+    PUBLISHED = "published"
+    DEPRECATED = "deprecated"
+    ARCHIVED = "archived"
+
+
+class InheritanceType(str, Enum):
+    """Types of template inheritance"""
+    NONE = "none"
+    EXTENDS = "extends"  # Inherits from parent and can override
+    INCLUDES = "includes"  # Includes components from parent
+
+
 class MenuItemType(str, Enum):
     """Menu item types for navigation structure"""
     DASHBOARD = "dashboard"
@@ -40,6 +55,16 @@ class DashboardTemplateBase(SQLModel):
     name: str = Field(max_length=100)
     description: Optional[str] = Field(default=None, sa_column=Column(Text))
     category: DashboardCategory = Field(default=DashboardCategory.OVERVIEW)
+    
+    # Versioning and lifecycle
+    major_version: int = Field(default=1)
+    minor_version: int = Field(default=0)
+    patch_version: int = Field(default=0)
+    status: TemplateStatus = Field(default=TemplateStatus.DRAFT)
+    
+    # Template inheritance
+    parent_template_id: Optional[uuid.UUID] = Field(default=None, foreign_key="dashboard_templates.id")
+    inheritance_type: InheritanceType = Field(default=InheritanceType.NONE)
     
     # Complete template structure including menu and dashboards
     template_structure: Dict[str, Any] = Field(sa_column=Column(JSON))
@@ -79,8 +104,18 @@ class DashboardTemplateBase(SQLModel):
     #   }
     # }
     
-    version: int = Field(default=1)
+    # Metadata for marketplace
+    tags: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
+    screenshot_urls: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
+    documentation_url: Optional[str] = Field(default=None, max_length=500)
+    
+    # Ratings and reviews
+    average_rating: Optional[float] = Field(default=None)
+    total_ratings: int = Field(default=0)
+    download_count: int = Field(default=0)
+    
     is_active: bool = Field(default=True)
+    is_public: bool = Field(default=False)  # Available in marketplace
 
 
 class DashboardTemplateCreate(DashboardTemplateBase):
@@ -117,6 +152,35 @@ class DashboardTemplate(DashboardTemplateBase, table=True):
         sa_relationship_kwargs={"foreign_keys": "[DashboardTemplate.created_by]"}
     )
     study_dashboards: List["StudyDashboard"] = Relationship(back_populates="dashboard_template")
+    
+    # Template versioning relationships
+    parent_template: Optional["DashboardTemplate"] = Relationship(
+        sa_relationship_kwargs={
+            "foreign_keys": "[DashboardTemplate.parent_template_id]",
+            "remote_side": "[DashboardTemplate.id]"
+        }
+    )
+    child_templates: List["DashboardTemplate"] = Relationship(
+        sa_relationship_kwargs={
+            "foreign_keys": "[DashboardTemplate.parent_template_id]"
+        }
+    )
+    
+    # Version history
+    template_versions: List["TemplateVersion"] = Relationship(back_populates="template")
+    
+    # Ratings and reviews
+    template_reviews: List["TemplateReview"] = Relationship(back_populates="template")
+    
+    @property
+    def version_string(self) -> str:
+        """Return semantic version string"""
+        return f"{self.major_version}.{self.minor_version}.{self.patch_version}"
+    
+    @property
+    def full_code(self) -> str:
+        """Return code with version for uniqueness"""
+        return f"{self.code}@{self.version_string}"
 
 
 # Note: DashboardWidget table is deprecated - widgets are now embedded in template_structure
@@ -192,3 +256,92 @@ class DashboardTemplateDataRequirements(SQLModel):
     required_datasets: List[str]
     field_mappings: Dict[str, List[str]]
     widget_requirements: List[Dict[str, Any]]
+
+
+class TemplateVersionBase(SQLModel):
+    """Base properties for template versions"""
+    template_id: uuid.UUID = Field(foreign_key="dashboard_templates.id")
+    major_version: int
+    minor_version: int
+    patch_version: int
+    change_description: str = Field(max_length=500)
+    template_structure: Dict[str, Any] = Field(sa_column=Column(JSON))
+    is_published: bool = Field(default=False)
+    
+    # Migration metadata
+    migration_notes: Optional[str] = Field(default=None, sa_column=Column(Text))
+    breaking_changes: bool = Field(default=False)
+    required_migrations: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
+
+
+class TemplateVersionCreate(TemplateVersionBase):
+    """Properties to receive on template version creation"""
+    pass
+
+
+class TemplateVersion(TemplateVersionBase, table=True):
+    """Database model for template version history"""
+    __tablename__ = "template_versions"
+    
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    
+    # Audit fields
+    created_by: uuid.UUID = Field(foreign_key="user.id")
+    created_at: datetime = Field(
+        sa_column=Column(DateTime, default=datetime.utcnow, nullable=False)
+    )
+    
+    # Relationships
+    template: DashboardTemplate = Relationship(back_populates="template_versions")
+    creator: "User" = Relationship(
+        sa_relationship_kwargs={"foreign_keys": "[TemplateVersion.created_by]"}
+    )
+    
+    @property
+    def version_string(self) -> str:
+        """Return semantic version string"""
+        return f"{self.major_version}.{self.minor_version}.{self.patch_version}"
+
+
+class TemplateReviewBase(SQLModel):
+    """Base properties for template reviews"""
+    template_id: uuid.UUID = Field(foreign_key="dashboard_templates.id")
+    rating: int = Field(ge=1, le=5)  # 1-5 star rating
+    review_text: Optional[str] = Field(default=None, sa_column=Column(Text))
+    is_verified_user: bool = Field(default=False)  # Premium/verified organization
+
+
+class TemplateReviewCreate(TemplateReviewBase):
+    """Properties to receive on template review creation"""
+    pass
+
+
+class TemplateReview(TemplateReviewBase, table=True):
+    """Database model for template reviews and ratings"""
+    __tablename__ = "template_reviews"
+    
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    
+    # Audit fields
+    reviewed_by: uuid.UUID = Field(foreign_key="user.id")
+    created_at: datetime = Field(
+        sa_column=Column(DateTime, default=datetime.utcnow, nullable=False)
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    )
+    
+    # Relationships
+    template: DashboardTemplate = Relationship(back_populates="template_reviews")
+    reviewer: "User" = Relationship(
+        sa_relationship_kwargs={"foreign_keys": "[TemplateReview.reviewed_by]"}
+    )
+
+
+class TemplateExportData(SQLModel):
+    """Model for template export/import"""
+    template: DashboardTemplateBase
+    versions: List[TemplateVersionBase]
+    reviews: Optional[List[TemplateReviewBase]] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    export_timestamp: datetime = Field(default_factory=datetime.utcnow)

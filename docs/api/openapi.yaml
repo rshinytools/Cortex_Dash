@@ -1,0 +1,1008 @@
+openapi: 3.0.3
+info:
+  title: Clinical Dashboard Platform API
+  description: |
+    Comprehensive API for the Clinical Dashboard Platform widget system.
+    This API enables creation, configuration, and management of clinical data dashboards
+    with flexible widget-based architecture.
+  version: 1.0.0
+  contact:
+    name: Sagarmatha AI
+    email: support@sagarmatha.ai
+  license:
+    name: Proprietary
+    url: https://sagarmatha.ai/license
+
+servers:
+  - url: https://api.cortexdash.com/v1
+    description: Production server
+  - url: https://staging-api.cortexdash.com/v1
+    description: Staging server
+  - url: http://localhost:8000/api/v1
+    description: Development server
+
+tags:
+  - name: widgets
+    description: Widget management and configuration
+  - name: dashboards
+    description: Dashboard creation and management
+  - name: templates
+    description: Dashboard template operations
+  - name: exports
+    description: Data export functionality
+  - name: data-sources
+    description: Data source management
+
+paths:
+  /widget-types:
+    get:
+      tags: [widgets]
+      summary: List available widget types
+      description: Retrieve all available widget types with their configuration schemas
+      parameters:
+        - name: category
+          in: query
+          description: Filter by widget category
+          required: false
+          schema:
+            type: string
+            enum: [basic, visualization, data, composite, specialized]
+      responses:
+        '200':
+          description: List of widget types
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WidgetType'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /widgets/validate-config:
+    post:
+      tags: [widgets]
+      summary: Validate widget configuration
+      description: Validate a widget configuration before saving
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WidgetConfigValidationRequest'
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /widgets/{widget_id}/data:
+    get:
+      tags: [widgets]
+      summary: Get widget data
+      description: Retrieve data for a specific widget
+      parameters:
+        - name: widget_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: dashboard_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: refresh
+          in: query
+          description: Force refresh data from source
+          schema:
+            type: boolean
+            default: false
+        - name: filters
+          in: query
+          description: JSON encoded filters
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Widget data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WidgetData'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /widgets/batch-data:
+    post:
+      tags: [widgets]
+      summary: Get batch widget data
+      description: Retrieve data for multiple widgets in a single request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchDataRequest'
+      responses:
+        '200':
+          description: Batch widget data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchDataResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /widgets/{widget_id}/refresh:
+    post:
+      tags: [widgets]
+      summary: Refresh widget data
+      description: Force refresh data for a specific widget
+      parameters:
+        - name: widget_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dashboard_id:
+                  type: string
+                  format: uuid
+              required:
+                - dashboard_id
+      responses:
+        '200':
+          description: Refresh initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /widgets/data-sources:
+    get:
+      tags: [data-sources]
+      summary: Get widget data sources
+      description: Retrieve available data sources for widgets in a study
+      parameters:
+        - name: study_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: widget_type
+          in: query
+          description: Filter by widget type compatibility
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Available data sources
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DataSource'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /widgets/preview:
+    post:
+      tags: [widgets]
+      summary: Preview widget
+      description: Generate a preview of a widget with sample data
+      parameters:
+        - name: sample_size
+          in: query
+          description: Number of sample records
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WidgetPreviewRequest'
+      responses:
+        '200':
+          description: Widget preview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WidgetPreview'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /dashboard-templates:
+    get:
+      tags: [templates]
+      summary: List dashboard templates
+      description: Retrieve available dashboard templates
+      parameters:
+        - name: category
+          in: query
+          description: Filter by template category
+          schema:
+            type: string
+        - name: therapeutic_area
+          in: query
+          description: Filter by therapeutic area
+          schema:
+            type: string
+        - name: study_phase
+          in: query
+          description: Filter by study phase
+          schema:
+            type: string
+            enum: [phase-1, phase-2, phase-3, phase-4]
+      responses:
+        '200':
+          description: List of dashboard templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DashboardTemplate'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /dashboard-templates/{template_id}:
+    get:
+      tags: [templates]
+      summary: Get dashboard template
+      description: Retrieve a specific dashboard template with full configuration
+      parameters:
+        - name: template_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Dashboard template details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardTemplateDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /dashboard-templates/{template_id}/export:
+    get:
+      tags: [templates, exports]
+      summary: Export dashboard template
+      description: Export a dashboard template as a downloadable file
+      parameters:
+        - name: template_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: format
+          in: query
+          description: Export format
+          schema:
+            type: string
+            enum: [json, yaml]
+            default: json
+      responses:
+        '200':
+          description: Template export file
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateExport'
+            application/yaml:
+              schema:
+                $ref: '#/components/schemas/TemplateExport'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /dashboards/{dashboard_id}/export:
+    post:
+      tags: [exports]
+      summary: Export dashboard data
+      description: Export dashboard data in various formats
+      parameters:
+        - name: dashboard_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DashboardExportRequest'
+      responses:
+        '200':
+          description: Export initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+components:
+  schemas:
+    WidgetType:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique widget type identifier
+        name:
+          type: string
+          description: Human-readable widget name
+        description:
+          type: string
+          description: Widget description
+        category:
+          type: string
+          enum: [basic, visualization, data, composite, specialized]
+        icon:
+          type: string
+          description: Icon identifier
+        default_size:
+          $ref: '#/components/schemas/WidgetSize'
+        min_size:
+          $ref: '#/components/schemas/WidgetSize'
+        max_size:
+          $ref: '#/components/schemas/WidgetSize'
+        configurable_properties:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConfigProperty'
+
+    WidgetSize:
+      type: object
+      properties:
+        w:
+          type: integer
+          description: Width in grid units
+        h:
+          type: integer
+          description: Height in grid units
+
+    ConfigProperty:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [text, number, boolean, select, multiselect, array]
+        label:
+          type: string
+        required:
+          type: boolean
+        default:
+          oneOf:
+            - type: string
+            - type: number
+            - type: boolean
+        options:
+          type: array
+          items:
+            type: string
+        min:
+          type: number
+        max:
+          type: number
+        item_schema:
+          type: object
+          additionalProperties: true
+
+    WidgetConfigValidationRequest:
+      type: object
+      properties:
+        type:
+          type: string
+          description: Widget type
+        config:
+          type: object
+          additionalProperties: true
+          description: Widget configuration
+      required:
+        - type
+        - config
+
+    ValidationResult:
+      type: object
+      properties:
+        is_valid:
+          type: boolean
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationWarning'
+        suggestions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationSuggestion'
+
+    ValidationError:
+      type: object
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+
+    ValidationWarning:
+      type: object
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+
+    ValidationSuggestion:
+      type: object
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+
+    WidgetData:
+      type: object
+      properties:
+        widget_id:
+          type: string
+          format: uuid
+        dashboard_id:
+          type: string
+          format: uuid
+        timestamp:
+          type: string
+          format: date-time
+        cache_status:
+          type: string
+          enum: [hit, miss]
+        data_version:
+          type: string
+        data:
+          oneOf:
+            - $ref: '#/components/schemas/MetricData'
+            - $ref: '#/components/schemas/ChartData'
+            - $ref: '#/components/schemas/TableData'
+            - $ref: '#/components/schemas/TimelineData'
+        metadata:
+          $ref: '#/components/schemas/DataMetadata'
+
+    MetricData:
+      type: object
+      properties:
+        value:
+          type: number
+        previous_value:
+          type: number
+        change:
+          type: number
+        change_percent:
+          type: number
+        trend:
+          type: string
+          enum: [up, down, stable]
+        unit:
+          type: string
+        last_updated:
+          type: string
+          format: date-time
+
+    ChartData:
+      type: object
+      properties:
+        labels:
+          type: array
+          items:
+            type: string
+        datasets:
+          type: array
+          items:
+            $ref: '#/components/schemas/Dataset'
+
+    Dataset:
+      type: object
+      properties:
+        label:
+          type: string
+        data:
+          type: array
+          items:
+            type: number
+        color:
+          type: string
+
+    TableData:
+      type: object
+      properties:
+        columns:
+          type: array
+          items:
+            type: string
+        rows:
+          type: array
+          items:
+            type: array
+            items:
+              oneOf:
+                - type: string
+                - type: number
+                - type: boolean
+        total_count:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+
+    TimelineData:
+      type: object
+      properties:
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimelineEvent'
+
+    TimelineEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        date:
+          type: string
+          format: date-time
+        event:
+          type: string
+        type:
+          type: string
+        description:
+          type: string
+
+    DataMetadata:
+      type: object
+      properties:
+        execution_time_ms:
+          type: integer
+        row_count:
+          type: integer
+        filters_applied:
+          type: boolean
+
+    BatchDataRequest:
+      type: object
+      properties:
+        widget_ids:
+          type: array
+          items:
+            type: string
+        dashboard_id:
+          type: string
+        filters:
+          type: object
+          additionalProperties: true
+      required:
+        - widget_ids
+        - dashboard_id
+
+    BatchDataResponse:
+      type: object
+      properties:
+        dashboard_id:
+          type: string
+        requested_widgets:
+          type: integer
+        successful:
+          type: integer
+        failed:
+          type: integer
+        results:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/WidgetDataResult'
+        errors:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/WidgetError'
+        execution_time_ms:
+          type: integer
+
+    WidgetDataResult:
+      type: object
+      properties:
+        data:
+          type: object
+          additionalProperties: true
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: string
+
+    WidgetError:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    RefreshResponse:
+      type: object
+      properties:
+        widget_id:
+          type: string
+          format: uuid
+        dashboard_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [refreshing, queued, error]
+        job_id:
+          type: string
+          format: uuid
+        estimated_completion:
+          type: string
+          format: date-time
+        cache_cleared:
+          type: boolean
+
+    DataSource:
+      type: object
+      properties:
+        dataset:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [SDTM, ADaM, Custom]
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/DataField'
+        compatible_widgets:
+          type: array
+          items:
+            type: string
+
+    DataField:
+      type: object
+      properties:
+        name:
+          type: string
+        label:
+          type: string
+        type:
+          type: string
+          enum: [string, numeric, categorical, date, datetime, boolean]
+        is_identifier:
+          type: boolean
+        is_continuous:
+          type: boolean
+        categories:
+          type: array
+          items:
+            type: string
+
+    WidgetPreviewRequest:
+      type: object
+      properties:
+        type:
+          type: string
+        config:
+          type: object
+          additionalProperties: true
+      required:
+        - type
+        - config
+
+    WidgetPreview:
+      type: object
+      properties:
+        widget_type:
+          type: string
+        config:
+          type: object
+          additionalProperties: true
+        preview_generated_at:
+          type: string
+          format: date-time
+        sample_data:
+          type: object
+          additionalProperties: true
+        render_info:
+          $ref: '#/components/schemas/RenderInfo'
+
+    RenderInfo:
+      type: object
+      properties:
+        estimated_render_time_ms:
+          type: integer
+        recommended_size:
+          $ref: '#/components/schemas/WidgetSize'
+        responsive:
+          type: boolean
+
+    DashboardTemplate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        therapeutic_area:
+          type: string
+        study_phase:
+          type: string
+        version:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        is_public:
+          type: boolean
+        usage_count:
+          type: integer
+        rating:
+          type: number
+          format: float
+        preview_image:
+          type: string
+          format: uri
+
+    DashboardTemplateDetail:
+      allOf:
+        - $ref: '#/components/schemas/DashboardTemplate'
+        - type: object
+          properties:
+            widgets:
+              type: array
+              items:
+                $ref: '#/components/schemas/TemplateWidget'
+            layout:
+              $ref: '#/components/schemas/DashboardLayout'
+            data_requirements:
+              type: array
+              items:
+                $ref: '#/components/schemas/DataRequirement'
+
+    TemplateWidget:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+        title:
+          type: string
+        config:
+          type: object
+          additionalProperties: true
+        position:
+          $ref: '#/components/schemas/WidgetPosition'
+
+    WidgetPosition:
+      type: object
+      properties:
+        x:
+          type: integer
+        y:
+          type: integer
+        w:
+          type: integer
+        h:
+          type: integer
+
+    DashboardLayout:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [grid, free, tabs]
+        grid_settings:
+          $ref: '#/components/schemas/GridSettings'
+
+    GridSettings:
+      type: object
+      properties:
+        cols:
+          type: integer
+        row_height:
+          type: integer
+        margin:
+          type: array
+          items:
+            type: integer
+        container_padding:
+          type: array
+          items:
+            type: integer
+
+    DataRequirement:
+      type: object
+      properties:
+        dataset:
+          type: string
+        required_fields:
+          type: array
+          items:
+            type: string
+        optional_fields:
+          type: array
+          items:
+            type: string
+
+    TemplateExport:
+      type: object
+      properties:
+        template:
+          $ref: '#/components/schemas/DashboardTemplateDetail'
+        export_metadata:
+          $ref: '#/components/schemas/ExportMetadata'
+
+    ExportMetadata:
+      type: object
+      properties:
+        exported_at:
+          type: string
+          format: date-time
+        exported_by:
+          type: string
+        format:
+          type: string
+        version:
+          type: string
+
+    DashboardExportRequest:
+      type: object
+      properties:
+        format:
+          type: string
+          enum: [pdf, excel, csv, json]
+        include_data:
+          type: boolean
+          default: true
+        filters:
+          type: object
+          additionalProperties: true
+        date_range:
+          $ref: '#/components/schemas/DateRange'
+      required:
+        - format
+
+    DateRange:
+      type: object
+      properties:
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+
+    ExportResponse:
+      type: object
+      properties:
+        export_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [queued, processing, completed, failed]
+        download_url:
+          type: string
+          format: uri
+        estimated_completion:
+          type: string
+          format: date-time
+        file_size_bytes:
+          type: integer
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - BearerAuth: []

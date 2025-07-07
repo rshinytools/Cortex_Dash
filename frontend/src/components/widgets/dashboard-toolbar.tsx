@@ -34,6 +34,7 @@ import {
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ExportManager } from './export-manager';
+import { ParameterControls } from '../dashboard/parameter-controls';
 
 interface DashboardToolbarProps {
   dashboardId?: string;
@@ -148,6 +149,14 @@ export function DashboardToolbar({
               </SelectContent>
             </Select>
           )}
+
+          {/* Parameters button */}
+          <ParameterControls variant="sheet">
+            <Button variant="outline" size="default">
+              <Settings className="mr-2 h-4 w-4" />
+              Parameters
+            </Button>
+          </ParameterControls>
 
           {/* Filters button */}
           {showFilters && onFiltersClick && (

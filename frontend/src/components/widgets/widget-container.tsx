@@ -24,6 +24,10 @@ import {
 import { useWidgetData } from '@/hooks/use-widget-data';
 import { WidgetInstance } from '@/types/widget';
 import { WidgetRenderer } from './widget-renderer';
+import { WidgetFilterConnector } from './widget-filter-connector';
+import { useWidgetFilters } from './filter-manager';
+import { DashboardAnnotations } from './dashboard-annotations';
+import { useWidgetDrillDown } from './drill-down-manager';
 import { cn } from '@/lib/utils';
 import { exportWidgetAsImage, exportWidgetDataAsCSV, exportWidgetDataAsJSON } from './base-widget';
 import { format } from 'date-fns';
@@ -50,6 +54,12 @@ export function WidgetContainer({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const widgetId = `widget-${widgetInstance.id}`;
 
+  // Get filter context for this widget
+  const { filterQuery, hasFilters } = useWidgetFilters(widgetInstance.id);
+  
+  // Get drill-down context for this widget
+  const { canDrillDown, handleDataPointClick } = useWidgetDrillDown(widgetInstance.id);
+
   const {
     data,
     metadata,
@@ -59,6 +69,7 @@ export function WidgetContainer({
     refetch,
     isRefetching,
   } = useWidgetData(widgetInstance, studyId, {
+    filters: filterQuery, // Pass filters to data hook
     onError: (err) => {
       console.error(`Error loading widget ${widgetInstance.id}:`, err);
     },
@@ -99,9 +110,42 @@ export function WidgetContainer({
 
   const showActions = !readOnly && (onEdit || onDelete || supportedFormats.length > 0);
 
+  // Mock available fields for filtering - in a real app, get from widget definition
+  const availableFields = [
+    { field: 'USUBJID', label: 'Subject ID', type: 'string' as const },
+    { field: 'SITEID', label: 'Site ID', type: 'string' as const },
+    { field: 'AGE', label: 'Age', type: 'number' as const },
+    { field: 'SEX', label: 'Sex', type: 'select' as const, options: [
+      { value: 'M', label: 'Male' },
+      { value: 'F', label: 'Female' }
+    ]},
+    { field: 'RACE', label: 'Race', type: 'select' as const, options: [
+      { value: 'White', label: 'White' },
+      { value: 'Black', label: 'Black' },
+      { value: 'Asian', label: 'Asian' },
+      { value: 'Hispanic', label: 'Hispanic' },
+      { value: 'Other', label: 'Other' }
+    ]},
+    { field: 'VISITDT', label: 'Visit Date', type: 'date' as const },
+  ];
+
   return (
-    <div id={widgetId} className={cn("relative h-full", className)}>
-      {/* Loading overlay */}
+    <WidgetFilterConnector
+      widgetId={widgetInstance.id}
+      widgetType={widgetInstance.widgetDefinition?.componentPath || 'unknown'}
+      availableFields={availableFields}
+      onDataRefresh={refetch}
+      className={cn("relative h-full", className)}
+    >
+      <DashboardAnnotations
+        widgetId={widgetInstance.id}
+        dashboardId="current-dashboard-id" // Would come from context
+        currentUserId="current-user-id"   // Would come from auth context
+        currentUserName="Current User"    // Would come from auth context
+        className="absolute inset-0"
+      >
+        <div id={widgetId} className="h-full">
+        {/* Loading overlay */}
       {isRefreshing && (
         <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -208,6 +252,7 @@ export function WidgetContainer({
             error={isError ? error?.message : undefined}
             onRefresh={handleRefresh}
             onExport={handleExport}
+            onDataPointClick={canDrillDown ? handleDataPointClick : undefined}
           />
 
           {/* Last updated timestamp */}
@@ -218,6 +263,8 @@ export function WidgetContainer({
           )}
         </div>
       )}
-    </div>
+        </div>
+      </DashboardAnnotations>
+    </WidgetFilterConnector>
   );
 }

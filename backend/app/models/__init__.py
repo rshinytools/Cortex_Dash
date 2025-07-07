@@ -16,6 +16,13 @@ from .dashboard import (
     DashboardCategory, MenuItemType, DashboardTemplateDataRequirements
 )
 from .dashboard_audit import DashboardConfigAudit, OrgAdminPermission, OrgAdminPermissionBase, EntityType, AuditAction
+from .refresh_schedule import (
+    RefreshSchedule, RefreshScheduleCreate, RefreshScheduleUpdate, RefreshScheduleResponse,
+    RefreshExecution, RefreshExecutionCreate, RefreshExecutionUpdate, RefreshExecutionResponse,
+    RefreshNotification, RefreshNotificationCreate,
+    DataSourceRefresh, DataSourceRefreshCreate,
+    RefreshExecutionSummary, RefreshType, ScheduleStatus, ExecutionStatus, NotificationChannel
+)
 
 __all__ = [
     # SQLModel base
@@ -41,5 +48,11 @@ __all__ = [
     "StudyDashboard", "StudyDashboardCreate", "StudyDashboardBase",
     "DashboardCategory", "MenuItemType", "DashboardTemplateDataRequirements",
     # Dashboard audit models
-    "DashboardConfigAudit", "OrgAdminPermission", "OrgAdminPermissionBase", "EntityType", "AuditAction"
+    "DashboardConfigAudit", "OrgAdminPermission", "OrgAdminPermissionBase", "EntityType", "AuditAction",
+    # Refresh schedule models
+    "RefreshSchedule", "RefreshScheduleCreate", "RefreshScheduleUpdate", "RefreshScheduleResponse",
+    "RefreshExecution", "RefreshExecutionCreate", "RefreshExecutionUpdate", "RefreshExecutionResponse",
+    "RefreshNotification", "RefreshNotificationCreate",
+    "DataSourceRefresh", "DataSourceRefreshCreate",
+    "RefreshExecutionSummary", "RefreshType", "ScheduleStatus", "ExecutionStatus", "NotificationChannel"
 ]

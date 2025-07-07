@@ -6,6 +6,7 @@ from datetime import datetime
 from sqlmodel import Session, select
 from sqlalchemy import and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload, joinedload
 import uuid
 import json
 
@@ -306,6 +307,9 @@ def get_study_dashboards(
     
     if is_active is not None:
         query = query.where(StudyDashboard.is_active == is_active)
+    
+    # Eagerly load related dashboard template to avoid N+1 queries
+    query = query.options(selectinload(StudyDashboard.dashboard_template))
     
     return list(db.exec(query).all())
 

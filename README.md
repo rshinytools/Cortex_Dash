@@ -1,16 +1,37 @@
 # Clinical Dashboard Platform
 
-A multi-tenant, enterprise-grade clinical data dashboard platform for pharmaceutical companies to visualize and analyze clinical trial data.
+A multi-tenant, enterprise-grade clinical data dashboard platform for pharmaceutical companies to visualize and analyze clinical trial data with comprehensive widget-based visualization system.
 
-## 🚀 Features
+## 🚀 Key Features
 
 - **Multi-tenant SaaS Architecture**: Complete tenant isolation with organization-based data separation
 - **Dynamic Data Pipeline**: Flexible data ingestion from multiple sources (Medidata Rave API, ZIP uploads)
 - **Visual Dashboard Builder**: Create dashboards without code using drag-and-drop interface
+- **Comprehensive Widget Library**: 20+ specialized clinical data visualization widgets
 - **Compliance Ready**: 21 CFR Part 11 and HIPAA compliant with audit trails and electronic signatures
 - **Role-Based Access Control**: Granular permissions with 6 predefined system roles
 - **Export & Reporting**: Generate PDF, PowerPoint, and Excel reports with scheduling
 - **Cloud-Agnostic**: Deploy on AWS, Azure, or standalone Linux VMs
+
+## 📊 Widget System
+
+The platform includes a comprehensive widget library for clinical data visualization:
+
+### Core Visualization Widgets
+- **MetricCard**: Display key performance indicators with trend analysis
+- **LineChart**: Time-series data visualization for enrollment, biomarkers, and trends
+- **BarChart**: Categorical data comparisons with horizontal/vertical orientations
+- **PieChart**: Distribution analysis with donut chart support
+- **DataTable**: Interactive tabular data with sorting, filtering, and pagination
+- **SafetyMetrics**: Specialized adverse event monitoring and safety signal detection
+- **PatientTimeline**: Chronological visualization of clinical events per patient
+
+### Advanced Features
+- **Interactive Dashboards**: Real-time data updates and drill-down capabilities
+- **Export Functionality**: PNG, PDF, CSV, and JSON export formats
+- **Responsive Design**: Mobile-first approach with adaptive layouts
+- **Storybook Documentation**: Comprehensive component library with live examples
+- **TypeScript Support**: Full type safety and IntelliSense support
 
 ## 🛠️ Tech Stack
 
@@ -98,12 +119,43 @@ clinical-dashboard/
 │   └── tests/           # Backend tests
 ├── frontend/            # Next.js frontend
 │   ├── src/            # Source code
+│   │   └── components/widgets/  # Widget library
+│   ├── .storybook/     # Storybook configuration
 │   └── public/         # Static assets
 ├── tests/              # Comprehensive test suite
 ├── Reports/            # Test reports
 ├── deployment/         # Deployment configurations
-└── docs/              # Documentation
+└── docs/              # Comprehensive documentation
+    ├── api/           # API documentation
+    ├── user/          # User guides
+    └── developer/     # Developer documentation
 ```
+
+## 📚 Documentation
+
+Comprehensive documentation is available in the `/docs` directory:
+
+### 📖 User Documentation
+- **[Dashboard User Guide](docs/user/dashboard-user-guide.md)**: End-user dashboard navigation and usage
+- **[Study Manager Guide](docs/user/study-manager-guide.md)**: Study configuration and management
+- **[System Admin Guide](docs/user/system-admin-guide.md)**: Platform administration and configuration
+- **[Widget Configuration Guide](docs/user/widget-configuration-guide.md)**: Widget setup and customization
+
+### 🔧 Developer Documentation
+- **[Widget Development Guide](docs/developer/widget-development-guide.md)**: Creating custom widgets
+- **[API Integration Guide](docs/developer/api-integration-guide.md)**: REST API usage and integration
+- **[Deployment Guide](docs/developer/deployment-guide.md)**: Production deployment instructions
+- **[Troubleshooting Guide](docs/developer/troubleshooting-guide.md)**: Common issues and solutions
+
+### 🔌 API Documentation
+- **[OpenAPI Specification](docs/api/openapi.yaml)**: Complete API specification
+- **[Widget API Reference](docs/api/widget-api.md)**: Widget-specific endpoints
+- **[Template API Reference](docs/api/template-api.md)**: Dashboard template management
+- **[Export API Reference](docs/api/export-api.md)**: Data export functionality
+
+### 📱 Component Library
+- **Storybook**: Run `npm run storybook` in the frontend directory for interactive widget documentation
+- **Widget Examples**: Comprehensive examples with live data and customization options
 
 ## 🔒 Security & Compliance
 

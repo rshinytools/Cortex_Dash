@@ -11,7 +11,7 @@ from app.api.deps import get_db, get_current_user
 from app.models import (
     DashboardTemplate, DashboardTemplateCreate, DashboardTemplateUpdate, 
     DashboardTemplatePublic, DashboardTemplatesPublic, DashboardTemplateDataRequirements,
-    User
+    DashboardCategory, User
 )
 from app.core.permissions import Permission, PermissionChecker
 
@@ -25,7 +25,8 @@ async def read_dashboard_templates(
     current_user: User = Depends(get_current_user),
     skip: int = 0,
     limit: int = 100,
-    include_inactive: bool = False
+    include_inactive: bool = False,
+    category: Optional[DashboardCategory] = None
 ) -> Any:
     """
     Get all available dashboard templates.
@@ -35,6 +36,10 @@ async def read_dashboard_templates(
     # Filter by active status unless requested otherwise
     if not include_inactive:
         query = query.where(DashboardTemplate.is_active == True)
+    
+    # Filter by category if specified
+    if category:
+        query = query.where(DashboardTemplate.category == category)
     
     # Order by category and name
     query = query.order_by(DashboardTemplate.category, DashboardTemplate.name)
@@ -48,6 +53,8 @@ async def read_dashboard_templates(
     count_query = select(DashboardTemplate)
     if not include_inactive:
         count_query = count_query.where(DashboardTemplate.is_active == True)
+    if category:
+        count_query = count_query.where(DashboardTemplate.category == category)
     
     total = len(db.exec(count_query).all())
     

@@ -1,10 +1,15 @@
 from sqlmodel import Session, create_engine, select
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
 
 from app import crud
 from app.core.config import settings
 from app.models import User, UserCreate
 
 engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI))
+
+# Create async engine for async endpoints
+async_database_url = str(settings.SQLALCHEMY_DATABASE_URI).replace("postgresql://", "postgresql+asyncpg://")
+async_engine: AsyncEngine = create_async_engine(async_database_url, echo=False)
 
 
 # make sure all SQLModel models are imported (app.models) before initializing DB

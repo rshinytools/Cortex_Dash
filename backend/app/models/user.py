@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from .study import Study
     from .activity_log import ActivityLog
     from .item import Item
+    from .scheduled_export import ScheduledExport
 
 
 # Shared properties
@@ -88,6 +89,7 @@ class User(UserBase, table=True):
     organization: Optional["Organization"] = Relationship(back_populates="users")
     items: List["Item"] = Relationship(back_populates="owner", cascade_delete=True)
     activity_logs: List["ActivityLog"] = Relationship(back_populates="user")
+    scheduled_exports: List["ScheduledExport"] = Relationship(back_populates="creator")
     
     # Study relationships will be added through UserStudy association table in RBAC phase
 

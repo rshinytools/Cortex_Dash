@@ -5,6 +5,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 from sqlmodel import Session, select
 from sqlalchemy import and_, or_
+from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
 import json
 
@@ -367,3 +368,16 @@ def get_dashboard_count_by_category(db: Session) -> dict:
     ).all()
     
     return {str(category): count for category, count in results}
+
+
+# Async functions for runtime dashboards
+async def get_dashboard_async(db: AsyncSession, dashboard_id: str) -> Optional[DashboardTemplate]:
+    """Get a dashboard by ID asynchronously"""
+    try:
+        result = await db.execute(
+            select(DashboardTemplate).where(DashboardTemplate.id == uuid.UUID(dashboard_id))
+        )
+        return result.scalar_one_or_none()
+    except ValueError:
+        # Handle invalid UUID
+        return None

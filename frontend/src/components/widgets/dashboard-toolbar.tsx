@@ -14,6 +14,7 @@ import {
   Share2,
   Clock,
   Filter,
+  Calendar,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -32,8 +33,10 @@ import {
 } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { ExportManager } from './export-manager';
 
 interface DashboardToolbarProps {
+  dashboardId?: string;
   title?: string;
   description?: string;
   lastUpdated?: Date;
@@ -51,6 +54,8 @@ interface DashboardToolbarProps {
   showFilters?: boolean;
   onFiltersClick?: () => void;
   filtersActive?: boolean;
+  onScheduledExports?: () => void;
+  showAdvancedExport?: boolean;
 }
 
 const timeRangeOptions = [
@@ -65,6 +70,7 @@ const timeRangeOptions = [
 ];
 
 export function DashboardToolbar({
+  dashboardId,
   title,
   description,
   lastUpdated,
@@ -82,8 +88,11 @@ export function DashboardToolbar({
   showFilters = false,
   onFiltersClick,
   filtersActive = false,
+  onScheduledExports,
+  showAdvancedExport = false,
 }: DashboardToolbarProps) {
   const [isExporting, setIsExporting] = useState(false);
+  const [showExportManager, setShowExportManager] = useState(false);
 
   const handleExport = useCallback(async (format: 'pdf' | 'png' | 'excel') => {
     if (!onExport) return;
@@ -95,6 +104,10 @@ export function DashboardToolbar({
       setIsExporting(false);
     }
   }, [onExport]);
+
+  const handleAdvancedExport = useCallback(() => {
+    setShowExportManager(true);
+  }, []);
 
   return (
     <div className={cn(
@@ -183,6 +196,20 @@ export function DashboardToolbar({
                 <DropdownMenuItem onClick={() => handleExport('excel')}>
                   Export as Excel
                 </DropdownMenuItem>
+                {showAdvancedExport && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleAdvancedExport}>
+                      Advanced Export...
+                    </DropdownMenuItem>
+                    {onScheduledExports && (
+                      <DropdownMenuItem onClick={onScheduledExports}>
+                        <Calendar className="mr-2 h-4 w-4" />
+                        Scheduled Exports
+                      </DropdownMenuItem>
+                    )}
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -213,6 +240,16 @@ export function DashboardToolbar({
           )}
         </div>
       </div>
+
+      {/* Export Manager Dialog */}
+      {showAdvancedExport && dashboardId && title && (
+        <ExportManager
+          dashboardId={dashboardId}
+          dashboardName={title}
+          isOpen={showExportManager}
+          onClose={() => setShowExportManager(false)}
+        />
+      )}
     </div>
   );
 }

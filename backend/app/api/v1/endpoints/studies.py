@@ -1514,3 +1514,192 @@ async def get_study_cache_stats(
         "cache_stats": cache_stats,
         "message": "Study-specific cache statistics will be available in a future update"
     }
+
+
+@router.get("/{study_id}/data-sources")
+async def list_data_sources(
+    *,
+    db: Session = Depends(get_db),
+    study_id: uuid.UUID,
+    current_user: User = Depends(PermissionChecker(Permission.VIEW_STUDY)),
+    request: Request
+) -> Any:
+    """
+    List available data sources for a study.
+    
+    Returns:
+    - sources: Dictionary of registered data sources
+    - discovered: Dictionary of discovered but not registered sources
+    """
+    from app.services.data_source_manager import get_data_source_manager
+    
+    # Get study and check access
+    study = crud_study.get_study(db, study_id=study_id)
+    if not study:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Study not found"
+        )
+    
+    # Check access
+    if not current_user.is_superuser and str(current_user.org_id) != str(study.org_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
+    
+    # Get data source manager
+    data_source_manager = get_data_source_manager()
+    
+    # Get registered sources
+    registered_sources = await data_source_manager.list_sources()
+    
+    # Auto-discover available sources
+    discovered_sources = await data_source_manager.auto_discover_sources(str(study_id))
+    
+    # Get available files for each registered source
+    source_details = {}
+    for source_name in registered_sources:
+        try:
+            files = await data_source_manager.get_available_files(source_name)
+            schema = await data_source_manager.get_schema(source_name)
+            source_details[source_name] = {
+                "type": registered_sources[source_name]["type"],
+                "files": files,
+                "file_count": len(files),
+                "schema_available": bool(schema)
+            }
+        except Exception as e:
+            source_details[source_name] = {
+                "type": registered_sources[source_name]["type"],
+                "error": str(e)
+            }
+    
+    return {
+        "study_id": str(study_id),
+        "registered_sources": source_details,
+        "discovered_sources": {
+            path: source_type.value 
+            for path, source_type in discovered_sources.items()
+        },
+        "total_registered": len(registered_sources),
+        "total_discovered": len(discovered_sources)
+    }
+
+
+@router.get("/{study_id}/data-sources/{source_name}/preview")
+async def preview_data_source(
+    *,
+    db: Session = Depends(get_db),
+    study_id: uuid.UUID,
+    source_name: str,
+    table_or_file: str,
+    limit: int = 100,
+    offset: int = 0,
+    current_user: User = Depends(PermissionChecker(Permission.VIEW_STUDY)),
+    request: Request
+) -> Any:
+    """
+    Preview data from a specific data source.
+    
+    Parameters:
+    - study_id: Study identifier
+    - source_name: Name of the data source (e.g., "primary", "secondary")
+    - table_or_file: Name of the table or file to preview
+    - limit: Number of rows to return (max 1000)
+    - offset: Number of rows to skip
+    
+    Returns:
+    - data: List of rows
+    - columns: Column definitions
+    - total_rows: Total number of rows available
+    """
+    from app.services.data_source_manager import get_data_source_manager
+    
+    # Get study and check access
+    study = crud_study.get_study(db, study_id=study_id)
+    if not study:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Study not found"
+        )
+    
+    # Check access
+    if not current_user.is_superuser and str(current_user.org_id) != str(study.org_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
+    
+    # Validate limit
+    if limit > 1000:
+        limit = 1000
+    if limit < 1:
+        limit = 1
+    
+    # Get data source manager
+    data_source_manager = get_data_source_manager()
+    
+    try:
+        # Check if data source is registered
+        sources = await data_source_manager.list_sources()
+        
+        # If source not registered, try to auto-discover
+        if source_name not in sources:
+            discovered = await data_source_manager.auto_discover_sources(str(study_id))
+            if not discovered:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"No data sources found for study {study.name}"
+                )
+            
+            # Register the first discovered source with the requested name
+            first_path = list(discovered.keys())[0]
+            first_type = discovered[first_path]
+            await data_source_manager.register_data_source(
+                source_name,
+                first_type,
+                base_path=first_path
+            )
+        
+        # Get preview data
+        preview_data = await data_source_manager.preview_data(
+            source_name,
+            table_or_file,
+            limit=limit,
+            offset=offset
+        )
+        
+        # Log activity
+        crud_activity.create_activity_log(
+            db,
+            user=current_user,
+            action="preview_data",
+            resource_type="study",
+            resource_id=str(study_id),
+            details={
+                "source": source_name,
+                "table_or_file": table_or_file,
+                "rows_previewed": len(preview_data.get("data", []))
+            },
+            ip_address=request.client.host,
+            user_agent=request.headers.get("user-agent")
+        )
+        
+        return preview_data
+        
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except FileNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error previewing data: {str(e)}"
+        )

@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     ENABLE_MULTI_TENANCY: bool = True
     DEFAULT_TENANT: str = "demo"
     DATA_STORAGE_PATH: str = "/data/studies"
+    DATA_DIR: str = "/data"
     ACTIVITY_TRACKING_ENABLED: bool = True
     ENABLE_AUDIT_TRAIL: bool = True
     
@@ -71,6 +72,10 @@ class Settings(BaseSettings):
     
     # Redis Settings
     REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+    REDIS_DB: int = 0
+    REDIS_PASSWORD: str | None = None
 
     BACKEND_CORS_ORIGINS: Annotated[
         list[AnyUrl] | str, BeforeValidator(parse_cors)

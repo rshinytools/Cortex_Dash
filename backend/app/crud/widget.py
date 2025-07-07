@@ -5,6 +5,7 @@ from typing import List, Optional
 from datetime import datetime
 from sqlmodel import Session, select
 from sqlalchemy import and_
+from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
 
 from app.models import (
@@ -161,3 +162,11 @@ def get_widget_count_by_category(db: Session) -> dict:
     ).all()
     
     return {str(category): count for category, count in results}
+
+
+# Async functions for runtime widgets
+async def get_widgets_by_dashboard(db: AsyncSession, dashboard_id: str) -> List[WidgetDefinition]:
+    """Get all widgets for a dashboard - returns widget definitions for now"""
+    # For now, return empty list as we don't have runtime widget instances
+    # This will be updated when runtime widgets are properly implemented
+    return []

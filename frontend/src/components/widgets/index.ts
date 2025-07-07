@@ -10,6 +10,10 @@ import { DataTable } from './data-table';
 import { EnrollmentMap } from './enrollment-map';
 import { SafetyMetrics } from './safety-metrics';
 import { QueryMetrics } from './query-metrics';
+import { ScatterPlot } from './scatter-plot';
+import { Heatmap } from './heatmap';
+import { KpiComparison } from './kpi-comparison';
+import { PatientTimeline } from './patient-timeline';
 
 // Register all widgets
 export function registerAllWidgets() {
@@ -128,6 +132,77 @@ export function registerAllWidgets() {
         required: true 
       },
       showAverageResolutionTime: { type: 'boolean' },
+    },
+  });
+
+  // Advanced visualization widgets
+  WidgetRegistry.register({
+    type: 'scatter-plot',
+    component: ScatterPlot,
+    name: 'Scatter Plot',
+    description: 'Correlation analysis between two variables',
+    category: 'Charts',
+    configSchema: {
+      xAxisField: { type: 'string', required: true },
+      yAxisField: { type: 'string', required: true },
+      groupByField: { type: 'string' },
+      sizeField: { type: 'string' },
+      showTrendLine: { type: 'boolean' },
+      trendLineType: { type: 'string', enum: ['linear', 'polynomial', 'exponential'] },
+    },
+  });
+
+  WidgetRegistry.register({
+    type: 'heatmap',
+    component: Heatmap,
+    name: 'Heatmap',
+    description: 'Matrix visualization with color intensity',
+    category: 'Charts',
+    configSchema: {
+      xAxisField: { type: 'string', required: true },
+      yAxisField: { type: 'string', required: true },
+      valueField: { type: 'string', required: true },
+      colorScale: { type: 'string', enum: ['sequential', 'diverging', 'custom'] },
+      showValues: { type: 'boolean' },
+      cellSize: { type: 'number', min: 20, max: 100 },
+    },
+  });
+
+  WidgetRegistry.register({
+    type: 'kpi-comparison',
+    component: KpiComparison,
+    name: 'KPI Comparison',
+    description: 'Compare metrics across periods or groups',
+    category: 'Clinical',
+    configSchema: {
+      kpiField: { type: 'string', required: true },
+      comparisonType: { 
+        type: 'string', 
+        enum: ['period-over-period', 'group-comparison', 'target-vs-actual', 'benchmark'],
+        required: true 
+      },
+      displayType: { type: 'string', enum: ['cards', 'table', 'progress', 'gauge'] },
+      groupByField: { type: 'string' },
+      showTrend: { type: 'boolean' },
+      goodDirection: { type: 'string', enum: ['up', 'down'] },
+    },
+  });
+
+  WidgetRegistry.register({
+    type: 'patient-timeline',
+    component: PatientTimeline,
+    name: 'Patient Timeline',
+    description: 'Chronological view of patient events',
+    category: 'Clinical',
+    configSchema: {
+      dateField: { type: 'string', required: true },
+      eventTypeField: { type: 'string', required: true },
+      eventDescriptionField: { type: 'string' },
+      patientIdField: { type: 'string' },
+      displayType: { type: 'string', enum: ['vertical', 'horizontal', 'gantt'] },
+      groupByPatient: { type: 'boolean' },
+      compactMode: { type: 'boolean' },
+      highlightSevere: { type: 'boolean' },
     },
   });
 }

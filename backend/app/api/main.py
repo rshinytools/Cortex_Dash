@@ -4,7 +4,7 @@ from app.api.routes import items, login, private, users, utils
 from app.api.v1.endpoints import organizations, studies, pipelines, data_sources, transformations, data_catalog
 from app.api.v1.endpoints import data_versions, data_quality, data_archival
 from app.api.v1.endpoints import dashboards, widgets, visualizations, advanced_visualizations
-from app.api.v1.endpoints import reports, exports
+from app.api.v1.endpoints import reports, exports, dashboard_exports, scheduled_exports
 from app.api.v1.endpoints import system_settings, notification_settings, integrations, custom_fields, workflows
 from app.api.v1.endpoints import audit_trail, electronic_signatures, data_integrity, access_control, regulatory_compliance
 from app.api.v1.endpoints import system_health, performance_monitoring, backup_recovery, job_monitoring
@@ -42,6 +42,8 @@ api_router.include_router(advanced_visualizations.router, prefix="/advanced-visu
 # Phase 6: Reporting & Export APIs
 api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
 api_router.include_router(exports.router, prefix="/exports", tags=["exports"])
+api_router.include_router(dashboard_exports.router, tags=["dashboard-exports"])
+api_router.include_router(scheduled_exports.router, tags=["scheduled-exports"])
 
 # Phase 7: Admin & Configuration APIs
 api_router.include_router(system_settings.router, prefix="/system-settings", tags=["system-settings"])

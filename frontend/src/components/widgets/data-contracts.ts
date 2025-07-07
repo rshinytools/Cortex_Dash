@@ -327,6 +327,365 @@ export const enrollmentMapDataContract: DataContract = {
 };
 
 /**
+ * Bar Chart Widget Data Contract
+ * Displays categorical data with bars for comparison
+ */
+export const barChartDataContract: DataContract = {
+  requiredFields: [
+    {
+      name: 'category',
+      type: 'string',
+      description: 'Category name for x-axis',
+      commonPatterns: ['category', 'name', 'group', 'site', 'treatment'],
+    },
+    {
+      name: 'value',
+      type: 'number',
+      description: 'Numeric value for bar height',
+      commonPatterns: ['value', 'count', 'total', 'sum', 'average'],
+    },
+  ],
+  optionalFields: [
+    {
+      name: 'series',
+      type: 'string',
+      description: 'Series identifier for grouped bars',
+      commonPatterns: ['series', 'group', 'type', 'arm'],
+    },
+    {
+      name: 'sortOrder',
+      type: 'number',
+      description: 'Custom sort order for categories',
+      commonPatterns: ['sort_order', 'order', 'sequence'],
+    },
+  ],
+  dataSources: {
+    primary: {
+      datasetType: 'aggregated',
+      refreshRate: 3600,
+    },
+  },
+  mappingSuggestions: {
+    siteEnrollment: {
+      category: 'SITEID',
+      value: 'ENROLLED_COUNT',
+    },
+    adverseEventsByType: {
+      category: 'AEDECOD',
+      value: 'AE_COUNT',
+      series: 'AESEV',
+    },
+  },
+};
+
+/**
+ * Scatter Plot Widget Data Contract
+ * Displays correlation between two numeric variables
+ */
+export const scatterPlotDataContract: DataContract = {
+  requiredFields: [
+    {
+      name: 'xValue',
+      type: 'number',
+      description: 'X-axis numeric value',
+      commonPatterns: ['x_value', 'baseline', 'age', 'dose'],
+    },
+    {
+      name: 'yValue',
+      type: 'number',
+      description: 'Y-axis numeric value',
+      commonPatterns: ['y_value', 'outcome', 'response', 'result'],
+    },
+  ],
+  optionalFields: [
+    {
+      name: 'id',
+      type: 'string',
+      description: 'Unique identifier for each point',
+      sdtmMapping: 'USUBJID',
+      commonPatterns: ['id', 'subject_id', 'patient_id'],
+    },
+    {
+      name: 'group',
+      type: 'string',
+      description: 'Grouping variable for color coding',
+      sdtmMapping: 'ARM',
+      commonPatterns: ['group', 'category', 'treatment_arm', 'cohort'],
+    },
+    {
+      name: 'size',
+      type: 'number',
+      description: 'Size variable for bubble plots',
+      commonPatterns: ['size', 'weight', 'count', 'duration'],
+    },
+    {
+      name: 'label',
+      type: 'string',
+      description: 'Label for tooltip display',
+      commonPatterns: ['label', 'name', 'description'],
+    },
+  ],
+  dataSources: {
+    primary: {
+      datasetType: 'analysis',
+      refreshRate: 3600,
+    },
+  },
+  mappingSuggestions: {
+    efficacyCorrelation: {
+      xValue: 'BASELINE_VALUE',
+      yValue: 'CHANGE_FROM_BASELINE',
+      group: 'TRT01A',
+      id: 'USUBJID',
+    },
+    doseResponse: {
+      xValue: 'DOSE',
+      yValue: 'AVAL',
+      group: 'PARAM',
+    },
+  },
+};
+
+/**
+ * Heatmap Widget Data Contract
+ * Displays matrix data with color intensity
+ */
+export const heatmapDataContract: DataContract = {
+  requiredFields: [
+    {
+      name: 'xCategory',
+      type: 'string',
+      description: 'X-axis category',
+      commonPatterns: ['x_category', 'column', 'visit', 'timepoint'],
+    },
+    {
+      name: 'yCategory',
+      type: 'string',
+      description: 'Y-axis category',
+      commonPatterns: ['y_category', 'row', 'parameter', 'test'],
+    },
+    {
+      name: 'value',
+      type: 'number',
+      description: 'Cell value for color intensity',
+      commonPatterns: ['value', 'correlation', 'frequency', 'score'],
+    },
+  ],
+  optionalFields: [
+    {
+      name: 'label',
+      type: 'string',
+      description: 'Display label for cell',
+      commonPatterns: ['label', 'formatted_value', 'display_value'],
+    },
+    {
+      name: 'tooltip',
+      type: 'string',
+      description: 'Tooltip text for additional info',
+      commonPatterns: ['tooltip', 'description', 'details'],
+    },
+  ],
+  dataSources: {
+    primary: {
+      datasetType: 'matrix',
+      refreshRate: 86400,
+    },
+  },
+  mappingSuggestions: {
+    correlationMatrix: {
+      xCategory: 'PARAM1',
+      yCategory: 'PARAM2',
+      value: 'CORRELATION',
+    },
+    visitCompletion: {
+      xCategory: 'VISIT',
+      yCategory: 'SITEID',
+      value: 'COMPLETION_RATE',
+    },
+  },
+};
+
+/**
+ * KPI Comparison Widget Data Contract
+ * Compares key performance indicators across periods or groups
+ */
+export const kpiComparisonDataContract: DataContract = {
+  requiredFields: [
+    {
+      name: 'kpiValue',
+      type: 'number',
+      description: 'Current KPI value',
+      commonPatterns: ['value', 'current', 'actual', 'result'],
+    },
+  ],
+  optionalFields: [
+    {
+      name: 'groupName',
+      type: 'string',
+      description: 'Group or category name',
+      commonPatterns: ['group', 'name', 'category', 'site'],
+    },
+    {
+      name: 'previousValue',
+      type: 'number',
+      description: 'Previous period value for comparison',
+      commonPatterns: ['previous', 'prior', 'last_period'],
+    },
+    {
+      name: 'targetValue',
+      type: 'number',
+      description: 'Target or goal value',
+      commonPatterns: ['target', 'goal', 'planned', 'expected'],
+    },
+    {
+      name: 'benchmarkValue',
+      type: 'number',
+      description: 'Benchmark or reference value',
+      commonPatterns: ['benchmark', 'reference', 'industry_average'],
+    },
+    {
+      name: 'period',
+      type: 'string',
+      description: 'Time period identifier',
+      commonPatterns: ['period', 'month', 'quarter', 'year'],
+    },
+  ],
+  calculatedFields: [
+    {
+      name: 'changePercent',
+      type: 'number',
+      description: 'Percentage change from previous',
+      calculation: '((kpiValue - previousValue) / previousValue) * 100',
+      dependsOn: ['kpiValue', 'previousValue'],
+    },
+    {
+      name: 'achievementPercent',
+      type: 'number',
+      description: 'Percentage of target achieved',
+      calculation: '(kpiValue / targetValue) * 100',
+      dependsOn: ['kpiValue', 'targetValue'],
+    },
+  ],
+  dataSources: {
+    primary: {
+      datasetType: 'kpi_summary',
+      refreshRate: 3600,
+    },
+  },
+  mappingSuggestions: {
+    enrollmentKPIs: {
+      kpiValue: 'CURRENT_ENROLLED',
+      previousValue: 'PREVIOUS_ENROLLED',
+      targetValue: 'TARGET_ENROLLED',
+      groupName: 'SITEID',
+    },
+    dataQualityKPIs: {
+      kpiValue: 'QUERY_RATE',
+      benchmarkValue: 'INDUSTRY_QUERY_RATE',
+      groupName: 'FORM_NAME',
+    },
+  },
+};
+
+/**
+ * Patient Timeline Widget Data Contract
+ * Displays chronological events for patients
+ */
+export const patientTimelineDataContract: DataContract = {
+  requiredFields: [
+    {
+      name: 'eventDate',
+      type: 'date',
+      description: 'Date/time of the event',
+      sdtmMapping: 'DTC',
+      commonPatterns: ['date', 'datetime', 'event_date', 'visit_date'],
+    },
+    {
+      name: 'eventType',
+      type: 'string',
+      description: 'Type or category of event',
+      commonPatterns: ['event_type', 'type', 'category', 'domain'],
+    },
+  ],
+  optionalFields: [
+    {
+      name: 'patientId',
+      type: 'string',
+      description: 'Patient identifier',
+      sdtmMapping: 'USUBJID',
+      commonPatterns: ['patient_id', 'subject_id', 'usubjid'],
+    },
+    {
+      name: 'eventDescription',
+      type: 'string',
+      description: 'Detailed description of the event',
+      commonPatterns: ['description', 'event_description', 'details', 'term'],
+    },
+    {
+      name: 'severity',
+      type: 'string',
+      description: 'Severity or grade of event',
+      sdtmMapping: 'SEV',
+      commonPatterns: ['severity', 'grade', 'intensity'],
+    },
+    {
+      name: 'category',
+      type: 'string',
+      description: 'Sub-category or classification',
+      commonPatterns: ['category', 'subcategory', 'class', 'system'],
+    },
+    {
+      name: 'duration',
+      type: 'number',
+      description: 'Duration of event in days',
+      commonPatterns: ['duration', 'days', 'length'],
+    },
+    {
+      name: 'outcome',
+      type: 'string',
+      description: 'Event outcome or resolution',
+      commonPatterns: ['outcome', 'resolution', 'status'],
+    },
+  ],
+  dataSources: {
+    primary: {
+      datasetType: 'events',
+      refreshRate: 3600,
+    },
+    secondary: [
+      {
+        datasetType: 'ADAE',
+        joinOn: 'patientId',
+      },
+      {
+        datasetType: 'ADCM',
+        joinOn: 'patientId',
+      },
+    ],
+  },
+  mappingSuggestions: {
+    adverseEvents: {
+      eventDate: 'AESTDTC',
+      eventType: 'AEDECOD',
+      patientId: 'USUBJID',
+      severity: 'AESEV',
+      category: 'AESOC',
+    },
+    treatments: {
+      eventDate: 'CMSTDTC',
+      eventType: 'CMTRT',
+      patientId: 'USUBJID',
+      eventDescription: 'CMDECOD',
+    },
+    visits: {
+      eventDate: 'SVSTDTC',
+      eventType: 'VISIT',
+      patientId: 'USUBJID',
+    },
+  },
+};
+
+/**
  * Export all data contracts
  */
 export const widgetDataContracts = {
@@ -334,6 +693,11 @@ export const widgetDataContracts = {
   line_chart: lineChartDataContract,
   table: tableDataContract,
   enrollment_map: enrollmentMapDataContract,
+  bar_chart: barChartDataContract,
+  scatter_plot: scatterPlotDataContract,
+  heatmap: heatmapDataContract,
+  kpi_comparison: kpiComparisonDataContract,
+  patient_timeline: patientTimelineDataContract,
 };
 
 /**

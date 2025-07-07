@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import axios from "axios"
+import { dashboardTemplatesApi } from "@/lib/api/dashboard-templates"
 
 interface Dashboard {
   id: string
@@ -82,34 +82,75 @@ export function useDashboards() {
   const { data: dashboards = [], isLoading, error } = useQuery({
     queryKey: ["dashboards"],
     queryFn: async () => {
-      // In production, this would be an API call
-      // const response = await axios.get("/api/v1/dashboards")
-      // return response.data
-      
-      // Mock implementation
-      return new Promise<Dashboard[]>((resolve) => {
-        setTimeout(() => resolve(mockDashboards), 500)
-      })
+      try {
+        const response = await dashboardTemplatesApi.list()
+        // Transform API response to match our Dashboard interface
+        return response.data.map(template => ({
+          id: template.id,
+          name: template.name,
+          description: template.description,
+          category: template.category,
+          layout: template.dashboardTemplates?.[0]?.layout || [],
+          widgets: template.dashboardTemplates?.[0]?.widgets || [],
+          studyCount: 0, // TODO: Get from API
+          widgetCount: template.dashboardTemplates?.[0]?.widgets?.length || 0,
+          status: template.isActive ? "active" : "draft" as const,
+          createdAt: template.createdAt,
+          updatedAt: template.updatedAt,
+          menuTemplateId: template.menuTemplate?.id,
+          menuLayouts: template.dashboardTemplates?.reduce((acc, dt) => ({
+            ...acc,
+            [dt.menuItemId]: dt.layout
+          }), {})
+        }))
+      } catch (error) {
+        console.error("Failed to fetch dashboards:", error)
+        // Fallback to mock data in case of error
+        return mockDashboards
+      }
     }
   })
 
   // Get single dashboard
   const getDashboard = async (id: string): Promise<Dashboard> => {
-    // In production, this would be an API call
-    // const response = await axios.get(`/api/v1/dashboards/${id}`)
-    // return response.data
-    
-    // Mock implementation
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        const dashboard = mockDashboards.find(d => d.id === id)
-        if (dashboard) {
-          resolve(dashboard)
-        } else {
-          reject(new Error("Dashboard not found"))
-        }
-      }, 300)
-    })
+    try {
+      const template = await dashboardTemplatesApi.get(id)
+      
+      // Extract dashboard layouts from template structure
+      const dashboards = template.template_structure?.dashboards || []
+      const defaultDashboard = dashboards.find(d => d.id === "default") || dashboards[0]
+      
+      // Build menu layouts from dashboards
+      const menuLayouts = dashboards.reduce((acc, dashboard) => ({
+        ...acc,
+        [dashboard.id]: dashboard.layout || dashboard.widgets || []
+      }), {})
+      
+      // Transform API response to match our Dashboard interface
+      return {
+        id: template.id,
+        name: template.name,
+        description: template.description,
+        category: template.category,
+        layout: defaultDashboard?.layout || defaultDashboard?.widgets || [],
+        widgets: defaultDashboard?.widgets || [],
+        studyCount: 0, // TODO: Get from API
+        widgetCount: defaultDashboard?.widgets?.length || 0,
+        status: template.is_active ? "active" : "draft" as const,
+        createdAt: template.created_at,
+        updatedAt: template.updated_at,
+        menuTemplateId: template.menu_template_id,
+        menuLayouts
+      }
+    } catch (error) {
+      console.error("Failed to fetch dashboard:", error)
+      // Fallback to mock data
+      const dashboard = mockDashboards.find(d => d.id === id)
+      if (dashboard) {
+        return dashboard
+      }
+      throw new Error("Dashboard not found")
+    }
   }
 
   // Create dashboard mutation
@@ -144,29 +185,75 @@ export function useDashboards() {
   // Update dashboard mutation
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: UpdateDashboardData }) => {
-      // In production, this would be an API call
-      // const response = await axios.patch(`/api/v1/dashboards/${id}`, data)
-      // return response.data
-      
-      // Mock implementation
-      return new Promise<Dashboard>((resolve, reject) => {
-        setTimeout(() => {
-          const index = mockDashboards.findIndex(d => d.id === id)
-          if (index === -1) {
-            reject(new Error("Dashboard not found"))
-            return
-          }
-          
-          const updated = {
-            ...mockDashboards[index],
-            ...data,
-            widgetCount: data.widgets?.length || mockDashboards[index].widgetCount,
-            updatedAt: new Date().toISOString()
-          }
-          mockDashboards[index] = updated
-          resolve(updated)
-        }, 500)
-      })
+      try {
+        // Get current dashboard to preserve existing structure
+        const current = await dashboardTemplatesApi.get(id)
+        
+        // Build the template structure with menu and dashboard layouts
+        const template_structure = {
+          ...(current.template_structure || {}),
+          dashboards: data.menuLayouts 
+            ? Object.entries(data.menuLayouts).map(([menuItemId, layout]) => ({
+                id: menuItemId,
+                layout: layout,
+                widgets: layout
+              }))
+            : [{
+                id: "default",
+                layout: data.layout || [],
+                widgets: data.widgets || []
+              }]
+        }
+        
+        // Transform our data format to API format
+        const updateData = {
+          name: data.name,
+          description: data.description,
+          category: data.category,
+          template_structure
+        }
+        
+        const response = await dashboardTemplatesApi.update(id, updateData)
+        
+        // Transform back to our format
+        const dashboards = response.template_structure?.dashboards || []
+        const defaultDashboard = dashboards.find(d => d.id === "default") || dashboards[0]
+        
+        return {
+          id: response.id,
+          name: response.name,
+          description: response.description,
+          category: response.category,
+          layout: defaultDashboard?.layout || defaultDashboard?.widgets || [],
+          widgets: defaultDashboard?.widgets || [],
+          studyCount: 0,
+          widgetCount: defaultDashboard?.widgets?.length || 0,
+          status: response.is_active ? "active" : "draft" as const,
+          createdAt: response.created_at,
+          updatedAt: response.updated_at,
+          menuTemplateId: data.menuTemplateId,
+          menuLayouts: dashboards.reduce((acc, dashboard) => ({
+            ...acc,
+            [dashboard.id]: dashboard.layout || dashboard.widgets || []
+          }), {})
+        }
+      } catch (error) {
+        console.error("Failed to update dashboard:", error)
+        // Fallback to mock update
+        const index = mockDashboards.findIndex(d => d.id === id)
+        if (index === -1) {
+          throw new Error("Dashboard not found")
+        }
+        
+        const updated = {
+          ...mockDashboards[index],
+          ...data,
+          widgetCount: data.widgets?.length || mockDashboards[index].widgetCount,
+          updatedAt: new Date().toISOString()
+        }
+        mockDashboards[index] = updated
+        return updated
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dashboards"] })

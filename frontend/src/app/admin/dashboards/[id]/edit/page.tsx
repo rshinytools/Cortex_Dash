@@ -132,11 +132,14 @@ export default function EditDashboardPage() {
   const handleSave = async () => {
     setIsSaving(true)
     try {
+      // Get the current layout based on whether we're in menu mode or not
+      const currentLayout = getCurrentLayout()
+      
       const dashboardData = {
         ...metadata,
-        layout: layoutConfig,
+        layout: currentLayout,
         menuLayouts: selectedMenuTemplate ? menuLayouts : undefined,
-        widgets: layoutConfig.map(item => ({
+        widgets: currentLayout.map(item => ({
           id: item.i,
           type: item.type,
           config: item.config || {},

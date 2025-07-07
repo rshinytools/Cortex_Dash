@@ -3,7 +3,7 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,16 +17,18 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Save, Loader2 } from "lucide-react"
+import { ArrowLeft, Save, Loader2, Menu } from "lucide-react"
 import { DashboardDesigner } from "@/components/admin/dashboard-designer"
 import { useDashboards } from "@/hooks/use-dashboards"
 import { useToast } from "@/hooks/use-toast"
+import { menusApi } from "@/lib/api/menus"
 
 interface DashboardMetadata {
   name: string
   description: string
   category: string
   template: string
+  menuTemplateId: string
 }
 
 export default function NewDashboardPage() {
@@ -41,8 +43,27 @@ export default function NewDashboardPage() {
     name: "",
     description: "",
     category: "general",
-    template: "blank"
+    template: "blank",
+    menuTemplateId: ""
   })
+  const [menuTemplates, setMenuTemplates] = useState<any[]>([])
+  const [loadingMenus, setLoadingMenus] = useState(false)
+
+  useEffect(() => {
+    loadMenuTemplates()
+  }, [])
+
+  const loadMenuTemplates = async () => {
+    setLoadingMenus(true)
+    try {
+      const response = await menusApi.getMenuTemplates({ size: 100 })
+      setMenuTemplates(response.items || [])
+    } catch (error) {
+      console.error("Failed to load menu templates:", error)
+    } finally {
+      setLoadingMenus(false)
+    }
+  }
 
   const handleNext = () => {
     if (!metadata.name) {
@@ -222,6 +243,33 @@ export default function NewDashboardPage() {
               </Select>
               <p className="text-sm text-muted-foreground mt-1">
                 Choose a template to start with or begin from scratch
+              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="menuTemplate">Menu Template</Label>
+              <Select
+                value={metadata.menuTemplateId}
+                onValueChange={(value) => setMetadata({ ...metadata, menuTemplateId: value })}
+                disabled={loadingMenus}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder={loadingMenus ? "Loading..." : "Select a menu template"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No menu template</SelectItem>
+                  {menuTemplates.map((menu) => (
+                    <SelectItem key={menu.id} value={menu.id}>
+                      <div className="flex items-center gap-2">
+                        <Menu className="h-4 w-4" />
+                        {menu.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground mt-1">
+                Select a menu template to define the navigation structure for this dashboard
               </p>
             </div>
           </CardContent>

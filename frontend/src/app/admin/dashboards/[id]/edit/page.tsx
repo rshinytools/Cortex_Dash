@@ -32,20 +32,32 @@ export default function EditDashboardPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [layoutConfig, setLayoutConfig] = useState<any[]>([])
+  const [selectedMenuItem, setSelectedMenuItem] = useState<string>("")
+  const [menuLayouts, setMenuLayouts] = useState<Record<string, any[]>>({})
   
   const [metadata, setMetadata] = useState({
     name: "",
     description: "",
     category: "general",
-    menuTemplateId: "",
+    menuTemplateId: "none",
   })
   const [menuTemplates, setMenuTemplates] = useState<any[]>([])
   const [loadingMenus, setLoadingMenus] = useState(false)
+  const [selectedMenuTemplate, setSelectedMenuTemplate] = useState<any>(null)
 
   useEffect(() => {
     loadDashboard()
     loadMenuTemplates()
   }, [params.id])
+
+  useEffect(() => {
+    if (metadata.menuTemplateId && metadata.menuTemplateId !== "none") {
+      loadSelectedMenuTemplate(metadata.menuTemplateId)
+    } else {
+      setSelectedMenuTemplate(null)
+      setSelectedMenuItem("")
+    }
+  }, [metadata.menuTemplateId])
 
   const loadMenuTemplates = async () => {
     setLoadingMenus(true)
@@ -59,6 +71,22 @@ export default function EditDashboardPage() {
     }
   }
 
+  const loadSelectedMenuTemplate = async (templateId: string) => {
+    try {
+      const template = await menusApi.getMenuTemplate(templateId)
+      setSelectedMenuTemplate(template)
+      // Select the first menu item by default
+      if (template.items && template.items.length > 0) {
+        const firstDashboardItem = template.items.find((item: any) => item.type === 'dashboard')
+        if (firstDashboardItem) {
+          setSelectedMenuItem(firstDashboardItem.id)
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load menu template:", error)
+    }
+  }
+
   const loadDashboard = async () => {
     try {
       const dashboard = await getDashboard(params.id as string)
@@ -66,7 +94,7 @@ export default function EditDashboardPage() {
         name: dashboard.name,
         description: dashboard.description || "",
         category: dashboard.category || "general",
-        menuTemplateId: dashboard.menuTemplateId || "",
+        menuTemplateId: dashboard.menuTemplateId || "none",
       })
       setLayoutConfig(dashboard.layout || [])
     } catch (error) {
@@ -81,12 +109,33 @@ export default function EditDashboardPage() {
     }
   }
 
+  const handleLayoutChange = (newLayout: any[]) => {
+    if (selectedMenuItem) {
+      // Save layout for the current menu item
+      setMenuLayouts(prev => ({
+        ...prev,
+        [selectedMenuItem]: newLayout
+      }))
+    } else {
+      // No menu selected, use default layout
+      setLayoutConfig(newLayout)
+    }
+  }
+
+  const getCurrentLayout = () => {
+    if (selectedMenuItem && menuLayouts[selectedMenuItem]) {
+      return menuLayouts[selectedMenuItem]
+    }
+    return layoutConfig
+  }
+
   const handleSave = async () => {
     setIsSaving(true)
     try {
       const dashboardData = {
         ...metadata,
         layout: layoutConfig,
+        menuLayouts: selectedMenuTemplate ? menuLayouts : undefined,
         widgets: layoutConfig.map(item => ({
           id: item.i,
           type: item.type,
@@ -201,14 +250,19 @@ export default function EditDashboardPage() {
                 <Label htmlFor="menuTemplate">Menu Template</Label>
                 <Select
                   value={metadata.menuTemplateId}
-                  onValueChange={(value) => setMetadata({ ...metadata, menuTemplateId: value })}
+                  onValueChange={(value) => {
+                    setMetadata({ ...metadata, menuTemplateId: value })
+                    // Clear menu layouts when changing menu template
+                    setMenuLayouts({})
+                    setSelectedMenuItem("")
+                  }}
                   disabled={loadingMenus}
                 >
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder={loadingMenus ? "Loading..." : "Select a menu template"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No menu template</SelectItem>
+                    <SelectItem value="none">No menu template</SelectItem>
                     {menuTemplates.map((menu) => (
                       <SelectItem key={menu.id} value={menu.id}>
                         <div className="flex items-center gap-2">
@@ -290,12 +344,80 @@ export default function EditDashboardPage() {
           </Button>
         </div>
       </div>
-      <div className="flex-1 overflow-hidden">
-        <DashboardDesigner
-          initialLayout={layoutConfig}
-          onChange={setLayoutConfig}
-          mode="design"
-        />
+      <div className="flex-1 flex overflow-hidden">
+        {metadata.menuTemplateId !== "none" && !selectedMenuTemplate && (
+          <div className="w-64 border-r bg-muted/10 p-4 flex items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        )}
+        {selectedMenuTemplate && (
+          <div className="w-64 border-r bg-muted/10 p-4 overflow-y-auto">
+            <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+              <Menu className="h-4 w-4" />
+              {selectedMenuTemplate.name}
+            </h3>
+            <div className="space-y-1">
+              {selectedMenuTemplate.items?.map((item: any) => {
+                if (item.type === 'group') {
+                  return (
+                    <div key={item.id} className="mt-3">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                        {item.label}
+                      </p>
+                      <div className="space-y-1 ml-2">
+                        {item.children?.map((child: any) => (
+                          <Button
+                            key={child.id}
+                            variant={selectedMenuItem === child.id ? "secondary" : "ghost"}
+                            size="sm"
+                            className="w-full justify-start"
+                            onClick={() => setSelectedMenuItem(child.id)}
+                          >
+                            {child.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                } else if (item.type === 'dashboard') {
+                  return (
+                    <Button
+                      key={item.id}
+                      variant={selectedMenuItem === item.id ? "secondary" : "ghost"}
+                      size="sm"
+                      className="w-full justify-start"
+                      onClick={() => setSelectedMenuItem(item.id)}
+                    >
+                      {item.label}
+                    </Button>
+                  )
+                }
+                return null
+              })}
+            </div>
+            {selectedMenuItem && (
+              <div className="mt-6 p-3 bg-muted rounded-md">
+                <p className="text-xs font-medium text-muted-foreground">Currently designing:</p>
+                <p className="text-sm font-medium mt-1">
+                  {selectedMenuTemplate.items?.find((item: any) => 
+                    item.id === selectedMenuItem || 
+                    item.children?.some((child: any) => child.id === selectedMenuItem)
+                  )?.label || 
+                  selectedMenuTemplate.items?.find((item: any) => 
+                    item.children?.some((child: any) => child.id === selectedMenuItem)
+                  )?.children?.find((child: any) => child.id === selectedMenuItem)?.label}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+        <div className="flex-1 overflow-hidden">
+          <DashboardDesigner
+            initialLayout={getCurrentLayout()}
+            onChange={handleLayoutChange}
+            mode="design"
+          />
+        </div>
       </div>
     </div>
   )

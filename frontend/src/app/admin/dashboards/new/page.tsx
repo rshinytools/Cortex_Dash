@@ -44,7 +44,7 @@ export default function NewDashboardPage() {
     description: "",
     category: "general",
     template: "blank",
-    menuTemplateId: ""
+    menuTemplateId: "none"
   })
   const [menuTemplates, setMenuTemplates] = useState<any[]>([])
   const [loadingMenus, setLoadingMenus] = useState(false)
@@ -257,7 +257,7 @@ export default function NewDashboardPage() {
                   <SelectValue placeholder={loadingMenus ? "Loading..." : "Select a menu template"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No menu template</SelectItem>
+                  <SelectItem value="none">No menu template</SelectItem>
                   {menuTemplates.map((menu) => (
                     <SelectItem key={menu.id} value={menu.id}>
                       <div className="flex items-center gap-2">

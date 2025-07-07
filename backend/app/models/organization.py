@@ -55,7 +55,10 @@ class Organization(OrganizationBase, table=True):
     
     # Relationships
     users: List["User"] = Relationship(back_populates="organization")
-    studies: List["Study"] = Relationship(back_populates="organization", cascade_delete=True)
+    studies: List["Study"] = Relationship(
+        back_populates="organization",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
 
 
 class OrganizationPublic(OrganizationBase):

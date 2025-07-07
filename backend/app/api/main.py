@@ -2,9 +2,10 @@ from fastapi import APIRouter
 
 from app.api.routes import items, login, private, users, utils
 from app.api.v1.endpoints import organizations, studies, pipelines, data_sources, transformations, data_catalog
-from app.api.v1.endpoints import data_versions, data_quality, data_archival, refresh_schedules
-from app.api.v1.endpoints import dashboards, widgets, visualizations, advanced_visualizations
-from app.api.v1.endpoints import reports, exports, dashboard_exports, scheduled_exports
+# Temporarily disabled endpoints
+# from app.api.v1.endpoints import data_versions, data_quality, data_archival, refresh_schedules
+# from app.api.v1.endpoints import dashboards, widgets, visualizations, advanced_visualizations
+# from app.api.v1.endpoints import reports, exports, dashboard_exports, scheduled_exports
 from app.api.v1.endpoints import system_settings, notification_settings, integrations, custom_fields, workflows
 from app.api.v1.endpoints import audit_trail, electronic_signatures, data_integrity, access_control, regulatory_compliance
 from app.api.v1.endpoints import system_health, performance_monitoring, backup_recovery, job_monitoring
@@ -27,24 +28,24 @@ api_router.include_router(data_sources.router, prefix="/data-sources", tags=["da
 api_router.include_router(transformations.router, prefix="/transformations", tags=["transformations"])
 api_router.include_router(data_catalog.router, prefix="/data-catalog", tags=["data-catalog"])
 
-# Phase 4: Data Management & Storage APIs
-api_router.include_router(data_versions.router, prefix="/data-versions", tags=["data-versions"])
-api_router.include_router(data_quality.router, prefix="/data-quality", tags=["data-quality"])
-api_router.include_router(data_archival.router, prefix="/archival", tags=["archival"])
-api_router.include_router(refresh_schedules.router, prefix="/refresh-schedules", tags=["refresh-schedules"])
+# Phase 4: Data Management & Storage APIs - temporarily disabled
+# api_router.include_router(data_versions.router, prefix="/data-versions", tags=["data-versions"])
+# api_router.include_router(data_quality.router, prefix="/data-quality", tags=["data-quality"])
+# api_router.include_router(data_archival.router, prefix="/archival", tags=["archival"])
+# api_router.include_router(refresh_schedules.router, prefix="/refresh-schedules", tags=["refresh-schedules"])
 
 # Phase 5: Dashboard & Visualization APIs
-api_router.include_router(dashboards.router, prefix="/dashboards", tags=["dashboards"])
+# api_router.include_router(dashboards.router, prefix="/dashboards", tags=["dashboards"])
 api_router.include_router(dashboard_templates.router, prefix="/dashboard-templates", tags=["dashboard-templates"])
-api_router.include_router(widgets.router, prefix="/widgets", tags=["widgets"])
-api_router.include_router(visualizations.router, prefix="/visualizations", tags=["visualizations"])
-api_router.include_router(advanced_visualizations.router, prefix="/advanced-visualizations", tags=["advanced-visualizations"])
+# api_router.include_router(widgets.router, prefix="/widgets", tags=["widgets"])
+# api_router.include_router(visualizations.router, prefix="/visualizations", tags=["visualizations"])
+# api_router.include_router(advanced_visualizations.router, prefix="/advanced-visualizations", tags=["advanced-visualizations"])
 
-# Phase 6: Reporting & Export APIs
-api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
-api_router.include_router(exports.router, prefix="/exports", tags=["exports"])
-api_router.include_router(dashboard_exports.router, tags=["dashboard-exports"])
-api_router.include_router(scheduled_exports.router, tags=["scheduled-exports"])
+# Phase 6: Reporting & Export APIs - temporarily disabled
+# api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
+# api_router.include_router(exports.router, prefix="/exports", tags=["exports"])
+# api_router.include_router(dashboard_exports.router, tags=["dashboard-exports"])
+# api_router.include_router(scheduled_exports.router, tags=["scheduled-exports"])
 
 # Phase 7: Admin & Configuration APIs
 api_router.include_router(system_settings.router, prefix="/system-settings", tags=["system-settings"])

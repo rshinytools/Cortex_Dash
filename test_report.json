@@ -1,0 +1,35 @@
+{
+  "timestamp": "2025-07-07T12:21:09.034306",
+  "results": {
+    "passed": [
+      "Health Check",
+      "API Documentation",
+      "Login",
+      "Get Current User",
+      "Create Organization",
+      "List Organizations",
+      "Get Organization by ID",
+      "Create Study",
+      "List Studies",
+      "List Data Sources",
+      "List Dashboard Templates",
+      "Create Dashboard Template",
+      "List Widget Definitions",
+      "List Study Dashboards",
+      "Delete Organization"
+    ],
+    "failed": [
+      "Initialize Study",
+      "Create Data Source",
+      "Delete Study"
+    ],
+    "errors": []
+  },
+  "summary": {
+    "total": 18,
+    "passed": 15,
+    "failed": 3,
+    "errors": 0,
+    "success_rate": 83.33333333333334
+  }
+}

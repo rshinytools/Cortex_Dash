@@ -48,6 +48,7 @@ class Permission(str, Enum):
     VIEW_PIPELINE_LOGS = "view_pipeline_logs"
     
     # Dashboard permissions
+    VIEW_ANALYTICS = "view_analytics"
     VIEW_DASHBOARD = "view_dashboard"
     EDIT_DASHBOARD = "edit_dashboard"
     CREATE_WIDGETS = "create_widgets"

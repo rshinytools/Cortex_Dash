@@ -159,10 +159,16 @@ async def delete_organization(
     db: Session = Depends(get_db),
     org_id: uuid.UUID,
     current_user: User = Depends(PermissionChecker(Permission.MANAGE_SYSTEM)),
-    request: Request
+    request: Request,
+    hard_delete: bool = False,  # Query parameter to force hard delete
+    force: bool = False  # Force delete even with users/studies
 ) -> Any:
     """
     Delete organization. Only system admins can delete organizations.
+    
+    By default, deactivates the organization (soft delete).
+    Use hard_delete=true to permanently delete.
+    Use force=true to delete even if organization has users/studies (cascade delete).
     """
     org = crud_org.get_organization(db, org_id=org_id)
     if not org:
@@ -175,33 +181,69 @@ async def delete_organization(
     user_count = crud_org.get_organization_user_count(db, org_id=org_id)
     study_count = crud_org.get_organization_study_count(db, org_id=org_id)
     
-    if user_count > 0 or study_count > 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Cannot delete organization with {user_count} users and {study_count} studies"
-        )
+    # If not forcing, check for dependent data
+    if not force and (user_count > 0 or study_count > 0):
+        if hard_delete:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot delete organization with {user_count} users and {study_count} studies. "
+                       f"Use force=true to cascade delete all related data."
+            )
+        # For soft delete, we can proceed even with users/studies
     
-    success = crud_org.delete_organization(db, org_id=org_id)
-    
-    if success:
-        # TODO: Fix activity logging schema mismatch
-        # # Log activity
-        # crud_activity.create_activity_log(
-        #     db,
-        #     user=current_user,
-        #     action="delete_organization",
-        #     resource_type="organization",
-        #     resource_id=str(org_id),
-        #     details={"name": org.name},
-        #     ip_address=request.client.host,
-        #     user_agent=request.headers.get("user-agent")
-        # )
-        return {"message": "Organization deleted successfully"}
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to delete organization"
-        )
+    try:
+        success = crud_org.delete_organization(db, org_id=org_id, hard_delete=hard_delete)
+        
+        if success:
+            action = "hard_delete_organization" if hard_delete else "deactivate_organization"
+            message = "Organization permanently deleted" if hard_delete else "Organization deactivated successfully"
+            
+            if hard_delete and force and (user_count > 0 or study_count > 0):
+                message += f" (cascade deleted {user_count} users and {study_count} studies)"
+            
+            # TODO: Fix activity logging schema mismatch
+            # # Log activity
+            # crud_activity.create_activity_log(
+            #     db,
+            #     user=current_user,
+            #     action=action,
+            #     resource_type="organization",
+            #     resource_id=str(org_id),
+            #     details={
+            #         "name": org.name,
+            #         "hard_delete": hard_delete,
+            #         "force": force,
+            #         "deleted_users": user_count if force else 0,
+            #         "deleted_studies": study_count if force else 0
+            #     },
+            #     ip_address=request.client.host,
+            #     user_agent=request.headers.get("user-agent")
+            # )
+            return {"message": message}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to delete organization"
+            )
+    except Exception as e:
+        # Handle foreign key constraint violations
+        if "foreign key constraint" in str(e).lower():
+            # This shouldn't happen with proper cascade, but handle it anyway
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot delete organization: It has dependent data that must be removed first. "
+                       "Try using force=true to cascade delete."
+            )
+        elif "violates foreign key constraint" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot delete organization: Other records depend on this organization"
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to delete organization: {str(e)}"
+            )
 
 
 @router.get("/{org_id}/stats", response_model=dict)

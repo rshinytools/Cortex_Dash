@@ -118,17 +118,28 @@ def update_study(
     return db_study
 
 
-def delete_study(db: Session, study_id: uuid.UUID) -> bool:
-    """Archive study by setting status to 'archived'"""
+def delete_study(db: Session, study_id: uuid.UUID, hard_delete: bool = False) -> bool:
+    """Delete study - either archive (soft delete) or permanently delete (hard delete)"""
     db_study = db.get(Study, study_id)
     if not db_study:
         return False
     
-    db_study.status = "archived"
-    db_study.updated_at = datetime.utcnow()
-    db.add(db_study)
-    db.commit()
-    return True
+    try:
+        if hard_delete:
+            # Hard delete - permanently remove from database
+            db.delete(db_study)
+            db.commit()
+        else:
+            # Soft delete - archive the study
+            db_study.status = "archived"
+            db_study.is_active = False
+            db_study.updated_at = datetime.utcnow()
+            db.add(db_study)
+            db.commit()
+        return True
+    except Exception as e:
+        db.rollback()
+        raise e
 
 
 def get_study_statistics(db: Session, study_id: uuid.UUID) -> dict:

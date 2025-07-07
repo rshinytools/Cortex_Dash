@@ -2,14 +2,15 @@
 # ABOUTME: Handles CRUD operations for clinical studies with RBAC
 
 from typing import List, Any, Optional, Dict
-from datetime import datetime
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, Request, BackgroundTasks
 from sqlmodel import Session, select
+from pydantic import BaseModel, Field
 import uuid
 
 from app.api.deps import get_db, get_current_user
 from app.models import (
-    Study, StudyCreate, StudyUpdate, StudyPublic,
+    Study, StudyCreate, StudyUpdate, StudyPublic, StudyStatus,
     User, Message, DashboardTemplate
 )
 from app.models.widget import WidgetDefinition
@@ -26,6 +27,24 @@ from app.services.widget_data_executor import (
 from app.services.redis_cache import get_cache
 
 router = APIRouter()
+
+
+class InitializeStudyRequest(BaseModel):
+    """Request model for study initialization"""
+    dashboard_template_id: Optional[uuid.UUID] = None
+    data_source_config: Optional[Dict[str, Any]] = None
+    pipeline_config: Optional[Dict[str, Any]] = None
+    auto_configure: bool = True  # Automatically configure with defaults
+
+
+class InitializeStudyResponse(BaseModel):
+    """Response model for study initialization"""
+    success: bool
+    message: str
+    study_id: uuid.UUID
+    status: str
+    initialized_components: List[str]
+    dashboard_template_id: Optional[uuid.UUID] = None
 
 
 @router.post("/", response_model=StudyPublic)
@@ -195,10 +214,14 @@ async def delete_study(
     db: Session = Depends(get_db),
     study_id: uuid.UUID,
     current_user: User = Depends(PermissionChecker(Permission.DELETE_STUDY)),
-    request: Request
+    request: Request,
+    hard_delete: bool = False  # Query parameter to force hard delete
 ) -> Any:
     """
-    Delete (archive) study.
+    Delete study - by default archives it (soft delete).
+    
+    Use hard_delete=true to permanently delete the study and all its data.
+    Only system admins can perform hard deletes.
     """
     study = crud_study.get_study(db, study_id=study_id)
     if not study:
@@ -214,25 +237,225 @@ async def delete_study(
             detail="Not enough permissions"
         )
     
-    success = crud_study.delete_study(db, study_id=study_id)
+    # Only superusers can perform hard deletes
+    if hard_delete and not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only system administrators can permanently delete studies"
+        )
     
-    if success:
+    try:
+        success = crud_study.delete_study(db, study_id=study_id, hard_delete=hard_delete)
+        
+        if success:
+            action = "hard_delete_study" if hard_delete else "archive_study"
+            message = "Study permanently deleted" if hard_delete else "Study archived successfully"
+            
+            # Log activity
+            crud_activity.create_activity_log(
+                db,
+                user=current_user,
+                action=action,
+                resource_type="study",
+                resource_id=str(study_id),
+                details={
+                    "name": study.name,
+                    "protocol_number": study.protocol_number,
+                    "hard_delete": hard_delete
+                },
+                ip_address=request.client.host,
+                user_agent=request.headers.get("user-agent")
+            )
+            return {"message": message}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to delete study"
+            )
+    except Exception as e:
+        # Handle foreign key constraint violations
+        if "foreign key constraint" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot delete study: It has dependent data that must be removed first"
+            )
+        elif "violates foreign key constraint" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot delete study: Other records depend on this study"
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to delete study: {str(e)}"
+            )
+
+
+@router.post("/{study_id}/initialize", response_model=InitializeStudyResponse)
+async def initialize_study(
+    *,
+    db: Session = Depends(get_db),
+    study_id: uuid.UUID,
+    initialization_request: InitializeStudyRequest,
+    current_user: User = Depends(PermissionChecker(Permission.EDIT_STUDY)),
+    request: Request
+) -> Any:
+    """
+    Initialize a study with default configurations and setup.
+    
+    This endpoint:
+    - Creates default folder structure for the study
+    - Sets up initial pipeline configuration
+    - Applies a dashboard template if specified
+    - Configures default data sources
+    - Sets the study status to active
+    """
+    # Get study and check access
+    study = crud_study.get_study(db, study_id=study_id)
+    if not study:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Study not found"
+        )
+    
+    # Check access
+    if not current_user.is_superuser and str(current_user.org_id) != str(study.org_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
+    
+    # Check if study is already initialized
+    if study.status not in [StudyStatus.PLANNING, StudyStatus.SETUP]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Study is already initialized with status: {study.status}"
+        )
+    
+    initialized_components = []
+    
+    try:
+        # 1. Create folder structure for the study
+        from app.clinical_modules.services import FileService
+        file_service = FileService()
+        folder_path = f"/data/studies/{study.org_id}/{study.id}"
+        study.folder_path = folder_path
+        initialized_components.append("folder_structure")
+        
+        # 2. Set up default pipeline configuration if not provided
+        if initialization_request.pipeline_config:
+            study.pipeline_config = initialization_request.pipeline_config
+        else:
+            # Default pipeline configuration
+            study.pipeline_config = {
+                "enabled": True,
+                "frequency": "daily",
+                "start_time": "02:00",
+                "retry_on_failure": True,
+                "max_retries": 3,
+                "notification_on_failure": True,
+                "stages": [
+                    {"name": "data_ingestion", "enabled": True},
+                    {"name": "data_validation", "enabled": True},
+                    {"name": "data_transformation", "enabled": True},
+                    {"name": "data_loading", "enabled": True}
+                ]
+            }
+        initialized_components.append("pipeline_config")
+        
+        # 3. Apply dashboard template if specified
+        if initialization_request.dashboard_template_id:
+            template = db.get(DashboardTemplate, initialization_request.dashboard_template_id)
+            if not template:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Dashboard template not found"
+                )
+            
+            study.dashboard_template_id = template.id
+            # Initialize with empty field mappings - to be configured later
+            study.field_mappings = {}
+            study.template_overrides = {}
+            initialized_components.append("dashboard_template")
+        
+        # 4. Set up default data source configuration
+        if initialization_request.data_source_config:
+            study.config["data_sources"] = initialization_request.data_source_config
+        else:
+            # Default data source configuration
+            study.config["data_sources"] = {
+                "primary": {
+                    "type": "folder",
+                    "path": f"{folder_path}/source_data",
+                    "enabled": True
+                }
+            }
+        initialized_components.append("data_sources")
+        
+        # 5. Set up default dashboard configuration
+        if not study.dashboard_config:
+            study.dashboard_config = {
+                "refresh_interval": 300,  # 5 minutes
+                "cache_enabled": True,
+                "cache_ttl": 3600,  # 1 hour
+                "theme": "light"
+            }
+        initialized_components.append("dashboard_config")
+        
+        # 6. Initialize default compliance settings
+        if "compliance" not in study.config:
+            study.config["compliance"] = {
+                "21_cfr_part_11": True,
+                "gdpr": True,
+                "hipaa": True,
+                "audit_trail": True,
+                "electronic_signatures": True,
+                "data_retention_years": 7
+            }
+        initialized_components.append("compliance_settings")
+        
+        # 7. Update study status to active
+        study.status = StudyStatus.ACTIVE
+        study.is_active = True
+        study.updated_at = datetime.utcnow()
+        study.updated_by = current_user.id
+        
+        # Save all changes
+        db.add(study)
+        db.commit()
+        db.refresh(study)
+        
         # Log activity
         crud_activity.create_activity_log(
             db,
             user=current_user,
-            action="delete_study",
+            action="initialize_study",
             resource_type="study",
-            resource_id=str(study_id),
-            details={"name": study.name, "protocol_number": study.protocol_number},
+            resource_id=str(study.id),
+            details={
+                "study_name": study.name,
+                "initialized_components": initialized_components,
+                "dashboard_template_id": str(initialization_request.dashboard_template_id) if initialization_request.dashboard_template_id else None
+            },
             ip_address=request.client.host,
             user_agent=request.headers.get("user-agent")
         )
-        return {"message": "Study archived successfully"}
-    else:
+        
+        return InitializeStudyResponse(
+            success=True,
+            message=f"Study '{study.name}' initialized successfully",
+            study_id=study.id,
+            status=study.status,
+            initialized_components=initialized_components,
+            dashboard_template_id=study.dashboard_template_id
+        )
+        
+    except Exception as e:
+        # Rollback on error
+        db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to archive study"
+            detail=f"Failed to initialize study: {str(e)}"
         )
 
 
@@ -267,12 +490,6 @@ async def get_study_statistics(
         )
     
     return crud_study.get_study_statistics(db, study_id=study_id)
-
-
-# Import Optional
-from typing import Optional
-from pydantic import BaseModel, Field
-from datetime import timedelta
 
 
 class StudyConfigurationUpdate(BaseModel):

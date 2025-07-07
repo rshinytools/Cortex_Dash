@@ -131,7 +131,10 @@ class Study(StudyBase, table=True):
     
     # Relationships
     organization: "Organization" = Relationship(back_populates="studies")
-    data_sources: List["DataSource"] = Relationship(back_populates="study", cascade_delete=True)
+    data_sources: List["DataSource"] = Relationship(
+        back_populates="study",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
     activity_logs: List["ActivityLog"] = Relationship(back_populates="study")
     dashboard_template: Optional["DashboardTemplate"] = Relationship()
 

@@ -81,17 +81,28 @@ def update_organization(
     return db_org
 
 
-def delete_organization(db: Session, org_id: uuid.UUID) -> bool:
-    """Soft delete organization by setting active=False"""
+def delete_organization(db: Session, org_id: uuid.UUID, hard_delete: bool = False) -> bool:
+    """Delete organization - either deactivate (soft delete) or permanently delete (hard delete)"""
     db_org = db.get(Organization, org_id)
     if not db_org:
         return False
     
-    db_org.active = False
-    db_org.updated_at = datetime.utcnow()
-    db.add(db_org)
-    db.commit()
-    return True
+    try:
+        if hard_delete:
+            # Hard delete - permanently remove from database
+            # This will cascade delete all related studies due to relationship configuration
+            db.delete(db_org)
+            db.commit()
+        else:
+            # Soft delete - deactivate the organization
+            db_org.active = False
+            db_org.updated_at = datetime.utcnow()
+            db.add(db_org)
+            db.commit()
+        return True
+    except Exception as e:
+        db.rollback()
+        raise e
 
 
 def get_organization_user_count(db: Session, org_id: uuid.UUID) -> int:

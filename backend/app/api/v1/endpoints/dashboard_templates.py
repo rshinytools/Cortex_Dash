@@ -2,6 +2,7 @@
 # ABOUTME: Handles CRUD operations for dashboard templates and data requirements extraction
 
 from typing import List, Any, Optional, Dict
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 import uuid
@@ -53,8 +54,6 @@ async def read_dashboard_templates(
     # Convert to public models and add counts
     public_templates = []
     for template in templates:
-        public_template = DashboardTemplatePublic.model_validate(template)
-        
         # Count dashboards and widgets in the template
         template_structure = template.template_structure or {}
         menu_items = template_structure.get("menu", {}).get("items", [])
@@ -68,9 +67,13 @@ async def read_dashboard_templates(
                 widgets = item["dashboard"].get("widgets", [])
                 widget_count += len(widgets)
         
-        public_template.dashboard_count = dashboard_count
-        public_template.widget_count = widget_count
+        # Create public template with all required fields
+        template_dict = template.model_dump()
+        template_dict["version"] = template.major_version
+        template_dict["dashboard_count"] = dashboard_count
+        template_dict["widget_count"] = widget_count
         
+        public_template = DashboardTemplatePublic.model_validate(template_dict)
         public_templates.append(public_template)
     
     return DashboardTemplatesPublic(data=public_templates, count=total)
@@ -93,9 +96,7 @@ async def read_dashboard_template(
             detail="Dashboard template not found"
         )
     
-    public_template = DashboardTemplatePublic.model_validate(template)
-    
-    # Add counts
+    # Count dashboards and widgets in the template
     template_structure = template.template_structure or {}
     menu_items = template_structure.get("menu", {}).get("items", [])
     
@@ -108,9 +109,13 @@ async def read_dashboard_template(
             widgets = item["dashboard"].get("widgets", [])
             widget_count += len(widgets)
     
-    public_template.dashboard_count = dashboard_count
-    public_template.widget_count = widget_count
+    # Create public template with all required fields
+    template_dict = template.model_dump()
+    template_dict["version"] = template.major_version
+    template_dict["dashboard_count"] = dashboard_count
+    template_dict["widget_count"] = widget_count
     
+    public_template = DashboardTemplatePublic.model_validate(template_dict)
     return public_template
 
 
@@ -186,14 +191,37 @@ async def create_dashboard_template(
         )
     
     # Create template
-    from app.crud.dashboard import create_dashboard
-    template = create_dashboard(
-        db=db,
-        dashboard_create=template_in,
-        current_user=current_user
+    template = DashboardTemplate(
+        **template_in.model_dump(),
+        created_by=current_user.id,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
     )
+    db.add(template)
+    db.commit()
+    db.refresh(template)
     
-    return DashboardTemplatePublic.model_validate(template)
+    # Count dashboards and widgets in the template
+    template_structure = template.template_structure or {}
+    menu_items = template_structure.get("menu", {}).get("items", [])
+    
+    dashboard_count = 0
+    widget_count = 0
+    
+    for item in menu_items:
+        if item.get("type") == "dashboard" and "dashboard" in item:
+            dashboard_count += 1
+            widgets = item["dashboard"].get("widgets", [])
+            widget_count += len(widgets)
+    
+    # Create public template with all required fields
+    template_dict = template.model_dump()
+    template_dict["version"] = template.major_version
+    template_dict["dashboard_count"] = dashboard_count
+    template_dict["widget_count"] = widget_count
+    
+    public_template = DashboardTemplatePublic.model_validate(template_dict)
+    return public_template
 
 
 @router.patch("/{template_id}", response_model=DashboardTemplatePublic)
@@ -225,7 +253,27 @@ async def update_dashboard_template(
     db.commit()
     db.refresh(template)
     
-    return DashboardTemplatePublic.model_validate(template)
+    # Count dashboards and widgets in the template
+    template_structure = template.template_structure or {}
+    menu_items = template_structure.get("menu", {}).get("items", [])
+    
+    dashboard_count = 0
+    widget_count = 0
+    
+    for item in menu_items:
+        if item.get("type") == "dashboard" and "dashboard" in item:
+            dashboard_count += 1
+            widgets = item["dashboard"].get("widgets", [])
+            widget_count += len(widgets)
+    
+    # Create public template with all required fields
+    template_dict = template.model_dump()
+    template_dict["version"] = template.major_version
+    template_dict["dashboard_count"] = dashboard_count
+    template_dict["widget_count"] = widget_count
+    
+    public_template = DashboardTemplatePublic.model_validate(template_dict)
+    return public_template
 
 
 @router.delete("/{template_id}")
@@ -262,5 +310,3 @@ async def delete_dashboard_template(
     return {"message": "Dashboard template deactivated successfully"}
 
 
-# Import datetime
-from datetime import datetime

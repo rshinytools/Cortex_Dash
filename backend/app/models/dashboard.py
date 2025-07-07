@@ -128,8 +128,13 @@ class DashboardTemplateUpdate(SQLModel):
     name: Optional[str] = Field(default=None, max_length=100)
     description: Optional[str] = None
     category: Optional[DashboardCategory] = None
-    layout_config: Optional[Dict[str, Any]] = None
+    template_structure: Optional[Dict[str, Any]] = None
+    status: Optional[TemplateStatus] = None
+    tags: Optional[List[str]] = None
+    screenshot_urls: Optional[List[str]] = None
+    documentation_url: Optional[str] = None
     is_active: Optional[bool] = None
+    is_public: Optional[bool] = None
 
 
 class DashboardTemplate(DashboardTemplateBase, table=True):

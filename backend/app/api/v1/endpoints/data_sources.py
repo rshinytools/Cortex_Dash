@@ -16,7 +16,7 @@ from app.models import (
     User, DataSource, DataSourceCreate, DataSourceUpdate, DataSourceConfig,
     Study, Message, DataSourceType
 )
-from app.core.permissions import Permission, require_permission
+from app.core.permissions import Permission, PermissionChecker
 # Connectors will be properly integrated later
 # from app.clinical_modules.data_sources.medidata_rave import MedidataRaveConnector
 # from app.clinical_modules.data_sources.sftp import SFTPConnector
@@ -72,8 +72,7 @@ async def get_data_source_types(
 @router.post("/test-connection", response_model=Dict[str, Any])
 async def test_data_source_connection(
     data_source_config: Dict[str, Any],
-    current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_STUDY_DATA))
+    current_user: User = Depends(PermissionChecker(Permission.MANAGE_STUDY_DATA))
 ) -> Any:
     """
     Test connection to a data source without saving configuration.
@@ -135,8 +134,7 @@ async def test_data_source_connection(
 async def get_study_data_sources(
     study_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_STUDY))
+    current_user: User = Depends(PermissionChecker(Permission.VIEW_STUDY))
 ) -> Any:
     """
     Get all data sources configured for a study.
@@ -164,8 +162,7 @@ async def create_study_data_source(
     data_source_in: DataSourceCreate,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_STUDY_DATA))
+    current_user: User = Depends(PermissionChecker(Permission.MANAGE_STUDY_DATA))
 ) -> Any:
     """
     Create a new data source for a study.
@@ -210,8 +207,7 @@ async def get_data_source(
     study_id: uuid.UUID,
     ds_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_STUDY))
+    current_user: User = Depends(PermissionChecker(Permission.VIEW_STUDY))
 ) -> Any:
     """
     Get specific data source details.
@@ -240,8 +236,7 @@ async def update_data_source(
     ds_id: uuid.UUID,
     data_source_update: DataSourceUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_STUDY_DATA))
+    current_user: User = Depends(PermissionChecker(Permission.MANAGE_STUDY_DATA))
 ) -> Any:
     """
     Update data source configuration.
@@ -284,8 +279,7 @@ async def delete_data_source(
     study_id: uuid.UUID,
     ds_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_STUDY_DATA))
+    current_user: User = Depends(PermissionChecker(Permission.MANAGE_STUDY_DATA))
 ) -> Any:
     """
     Delete a data source.
@@ -317,8 +311,7 @@ async def sync_data_source(
     ds_id: uuid.UUID,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.EXECUTE_PIPELINE))
+    current_user: User = Depends(PermissionChecker(Permission.EXECUTE_PIPELINE))
 ) -> Any:
     """
     Trigger manual synchronization of a data source.
@@ -369,8 +362,7 @@ async def upload_data_file(
     password: str = Form(None),
     extract_date: str = Form(...),  # EDC Extract Date in DDMMMYYYY format
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_STUDY_DATA))
+    current_user: User = Depends(PermissionChecker(Permission.MANAGE_STUDY_DATA))
 ) -> Any:
     """
     Upload a ZIP file for manual data source.

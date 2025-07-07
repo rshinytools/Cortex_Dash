@@ -32,6 +32,8 @@ class ActivityAction(str, Enum):
     STUDY_CREATED = "STUDY_CREATED"
     STUDY_UPDATED = "STUDY_UPDATED"
     STUDY_ARCHIVED = "STUDY_ARCHIVED"
+    archive_study = "archive_study"  # Used by studies endpoint
+    hard_delete_study = "hard_delete_study"  # Used by studies endpoint
     
     # Dashboard operations
     DASHBOARD_TEMPLATE_APPLIED = "DASHBOARD_TEMPLATE_APPLIED"

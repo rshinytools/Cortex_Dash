@@ -234,7 +234,7 @@ class ClinicalDashboardTester:
                     }
                 }
                 response = requests.post(
-                    f"{BASE_URL}/api/v1/studies/{self.study_id}/data-sources",
+                    f"{BASE_URL}/api/v1/data-sources/studies/{self.study_id}/data-sources",
                     json=data_source,
                     headers=headers
                 )
@@ -252,7 +252,7 @@ class ClinicalDashboardTester:
         if self.study_id:
             try:
                 response = requests.get(
-                    f"{BASE_URL}/api/v1/studies/{self.study_id}/data-sources",
+                    f"{BASE_URL}/api/v1/data-sources/studies/{self.study_id}/data-sources",
                     headers=headers
                 )
                 if response.status_code == 200:

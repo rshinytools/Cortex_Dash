@@ -63,7 +63,8 @@ import {
   Filter,
   Code2,
   Layers,
-  Grid3X3
+  Grid3X3,
+  ArrowLeft
 } from 'lucide-react'
 import { WidgetCategory, WidgetType } from '@/types/widget'
 
@@ -160,9 +161,31 @@ export default function WidgetsPage() {
   }
 
   return (
-    <div className="flex-1 space-y-4 p-8 pt-6">
-      <div className="flex items-center justify-between">
-        <div>
+    <div className="container mx-auto py-6">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+        <Button
+          variant="link"
+          className="p-0 h-auto font-normal"
+          onClick={() => router.push('/admin')}
+        >
+          Admin
+        </Button>
+        <span>/</span>
+        <span className="text-foreground">Widget Library</span>
+      </div>
+
+      <div className="flex items-center mb-6">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push('/admin')}
+          className="mr-4"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Admin
+        </Button>
+        <div className="flex-1">
           <h2 className="text-3xl font-bold tracking-tight">Widget Library</h2>
           <p className="text-muted-foreground">
             Manage reusable widget templates for dashboards

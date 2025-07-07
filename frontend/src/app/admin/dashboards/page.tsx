@@ -40,7 +40,8 @@ import {
   Edit, 
   Eye, 
   Trash2,
-  LayoutDashboard 
+  LayoutDashboard,
+  ArrowLeft 
 } from "lucide-react"
 import { useDashboards } from "@/hooks/use-dashboards"
 import { useToast } from "@/hooks/use-toast"
@@ -83,11 +84,33 @@ export default function DashboardsPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
+    <div className="container mx-auto py-6">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+        <Button
+          variant="link"
+          className="p-0 h-auto font-normal"
+          onClick={() => router.push('/admin')}
+        >
+          Admin
+        </Button>
+        <span>/</span>
+        <span className="text-foreground">Dashboard Templates</span>
+      </div>
+
+      <div className="flex items-center mb-6">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push('/admin')}
+          className="mr-4"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Admin
+        </Button>
+        <div className="flex-1">
           <h1 className="text-3xl font-bold">Dashboard Templates</h1>
-          <p className="text-muted-foreground mt-2">
+          <p className="text-muted-foreground">
             Create and manage dashboard templates for your studies
           </p>
         </div>

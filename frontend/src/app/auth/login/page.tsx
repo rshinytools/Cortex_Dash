@@ -52,12 +52,15 @@ export default function LoginPage() {
         return;
       }
 
-      // Redirect will be handled by middleware based on role
-      router.push('/');
-      router.refresh();
+      // Show loading while redirecting
+      // Keep isLoading true during redirect
+      // Small delay to ensure session is established
+      setTimeout(() => {
+        router.push('/');
+        router.refresh();
+      }, 100);
     } catch (error) {
       setError('An unexpected error occurred');
-    } finally {
       setIsLoading(false);
     }
   }

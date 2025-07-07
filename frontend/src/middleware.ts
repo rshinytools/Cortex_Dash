@@ -10,6 +10,20 @@ export default withAuth(
     const token = req.nextauth.token;
     const pathname = req.nextUrl.pathname;
     
+    // If no token or expired, redirect to login
+    if (!token || !token.accessToken) {
+      // Allow access to auth pages
+      if (pathname.startsWith('/auth/')) {
+        return NextResponse.next();
+      }
+      return NextResponse.redirect(new URL('/auth/login', req.url));
+    }
+    
+    // Check token expiration if exp is available
+    if (token.exp && Date.now() >= token.exp * 1000) {
+      return NextResponse.redirect(new URL('/auth/login', req.url));
+    }
+    
     // Get user role
     const userRole = token?.user?.role as UserRole;
     
@@ -40,7 +54,11 @@ export default withAuth(
   },
   {
     callbacks: {
-      authorized: ({ token }) => !!token,
+      authorized: ({ token }) => {
+        // This runs before the middleware function
+        // Return true to continue to middleware, false to redirect to signIn page
+        return !!token;
+      },
     },
   }
 );

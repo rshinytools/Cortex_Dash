@@ -178,16 +178,7 @@ export default function AdminPage() {
     enabled: status === 'authenticated' && isSystemAdmin,
   });
 
-  // Show loading state while session is being fetched
-  if (status === 'loading') {
-    return (
-      <div className="container mx-auto py-6">
-        <div className="flex items-center justify-center h-[calc(100vh-200px)]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      </div>
-    );
-  }
+  // Session loading is handled by the layout AuthCheck component
 
   // Check if user has admin access - after all hooks and loading check
   const canAccessPage = session?.user?.role && 

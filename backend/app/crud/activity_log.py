@@ -19,23 +19,37 @@ def create_activity_log(
     details: Optional[Dict[str, Any]] = None,
     ip_address: Optional[str] = None,
     user_agent: Optional[str] = None,
-    success: bool = True,
-    error_message: Optional[str] = None
+    study_id: Optional[uuid.UUID] = None
 ) -> ActivityLog:
     """Create an activity log entry"""
-    activity = ActivityLog(
-        org_id=user.org_id,
-        user_id=user.id,
-        action=action,
-        resource_type=resource_type,
-        resource_id=resource_id,
-        details=details or {},
-        ip_address=ip_address,
-        user_agent=user_agent,
-        created_at=datetime.utcnow(),
-        success=success,
-        error_message=error_message
-    )
+    # Get the next sequence number
+    from sqlalchemy import func
+    max_seq = db.query(func.max(ActivityLog.sequence_number)).scalar() or 0
+    
+    # Create activity log entry
+    now = datetime.utcnow()
+    log_data = {
+        "org_id": user.org_id,
+        "user_id": user.id,
+        "action": action,
+        "resource_type": resource_type,
+        "details": details or {},
+        "timestamp": now,
+        "system_timestamp": now,
+        "sequence_number": max_seq + 1
+    }
+    
+    # Add optional fields
+    if resource_id:
+        log_data["resource_id"] = resource_id
+    if ip_address:
+        log_data["ip_address"] = ip_address
+    if user_agent:
+        log_data["user_agent"] = user_agent
+    if study_id:
+        log_data["study_id"] = study_id
+    
+    activity = ActivityLog(**log_data)
     db.add(activity)
     db.commit()
     db.refresh(activity)
@@ -69,14 +83,14 @@ def get_activity_logs(
     if resource_id:
         conditions.append(ActivityLog.resource_id == resource_id)
     if start_date:
-        conditions.append(ActivityLog.created_at >= start_date)
+        conditions.append(ActivityLog.timestamp >= start_date)
     if end_date:
-        conditions.append(ActivityLog.created_at <= end_date)
+        conditions.append(ActivityLog.timestamp <= end_date)
     
     if conditions:
         query = query.where(and_(*conditions))
     
-    query = query.order_by(ActivityLog.created_at.desc()).offset(skip).limit(limit)
+    query = query.order_by(ActivityLog.timestamp.desc()).offset(skip).limit(limit)
     return list(db.exec(query).all())
 
 
@@ -123,7 +137,7 @@ def get_audit_trail(
                 ActivityLog.resource_id == resource_id
             )
         )
-        .order_by(ActivityLog.created_at.desc())
+        .order_by(ActivityLog.timestamp.desc())
     ).all()
 
 
@@ -132,8 +146,7 @@ def log_login_attempt(
     email: str,
     success: bool,
     ip_address: Optional[str] = None,
-    user_agent: Optional[str] = None,
-    error_message: Optional[str] = None
+    user_agent: Optional[str] = None
 ) -> ActivityLog:
     """Log login attempt"""
     # Try to find user by email
@@ -144,31 +157,16 @@ def log_login_attempt(
         return create_activity_log(
             db,
             user=user,
-            action="login_attempt",
+            action="LOGIN" if success else "LOGIN_FAILED",
             resource_type="auth",
             details={"email": email, "success": success},
             ip_address=ip_address,
-            user_agent=user_agent,
-            success=success,
-            error_message=error_message
+            user_agent=user_agent
         )
     else:
-        # Create a system log for unknown user
-        activity = ActivityLog(
-            org_id=None,  # System level log
-            user_id=None,
-            action="login_attempt",
-            resource_type="auth",
-            details={"email": email, "success": False, "reason": "unknown_user"},
-            ip_address=ip_address,
-            user_agent=user_agent,
-            created_at=datetime.utcnow(),
-            success=False,
-            error_message="Unknown user"
-        )
-        db.add(activity)
-        db.commit()
-        return activity
+        # Create a system log for unknown user - need a dummy user ID
+        # Since we can't have null user_id, we'll skip logging for unknown users
+        return None
 
 
 # Import timedelta for date calculations

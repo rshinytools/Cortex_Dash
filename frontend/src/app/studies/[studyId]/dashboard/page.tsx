@@ -18,10 +18,198 @@ import {
   Download,
   FileText,
   TrendingUp,
-  Users
+  Users,
+  RefreshCw,
+  Loader2
 } from 'lucide-react';
 import { studiesApi } from '@/lib/api/studies';
 import { format } from 'date-fns';
+import { DashboardRenderer } from '@/components/widgets';
+import { useDashboardData } from '@/hooks/use-dashboard-data';
+import { DashboardConfiguration, WidgetInstance } from '@/components/widgets/base-widget';
+
+// Mock dashboard configuration - this would come from the API
+const mockDashboardConfig: DashboardConfiguration = {
+  id: 'default',
+  name: 'Study Dashboard',
+  description: 'Main dashboard for study monitoring',
+  layout: {
+    cols: 12,
+    rowHeight: 80,
+  },
+  widgets: [
+    {
+      id: 'enrolled-subjects',
+      type: 'metric-card',
+      title: 'Enrolled Subjects',
+      configuration: {
+        format: 'number',
+        decimals: 0,
+        showTrend: true,
+        targetValue: 500,
+        targetLabel: 'Target',
+      },
+      layout: { x: 0, y: 0, w: 3, h: 2 },
+    },
+    {
+      id: 'completion-rate',
+      type: 'metric-card',
+      title: 'Completion Rate',
+      configuration: {
+        format: 'percentage',
+        decimals: 1,
+        showTrend: true,
+        trendIsGood: true,
+      },
+      layout: { x: 3, y: 0, w: 3, h: 2 },
+    },
+    {
+      id: 'data-quality',
+      type: 'metric-card',
+      title: 'Data Quality',
+      configuration: {
+        format: 'percentage',
+        decimals: 1,
+        showTrend: true,
+        trendIsGood: true,
+        thresholds: { good: 90, warning: 80, critical: 70 },
+      },
+      layout: { x: 6, y: 0, w: 3, h: 2 },
+    },
+    {
+      id: 'days-since-start',
+      type: 'metric-card',
+      title: 'Days Since Start',
+      configuration: {
+        format: 'number',
+        decimals: 0,
+      },
+      layout: { x: 9, y: 0, w: 3, h: 2 },
+    },
+    {
+      id: 'enrollment-trend',
+      type: 'line-chart',
+      title: 'Enrollment Trend',
+      description: 'Weekly enrollment numbers',
+      configuration: {
+        xAxisField: 'week',
+        yAxisFields: [
+          { field: 'enrolled', label: 'Enrolled', color: '#3b82f6' },
+          { field: 'target', label: 'Target', color: '#10b981', strokeDasharray: '5 5' },
+        ],
+        xAxisLabel: 'Week',
+        yAxisLabel: 'Subjects',
+        showLegend: true,
+      },
+      layout: { x: 0, y: 2, w: 6, h: 4 },
+    },
+    {
+      id: 'safety-summary',
+      type: 'safety-metrics',
+      title: 'Safety Summary',
+      configuration: {
+        displayType: 'summary',
+        showTrends: true,
+      },
+      layout: { x: 6, y: 2, w: 6, h: 4 },
+    },
+    {
+      id: 'enrollment-map',
+      type: 'enrollment-map',
+      title: 'Geographic Distribution',
+      configuration: {
+        mapType: 'world',
+        dataField: 'enrolled',
+        locationField: 'country',
+        showMarkers: true,
+      },
+      layout: { x: 0, y: 6, w: 8, h: 5 },
+    },
+    {
+      id: 'query-status',
+      type: 'query-metrics',
+      title: 'Query Status',
+      configuration: {
+        displayType: 'summary',
+        showAverageResolutionTime: true,
+      },
+      layout: { x: 8, y: 6, w: 4, h: 5 },
+    },
+  ],
+};
+
+// Mock widget data - this would come from the API
+const mockWidgetData = {
+  'enrolled-subjects': {
+    value: 324,
+    previousValue: 310,
+    trend: 4.5,
+    trendDirection: 'up',
+  },
+  'completion-rate': {
+    value: 0.785,
+    previousValue: 0.762,
+    trend: 2.3,
+    trendDirection: 'up',
+  },
+  'data-quality': {
+    value: 0.942,
+    previousValue: 0.938,
+    trend: 0.4,
+    trendDirection: 'up',
+  },
+  'days-since-start': {
+    value: 142,
+  },
+  'enrollment-trend': [
+    { week: 'W1', enrolled: 12, target: 15 },
+    { week: 'W2', enrolled: 28, target: 30 },
+    { week: 'W3', enrolled: 45, target: 45 },
+    { week: 'W4', enrolled: 68, target: 60 },
+    { week: 'W5', enrolled: 92, target: 75 },
+    { week: 'W6', enrolled: 115, target: 90 },
+    { week: 'W7', enrolled: 142, target: 105 },
+    { week: 'W8', enrolled: 168, target: 120 },
+  ],
+  'safety-summary': {
+    totalAEs: 45,
+    totalSAEs: 3,
+    totalSubjectsWithAE: 28,
+    totalSubjects: 324,
+    aesBySeverity: [
+      { severity: 'Mild', count: 32, percentage: 71.1 },
+      { severity: 'Moderate', count: 10, percentage: 22.2 },
+      { severity: 'Severe', count: 3, percentage: 6.7 },
+    ],
+    trends: {
+      aeRate: 8.6,
+      saeRate: 0.9,
+      rateChange: -0.3,
+    },
+  },
+  'enrollment-map': [
+    { country: 'US', enrolled: 124, label: 'United States' },
+    { country: 'CA', enrolled: 45, label: 'Canada' },
+    { country: 'GB', enrolled: 38, label: 'United Kingdom' },
+    { country: 'DE', enrolled: 32, label: 'Germany' },
+    { country: 'FR', enrolled: 28, label: 'France' },
+    { country: 'ES', enrolled: 22, label: 'Spain' },
+    { country: 'IT', enrolled: 18, label: 'Italy' },
+    { country: 'AU', enrolled: 17, label: 'Australia' },
+  ],
+  'query-status': {
+    totalQueries: 156,
+    openQueries: 23,
+    closedQueries: 133,
+    avgResolutionTime: 4.2,
+    queryRate: 0.48,
+    trends: {
+      newQueriesThisWeek: 8,
+      closedQueriesThisWeek: 12,
+      resolutionRate: 85.3,
+    },
+  },
+};
 
 export default function StudyDashboardPage() {
   const params = useParams();
@@ -33,10 +221,27 @@ export default function StudyDashboardPage() {
     queryFn: () => studiesApi.getStudy(studyId),
   });
 
-  if (studyLoading) {
+  const {
+    configuration,
+    widgetData,
+    widgetLoading,
+    widgetErrors,
+    isLoadingConfig,
+    refreshAllWidgets,
+  } = useDashboardData({
+    studyId,
+    enableAutoRefresh: true,
+    refreshInterval: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Use mock data for now
+  const dashboardConfig = configuration || mockDashboardConfig;
+  const dashboardData = Object.keys(widgetData).length > 0 ? widgetData : mockWidgetData;
+
+  if (studyLoading || isLoadingConfig) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-200px)]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -76,255 +281,27 @@ export default function StudyDashboardPage() {
               </span>
             </div>
           </div>
-          <Button variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Export Report
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={refreshAllWidgets}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+            <Button variant="outline">
+              <Download className="h-4 w-4 mr-2" />
+              Export Report
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Key Metrics */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Enrolled Subjects</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">324</div>
-            <p className="text-xs text-muted-foreground">
-              Target: 500
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">78.5%</div>
-            <p className="text-xs text-muted-foreground">
-              +2.3% from last month
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Data Quality</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">94.2%</div>
-            <p className="text-xs text-muted-foreground">
-              Above target
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Days Since Start</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {study.start_date 
-                ? Math.floor((new Date().getTime() - new Date(study.start_date).getTime()) / (1000 * 3600 * 24))
-                : 0
-              }
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Started {study.start_date ? format(new Date(study.start_date), 'MMM d, yyyy') : 'Not started'}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Dashboard Tabs */}
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="enrollment">Enrollment</TabsTrigger>
-          <TabsTrigger value="safety">Safety</TabsTrigger>
-          <TabsTrigger value="efficacy">Efficacy</TabsTrigger>
-          <TabsTrigger value="reports">Reports</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Study Timeline</CardTitle>
-                <CardDescription>
-                  Key milestones and progress
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-green-500 rounded-full" />
-                      <span className="text-sm">Study Started</span>
-                    </div>
-                    <span className="text-sm text-muted-foreground">Completed</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse" />
-                      <span className="text-sm">Enrollment Phase</span>
-                    </div>
-                    <span className="text-sm text-muted-foreground">In Progress</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-gray-300 rounded-full" />
-                      <span className="text-sm">Interim Analysis</span>
-                    </div>
-                    <span className="text-sm text-muted-foreground">Upcoming</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-gray-300 rounded-full" />
-                      <span className="text-sm">Database Lock</span>
-                    </div>
-                    <span className="text-sm text-muted-foreground">Planned</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
-                <CardDescription>
-                  Latest updates from the study
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm">New data uploaded</p>
-                      <p className="text-xs text-muted-foreground">2 hours ago</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm">5 new subjects enrolled</p>
-                      <p className="text-xs text-muted-foreground">Yesterday</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm">Weekly report generated</p>
-                      <p className="text-xs text-muted-foreground">3 days ago</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="enrollment">
-          <Card>
-            <CardHeader>
-              <CardTitle>Enrollment Analytics</CardTitle>
-              <CardDescription>
-                Subject recruitment and retention metrics
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="h-96 flex items-center justify-center">
-              <p className="text-muted-foreground">
-                Enrollment charts will be displayed here
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="safety">
-          <Card>
-            <CardHeader>
-              <CardTitle>Safety Monitoring</CardTitle>
-              <CardDescription>
-                Adverse events and safety signals
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="h-96 flex items-center justify-center">
-              <p className="text-muted-foreground">
-                Safety dashboards will be displayed here
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="efficacy">
-          <Card>
-            <CardHeader>
-              <CardTitle>Efficacy Analysis</CardTitle>
-              <CardDescription>
-                Primary and secondary endpoints
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="h-96 flex items-center justify-center">
-              <p className="text-muted-foreground">
-                Efficacy metrics will be displayed here
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="reports">
-          <Card>
-            <CardHeader>
-              <CardTitle>Study Reports</CardTitle>
-              <CardDescription>
-                Generated reports and exports
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <FileText className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">Weekly Status Report</p>
-                      <p className="text-sm text-muted-foreground">
-                        Generated on {format(new Date(), 'MMM d, yyyy')}
-                      </p>
-                    </div>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    <Download className="h-4 w-4 mr-2" />
-                    Download
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <FileText className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">Enrollment Summary</p>
-                      <p className="text-sm text-muted-foreground">
-                        Generated 3 days ago
-                      </p>
-                    </div>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    <Download className="h-4 w-4 mr-2" />
-                    Download
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      {/* Dashboard */}
+      <DashboardRenderer
+        configuration={dashboardConfig}
+        widgetData={dashboardData}
+        widgetLoading={widgetLoading}
+        widgetErrors={widgetErrors}
+        viewMode={true}
+      />
     </div>
   );
 }

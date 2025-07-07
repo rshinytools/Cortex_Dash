@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from .organization import Organization
     from .data_source import DataSource
     from .activity_log import ActivityLog
+    from .dashboard import DashboardTemplate
 
 
 class StudyStatus(str, Enum):
@@ -56,6 +57,11 @@ class StudyBase(SQLModel):
     config: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
     pipeline_config: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
     dashboard_config: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    
+    # Template-based configuration
+    dashboard_template_id: Optional[uuid.UUID] = Field(default=None, foreign_key="dashboard_templates.id")
+    field_mappings: Dict[str, str] = Field(default_factory=dict, sa_column=Column(JSON))  # template_field -> study_field
+    template_overrides: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))  # Customizations to template
     
     # Data management
     data_retention_days: int = Field(default=2555)  # 7 years default for regulatory
@@ -127,6 +133,7 @@ class Study(StudyBase, table=True):
     organization: "Organization" = Relationship(back_populates="studies")
     data_sources: List["DataSource"] = Relationship(back_populates="study", cascade_delete=True)
     activity_logs: List["ActivityLog"] = Relationship(back_populates="study")
+    dashboard_template: Optional["DashboardTemplate"] = Relationship()
 
 
 class StudyPublic(StudyBase):

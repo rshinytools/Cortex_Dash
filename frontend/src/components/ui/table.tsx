@@ -1,3 +1,6 @@
+// ABOUTME: Table UI components for consistent table styling
+// ABOUTME: Used by data table widget and other tabular displays
+
 import * as React from "react"
 
 import { cn } from "@/lib/utils"

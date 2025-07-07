@@ -30,12 +30,16 @@ import {
   Zap,
   Bell,
   Lock,
-  GitBranch
+  GitBranch,
+  LayoutDashboard,
+  Menu,
+  Palette
 } from 'lucide-react';
 import { UserRole } from '@/types';
 import { apiClient } from '@/lib/api/client';
 import { format } from 'date-fns';
 import { UserMenu } from '@/components/user-menu';
+import { MainLayout } from '@/components/layout/main-layout';
 
 interface SystemMetrics {
   organizations: number;
@@ -509,6 +513,35 @@ export default function AdminPage() {
           </div>
         </div>
 
+        {/* Dashboard Configuration */}
+        <div>
+          <h2 className="text-xl font-semibold mb-4">Dashboard Configuration</h2>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => router.push('/admin/widgets')}>
+              <CardContent className="p-6">
+                <Palette className="h-8 w-8 text-primary mb-2" />
+                <p className="font-semibold">Widget Library</p>
+                <p className="text-sm text-muted-foreground">Manage dashboard widgets</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => router.push('/admin/dashboards')}>
+              <CardContent className="p-6">
+                <LayoutDashboard className="h-8 w-8 text-primary mb-2" />
+                <p className="font-semibold">Dashboard Templates</p>
+                <p className="text-sm text-muted-foreground">Create & manage templates</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => router.push('/admin/menus')}>
+              <CardContent className="p-6">
+                <Menu className="h-8 w-8 text-primary mb-2" />
+                <p className="font-semibold">Menu Templates</p>
+                <p className="text-sm text-muted-foreground">Configure navigation menus</p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
 
         {/* System Features */}
         <div>

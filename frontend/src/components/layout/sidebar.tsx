@@ -21,6 +21,8 @@ import {
   ClipboardList,
   Plus,
   Building2,
+  Package,
+  Menu,
 } from 'lucide-react';
 import { UserRole } from '@/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -69,6 +71,36 @@ const navItems: NavItem[] = [
         icon: BarChart3,
       },
     ],
+  },
+  {
+    title: 'Dashboards',
+    href: '/admin/dashboards',
+    icon: LayoutDashboard,
+    roles: [UserRole.SYSTEM_ADMIN], // System admin feature
+    children: [
+      {
+        title: 'All Dashboards',
+        href: '/admin/dashboards',
+        icon: LayoutDashboard,
+      },
+      {
+        title: 'Create Dashboard',
+        href: '/admin/dashboards/new',
+        icon: Plus,
+      },
+    ],
+  },
+  {
+    title: 'Widget Library',
+    href: '/admin/widgets',
+    icon: Package,
+    roles: [UserRole.SYSTEM_ADMIN], // System admin feature
+  },
+  {
+    title: 'Menu Templates',
+    href: '/admin/menus',
+    icon: Menu,
+    roles: [UserRole.SYSTEM_ADMIN], // System admin feature
   },
   {
     title: 'Settings',

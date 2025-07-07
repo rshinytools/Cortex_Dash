@@ -277,3 +277,8 @@ export interface PaginationParams {
 export interface FilterParams {
   [key: string]: any;
 }
+
+// Export new widget and dashboard types
+export * from './widget';
+export * from './dashboard';
+export * from './menu';

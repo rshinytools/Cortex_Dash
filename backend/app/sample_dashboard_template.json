@@ -1,0 +1,299 @@
+{
+  "code": "oncology_phase3_standard",
+  "name": "Oncology Phase 3 Standard",
+  "description": "Complete dashboard template for Phase 3 oncology studies with safety and efficacy monitoring",
+  "category": "overview",
+  "template_structure": {
+    "menu": {
+      "items": [
+        {
+          "id": "overview",
+          "type": "dashboard",
+          "label": "Study Overview",
+          "icon": "LayoutDashboard",
+          "order": 1,
+          "dashboard": {
+            "layout": {
+              "type": "grid",
+              "columns": 12,
+              "rows": 10,
+              "gap": 16,
+              "breakpoints": {
+                "lg": 1200,
+                "md": 996,
+                "sm": 768,
+                "xs": 480
+              }
+            },
+            "widgets": [
+              {
+                "widget_code": "metric_card",
+                "instance_config": {
+                  "title": "Total Enrolled",
+                  "icon": "Users"
+                },
+                "position": {"x": 0, "y": 0, "w": 3, "h": 2},
+                "data_requirements": {
+                  "dataset": "ADSL",
+                  "fields": ["USUBJID"],
+                  "calculation": "count_distinct"
+                }
+              },
+              {
+                "widget_code": "metric_card",
+                "instance_config": {
+                  "title": "Active Sites",
+                  "icon": "Building"
+                },
+                "position": {"x": 3, "y": 0, "w": 3, "h": 2},
+                "data_requirements": {
+                  "dataset": "ADSL",
+                  "fields": ["SITEID"],
+                  "calculation": "count_distinct",
+                  "filters": [{"field": "SAFFL", "operator": "=", "value": "Y"}]
+                }
+              },
+              {
+                "widget_code": "metric_card",
+                "instance_config": {
+                  "title": "Screen Failures",
+                  "icon": "XCircle"
+                },
+                "position": {"x": 6, "y": 0, "w": 3, "h": 2},
+                "data_requirements": {
+                  "dataset": "ADSL",
+                  "fields": ["USUBJID"],
+                  "calculation": "count",
+                  "filters": [{"field": "SCRNFL", "operator": "=", "value": "Y"}]
+                }
+              },
+              {
+                "widget_code": "metric_card",
+                "instance_config": {
+                  "title": "Study Completion",
+                  "icon": "CheckCircle"
+                },
+                "position": {"x": 9, "y": 0, "w": 3, "h": 2},
+                "data_requirements": {
+                  "dataset": "ADSL",
+                  "fields": ["USUBJID", "EOSSTT"],
+                  "calculation": "percentage",
+                  "numerator_filter": [{"field": "EOSSTT", "operator": "=", "value": "COMPLETED"}]
+                }
+              },
+              {
+                "widget_code": "line_chart",
+                "instance_config": {
+                  "title": "Enrollment Over Time",
+                  "xAxisLabel": "Month",
+                  "yAxisLabel": "Cumulative Enrollment"
+                },
+                "position": {"x": 0, "y": 2, "w": 6, "h": 4},
+                "data_requirements": {
+                  "dataset": "ADSL",
+                  "fields": ["USUBJID", "RFSTDTC"],
+                  "calculation": "cumulative_count_by_date",
+                  "date_field": "RFSTDTC",
+                  "grouping": "month"
+                }
+              },
+              {
+                "widget_code": "bar_chart",
+                "instance_config": {
+                  "title": "Enrollment by Site",
+                  "xAxisLabel": "Site",
+                  "yAxisLabel": "Subjects"
+                },
+                "position": {"x": 6, "y": 2, "w": 6, "h": 4},
+                "data_requirements": {
+                  "dataset": "ADSL",
+                  "fields": ["SITEID", "USUBJID"],
+                  "calculation": "count_by_group",
+                  "group_by": "SITEID"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "safety",
+          "type": "group",
+          "label": "Safety",
+          "icon": "Shield",
+          "order": 2,
+          "permissions": ["view_safety_data"],
+          "children": [
+            {
+              "id": "adverse_events",
+              "type": "dashboard",
+              "label": "Adverse Events",
+              "icon": "AlertTriangle",
+              "order": 1,
+              "dashboard": {
+                "layout": {
+                  "type": "grid",
+                  "columns": 12,
+                  "rows": 10,
+                  "gap": 16
+                },
+                "widgets": [
+                  {
+                    "widget_code": "metric_card",
+                    "instance_config": {
+                      "title": "Total AEs",
+                      "icon": "AlertCircle",
+                      "variant": "warning"
+                    },
+                    "position": {"x": 0, "y": 0, "w": 3, "h": 2},
+                    "data_requirements": {
+                      "dataset": "ADAE",
+                      "fields": ["USUBJID", "AETERM"],
+                      "calculation": "count"
+                    }
+                  },
+                  {
+                    "widget_code": "metric_card",
+                    "instance_config": {
+                      "title": "Serious AEs",
+                      "icon": "AlertTriangle",
+                      "variant": "danger"
+                    },
+                    "position": {"x": 3, "y": 0, "w": 3, "h": 2},
+                    "data_requirements": {
+                      "dataset": "ADAE",
+                      "fields": ["USUBJID", "AETERM"],
+                      "calculation": "count",
+                      "filters": [{"field": "AESER", "operator": "=", "value": "Y"}]
+                    }
+                  },
+                  {
+                    "widget_code": "data_table",
+                    "instance_config": {
+                      "title": "Most Common Adverse Events",
+                      "columns": [
+                        {"field": "AETERM", "header": "Adverse Event"},
+                        {"field": "count", "header": "Count"},
+                        {"field": "percentage", "header": "% of Subjects"}
+                      ]
+                    },
+                    "position": {"x": 0, "y": 2, "w": 12, "h": 6},
+                    "data_requirements": {
+                      "dataset": "ADAE",
+                      "fields": ["AETERM", "USUBJID"],
+                      "calculation": "frequency_table",
+                      "limit": 10
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "lab_results",
+              "type": "dashboard",
+              "label": "Lab Results",
+              "icon": "Activity",
+              "order": 2,
+              "dashboard": {
+                "layout": {
+                  "type": "grid",
+                  "columns": 12,
+                  "rows": 10,
+                  "gap": 16
+                },
+                "widgets": [
+                  {
+                    "widget_code": "box_plot",
+                    "instance_config": {
+                      "title": "Lab Values Distribution",
+                      "parameters": ["ALT", "AST", "BILI", "CREAT"]
+                    },
+                    "position": {"x": 0, "y": 0, "w": 12, "h": 6},
+                    "data_requirements": {
+                      "dataset": "ADLB",
+                      "fields": ["PARAM", "AVAL", "VISITNUM"],
+                      "calculation": "distribution_by_param"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "efficacy",
+          "type": "group",
+          "label": "Efficacy",
+          "icon": "TrendingUp",
+          "order": 3,
+          "permissions": ["view_efficacy_data"],
+          "children": [
+            {
+              "id": "primary_endpoint",
+              "type": "dashboard",
+              "label": "Primary Endpoint",
+              "icon": "Target",
+              "order": 1,
+              "dashboard": {
+                "layout": {
+                  "type": "grid",
+                  "columns": 12,
+                  "rows": 10,
+                  "gap": 16
+                },
+                "widgets": [
+                  {
+                    "widget_code": "waterfall_chart",
+                    "instance_config": {
+                      "title": "Best Overall Response",
+                      "yAxisLabel": "Change from Baseline (%)"
+                    },
+                    "position": {"x": 0, "y": 0, "w": 12, "h": 6},
+                    "data_requirements": {
+                      "dataset": "ADRS",
+                      "fields": ["USUBJID", "PCHG", "AVALC"],
+                      "calculation": "best_response",
+                      "filters": [{"field": "PARAMCD", "operator": "=", "value": "BESRSPI"}]
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "divider1",
+          "type": "divider",
+          "order": 4
+        },
+        {
+          "id": "reports",
+          "type": "static_page",
+          "label": "Reports",
+          "icon": "FileText",
+          "page_component": "reports_page",
+          "order": 5,
+          "permissions": ["generate_reports"]
+        },
+        {
+          "id": "study_documents",
+          "type": "external_link",
+          "label": "Study Documents",
+          "icon": "ExternalLink",
+          "url": "https://docs.clinicalstudy.com",
+          "order": 6
+        }
+      ]
+    },
+    "data_mappings": {
+      "required_datasets": ["ADSL", "ADAE", "ADLB", "ADRS"],
+      "field_mappings": {
+        "ADSL": ["USUBJID", "SITEID", "SAFFL", "SCRNFL", "EOSSTT", "RFSTDTC"],
+        "ADAE": ["USUBJID", "AETERM", "AESER"],
+        "ADLB": ["USUBJID", "PARAM", "AVAL", "VISITNUM"],
+        "ADRS": ["USUBJID", "PARAMCD", "PCHG", "AVALC"]
+      }
+    }
+  },
+  "version": 1,
+  "is_active": true
+}

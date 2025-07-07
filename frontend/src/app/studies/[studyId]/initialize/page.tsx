@@ -1,5 +1,5 @@
-// ABOUTME: Study initialization wizard - multi-step configuration process
-// ABOUTME: Guides admin through data sources, pipelines, and dashboard setup
+// ABOUTME: Study initialization wizard - simplified template-based configuration
+// ABOUTME: Guides admin through template selection and data field mapping
 
 'use client';
 
@@ -9,11 +9,9 @@ import {
   ArrowLeft, 
   ArrowRight, 
   Check, 
-  Database, 
-  GitBranch, 
   Layout, 
-  BarChart3,
-  Save
+  Map,
+  Eye
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,9 +22,8 @@ import { apiClient } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 // Import step components
-import { DataSourceStep } from './steps/data-source-step';
-import { PipelineStep } from './steps/pipeline-step';
-import { DashboardStep } from './steps/dashboard-step';
+import { TemplateSelectionStep } from './steps/template-selection-step';
+import { DataMappingStep } from './steps/data-mapping-step';
 import { ReviewStep } from './steps/review-step';
 
 interface WizardStep {
@@ -39,31 +36,24 @@ interface WizardStep {
 
 const steps: WizardStep[] = [
   {
-    id: 'data-source',
-    title: 'Data Sources',
-    description: 'Configure how data will be imported into the study',
-    icon: Database,
-    component: DataSourceStep,
-  },
-  {
-    id: 'pipeline',
-    title: 'Data Pipeline',
-    description: 'Set up data processing and transformation rules',
-    icon: GitBranch,
-    component: PipelineStep,
-  },
-  {
-    id: 'dashboard',
-    title: 'Dashboard Configuration',
-    description: 'Design the study dashboard layout and widgets',
+    id: 'template',
+    title: 'Select Template',
+    description: 'Choose a dashboard template for your study',
     icon: Layout,
-    component: DashboardStep,
+    component: TemplateSelectionStep,
+  },
+  {
+    id: 'mapping',
+    title: 'Map Data Fields',
+    description: 'Map your study data fields to template requirements',
+    icon: Map,
+    component: DataMappingStep,
   },
   {
     id: 'review',
     title: 'Review & Activate',
     description: 'Review configuration and activate the study',
-    icon: Check,
+    icon: Eye,
     component: ReviewStep,
   },
 ];
@@ -86,19 +76,19 @@ export default function StudyInitializePage() {
 
   const saveConfiguration = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiClient.put(`/studies/${studyId}/configuration`, data);
+      const response = await apiClient.post(`/studies/${studyId}/apply-template`, data);
       return response.data;
     },
     onSuccess: () => {
       toast({
         title: 'Study configuration saved',
-        description: 'The study has been successfully configured and activated.',
+        description: 'The dashboard template has been applied successfully.',
       });
       router.push(`/studies/${studyId}/dashboard`);
     },
     onError: (error) => {
       toast({
-        title: 'Failed to save configuration',
+        title: 'Failed to apply template',
         description: error instanceof Error ? error.message : 'An error occurred',
         variant: 'destructive',
       });
@@ -122,27 +112,38 @@ export default function StudyInitializePage() {
   };
 
   const handleFinish = () => {
-    // Validate that at least one data source is configured
-    const dataSources = wizardData['data-source']?.dataSources || [];
-    if (dataSources.length === 0) {
+    // Validate that template and mappings are configured
+    const templateId = wizardData['template']?.templateId;
+    const fieldMappings = wizardData['mapping']?.fieldMappings || {};
+    
+    if (!templateId) {
       toast({
-        title: 'Data source required',
-        description: 'Please configure at least one data source before completing setup.',
+        title: 'Template required',
+        description: 'Please select a dashboard template before completing setup.',
         variant: 'destructive',
       });
-      setCurrentStep(0); // Go back to data source step
+      setCurrentStep(0);
+      return;
+    }
+    
+    if (Object.keys(fieldMappings).length === 0) {
+      toast({
+        title: 'Field mappings required',
+        description: 'Please map at least the required fields before completing setup.',
+        variant: 'destructive',
+      });
+      setCurrentStep(1);
       return;
     }
 
-    // Combine all wizard data and save
+    // Apply template with field mappings
     const configuration = {
+      dashboard_template_id: templateId,
+      field_mappings: fieldMappings,
       config: {
-        data_sources: dataSources,
         study_id: studyId,
         status: 'active',
       },
-      pipeline_config: wizardData['pipeline'] || {},
-      dashboard_config: wizardData['dashboard'] || {},
     };
     
     saveConfiguration.mutate(configuration);

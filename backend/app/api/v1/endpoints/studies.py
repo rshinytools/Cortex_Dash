@@ -274,6 +274,9 @@ class StudyConfigurationUpdate(BaseModel):
     config: Optional[Dict[str, Any]] = None
     pipeline_config: Optional[Dict[str, Any]] = None
     dashboard_config: Optional[Dict[str, Any]] = None
+    dashboard_template_id: Optional[uuid.UUID] = None
+    field_mappings: Optional[Dict[str, str]] = None
+    template_overrides: Optional[Dict[str, Any]] = None
 
 
 class StudyConfigurationResponse(BaseModel):
@@ -281,6 +284,9 @@ class StudyConfigurationResponse(BaseModel):
     config: Dict[str, Any]
     pipeline_config: Dict[str, Any]
     dashboard_config: Dict[str, Any]
+    dashboard_template_id: Optional[uuid.UUID]
+    field_mappings: Dict[str, str]
+    template_overrides: Dict[str, Any]
     updated_at: datetime
 
 
@@ -324,6 +330,18 @@ async def update_study_configuration(
         study.dashboard_config = configuration.dashboard_config
         update_data["dashboard_config"] = True
     
+    if configuration.dashboard_template_id is not None:
+        study.dashboard_template_id = configuration.dashboard_template_id
+        update_data["dashboard_template_id"] = True
+    
+    if configuration.field_mappings is not None:
+        study.field_mappings = configuration.field_mappings
+        update_data["field_mappings"] = True
+    
+    if configuration.template_overrides is not None:
+        study.template_overrides = configuration.template_overrides
+        update_data["template_overrides"] = True
+    
     # Update timestamps
     study.updated_at = datetime.utcnow()
     study.updated_by = current_user.id
@@ -352,6 +370,9 @@ async def update_study_configuration(
         config=study.config,
         pipeline_config=study.pipeline_config,
         dashboard_config=study.dashboard_config,
+        dashboard_template_id=study.dashboard_template_id,
+        field_mappings=study.field_mappings,
+        template_overrides=study.template_overrides,
         updated_at=study.updated_at
     )
 
@@ -390,6 +411,9 @@ async def get_study_configuration(
         config=study.config,
         pipeline_config=study.pipeline_config,
         dashboard_config=study.dashboard_config,
+        dashboard_template_id=study.dashboard_template_id,
+        field_mappings=study.field_mappings,
+        template_overrides=study.template_overrides,
         updated_at=study.updated_at
     )
 
@@ -494,3 +518,172 @@ async def deactivate_study(
     )
     
     return study
+
+
+class ApplyTemplateRequest(BaseModel):
+    """Request model for applying a dashboard template to a study"""
+    dashboard_template_id: uuid.UUID
+    field_mappings: Dict[str, str]  # template_field -> study_field
+    auto_map_fields: bool = True  # Whether to attempt auto-mapping based on field names
+
+
+class FieldMappingValidation(BaseModel):
+    """Response model for field mapping validation"""
+    is_valid: bool
+    missing_mappings: List[str]
+    suggested_mappings: Dict[str, str]
+    warnings: List[str]
+
+
+@router.post("/{study_id}/apply-template", response_model=StudyConfigurationResponse)
+async def apply_dashboard_template(
+    *,
+    db: Session = Depends(get_db),
+    study_id: uuid.UUID,
+    template_request: ApplyTemplateRequest,
+    current_user: User = Depends(PermissionChecker(Permission.EDIT_STUDY)),
+    request: Request
+) -> Any:
+    """
+    Apply a dashboard template to a study with field mappings.
+    """
+    study = crud_study.get_study(db, study_id=study_id)
+    if not study:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Study not found"
+        )
+    
+    # Check access
+    if not current_user.is_superuser and str(current_user.org_id) != str(study.org_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
+    
+    # Get the template
+    from app.models import DashboardTemplate
+    template = db.get(DashboardTemplate, template_request.dashboard_template_id)
+    if not template:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dashboard template not found"
+        )
+    
+    # Apply template to study
+    study.dashboard_template_id = template.id
+    study.field_mappings = template_request.field_mappings
+    study.template_overrides = {}  # Start with no overrides
+    
+    # Update timestamps
+    study.updated_at = datetime.utcnow()
+    study.updated_by = current_user.id
+    
+    # Save to database
+    db.add(study)
+    db.commit()
+    db.refresh(study)
+    
+    # Log activity
+    crud_activity.create_activity_log(
+        db,
+        user=current_user,
+        action="DASHBOARD_TEMPLATE_APPLIED",
+        resource_type="study",
+        resource_id=str(study.id),
+        details={
+            "study_name": study.name,
+            "template_name": template.name,
+            "template_id": str(template.id),
+            "field_mappings_count": len(template_request.field_mappings)
+        },
+        ip_address=request.client.host,
+        user_agent=request.headers.get("user-agent"),
+        study_id=study.id
+    )
+    
+    return StudyConfigurationResponse(
+        config=study.config,
+        pipeline_config=study.pipeline_config,
+        dashboard_config=study.dashboard_config,
+        dashboard_template_id=study.dashboard_template_id,
+        field_mappings=study.field_mappings,
+        template_overrides=study.template_overrides,
+        updated_at=study.updated_at
+    )
+
+
+@router.post("/{study_id}/validate-field-mappings", response_model=FieldMappingValidation)
+async def validate_field_mappings(
+    *,
+    db: Session = Depends(get_db),
+    study_id: uuid.UUID,
+    template_id: uuid.UUID,
+    field_mappings: Dict[str, str],
+    current_user: User = Depends(get_current_user)
+) -> Any:
+    """
+    Validate field mappings for a template and suggest auto-mappings.
+    """
+    study = crud_study.get_study(db, study_id=study_id)
+    if not study:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Study not found"
+        )
+    
+    # Check access
+    if not current_user.is_superuser and str(current_user.org_id) != str(study.org_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
+    
+    # Get the template
+    from app.models import DashboardTemplate
+    template = db.get(DashboardTemplate, template_id)
+    if not template:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dashboard template not found"
+        )
+    
+    # Extract required fields from template
+    template_structure = template.template_structure or {}
+    data_mappings = template_structure.get("data_mappings", {})
+    field_requirements = data_mappings.get("field_mappings", {})
+    
+    # Flatten all required fields
+    required_fields = set()
+    for dataset, fields in field_requirements.items():
+        for field in fields:
+            required_fields.add(f"{dataset}.{field}")
+    
+    # Check missing mappings
+    mapped_fields = set(field_mappings.keys())
+    missing_mappings = list(required_fields - mapped_fields)
+    
+    # Generate suggested mappings based on field names
+    suggested_mappings = {}
+    for missing_field in missing_mappings:
+        dataset, field = missing_field.split(".", 1)
+        # Simple heuristic: look for similar field names
+        # In a real implementation, this would check actual study data schemas
+        if field.upper() in ["USUBJID", "SUBJID"]:
+            suggested_mappings[missing_field] = "subject_id"
+        elif field.upper() in ["VISITNUM", "VISIT"]:
+            suggested_mappings[missing_field] = "visit_number"
+        elif field.upper() in ["VISITDAT", "VISITDT"]:
+            suggested_mappings[missing_field] = "visit_date"
+    
+    # Generate warnings
+    warnings = []
+    if len(missing_mappings) > 0:
+        warnings.append(f"{len(missing_mappings)} required fields are not mapped")
+    
+    return FieldMappingValidation(
+        is_valid=len(missing_mappings) == 0,
+        missing_mappings=missing_mappings,
+        suggested_mappings=suggested_mappings,
+        warnings=warnings
+    )

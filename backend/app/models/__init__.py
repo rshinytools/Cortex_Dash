@@ -9,6 +9,13 @@ from .activity_log import ActivityLog, ActivityLogCreate, ActivityLogPublic
 from .data_source import DataSource, DataSourceCreate, DataSourceUpdate, DataSourceConfig, DataSourceType
 from .item import Item, ItemBase, ItemCreate, ItemUpdate, ItemPublic, ItemsPublic, Message
 from .token import Token, TokenPayload, NewPassword
+from .widget import WidgetDefinition, WidgetDefinitionCreate, WidgetDefinitionUpdate, WidgetDefinitionPublic, WidgetDefinitionsPublic, WidgetCategory
+from .dashboard import (
+    DashboardTemplate, DashboardTemplateCreate, DashboardTemplateUpdate, DashboardTemplatePublic, DashboardTemplatesPublic,
+    StudyDashboard, StudyDashboardCreate, StudyDashboardBase,
+    DashboardCategory, MenuItemType, DashboardTemplateDataRequirements
+)
+from .dashboard_audit import DashboardConfigAudit, OrgAdminPermission, OrgAdminPermissionBase, EntityType, AuditAction
 
 __all__ = [
     # SQLModel base
@@ -26,5 +33,13 @@ __all__ = [
     # Items (from template)
     "Item", "ItemBase", "ItemCreate", "ItemUpdate", "ItemPublic", "ItemsPublic", "Message",
     # Auth tokens
-    "Token", "TokenPayload", "NewPassword"
+    "Token", "TokenPayload", "NewPassword",
+    # Widget models
+    "WidgetDefinition", "WidgetDefinitionCreate", "WidgetDefinitionUpdate", "WidgetDefinitionPublic", "WidgetDefinitionsPublic", "WidgetCategory",
+    # Dashboard models (unified with menu)
+    "DashboardTemplate", "DashboardTemplateCreate", "DashboardTemplateUpdate", "DashboardTemplatePublic", "DashboardTemplatesPublic",
+    "StudyDashboard", "StudyDashboardCreate", "StudyDashboardBase",
+    "DashboardCategory", "MenuItemType", "DashboardTemplateDataRequirements",
+    # Dashboard audit models
+    "DashboardConfigAudit", "OrgAdminPermission", "OrgAdminPermissionBase", "EntityType", "AuditAction"
 ]

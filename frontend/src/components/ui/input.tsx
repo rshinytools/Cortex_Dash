@@ -1,3 +1,6 @@
+// ABOUTME: Input UI component for form fields and search
+// ABOUTME: Used throughout the application for text inputs
+
 import * as React from "react"
 
 import { cn } from "@/lib/utils"

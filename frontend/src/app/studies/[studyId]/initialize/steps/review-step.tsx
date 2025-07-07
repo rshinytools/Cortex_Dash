@@ -1,143 +1,214 @@
-// ABOUTME: Review step in study initialization wizard
-// ABOUTME: Shows summary of all configuration before activation
+// ABOUTME: Review step for study initialization wizard
+// ABOUTME: Shows summary of template selection and field mappings before activation
 
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Check, Database, GitBranch, Layout } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { CheckCircle, AlertCircle, Layout, Map, Database } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface ReviewStepProps {
   studyId: string;
-  data: any;
+  data: {
+    template?: {
+      templateId?: string;
+      templateDetails?: any;
+    };
+    mapping?: {
+      fieldMappings?: Record<string, string>;
+    };
+  };
   onDataChange: (data: any) => void;
 }
 
 export function ReviewStep({ studyId, data, onDataChange }: ReviewStepProps) {
-  const dataSources = data['data-source']?.dataSources || [];
-  const pipelineSteps = data['pipeline']?.steps || [];
-  const dashboardWidgets = data['dashboard']?.widgets || [];
+  const templateData = data.template || {};
+  const mappingData = data.mapping || {};
+  
+  const isTemplateConfigured = !!templateData.templateId;
+  const isMappingConfigured = mappingData.fieldMappings && Object.keys(mappingData.fieldMappings).length > 0;
+  const isReadyToActivate = isTemplateConfigured && isMappingConfigured;
+
+  // Count mapped fields
+  const mappedFieldsCount = Object.keys(mappingData.fieldMappings || {}).length;
 
   return (
     <div className="space-y-6">
-      <Alert>
+      {/* Overall status */}
+      <Alert className={isReadyToActivate ? 'border-green-500' : 'border-yellow-500'}>
+        {isReadyToActivate ? (
+          <CheckCircle className="h-4 w-4 text-green-500" />
+        ) : (
+          <AlertCircle className="h-4 w-4 text-yellow-500" />
+        )}
         <AlertDescription>
-          Please review your study configuration before activation. Once activated, the study will be ready to receive and process data.
+          {isReadyToActivate ? (
+            'Your study is ready to be activated! Review the configuration below and click "Complete Setup" to proceed.'
+          ) : (
+            'Please complete all required steps before activating the study.'
+          )}
         </AlertDescription>
       </Alert>
 
-      {/* Data Sources Summary */}
+      {/* Template selection summary */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Database className="h-5 w-5" />
-            Data Sources
+          <CardTitle className="flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <Layout className="h-5 w-5" />
+              Dashboard Template
+            </span>
+            {isTemplateConfigured ? (
+              <CheckCircle className="h-5 w-5 text-green-500" />
+            ) : (
+              <AlertCircle className="h-5 w-5 text-yellow-500" />
+            )}
           </CardTitle>
+          <CardDescription>
+            Selected dashboard template for this study
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {dataSources.length === 0 ? (
-            <p className="text-muted-foreground">No data sources configured</p>
+          {isTemplateConfigured ? (
+            <div className="space-y-3">
+              <div>
+                <p className="font-medium text-lg">{templateData.templateDetails?.name}</p>
+                <p className="text-sm text-muted-foreground">{templateData.templateDetails?.description}</p>
+              </div>
+              <div className="flex gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Category:</span>{' '}
+                  <Badge variant="secondary" className="capitalize">
+                    {templateData.templateDetails?.category}
+                  </Badge>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Version:</span>{' '}
+                  <span className="font-medium">v{templateData.templateDetails?.version}</span>
+                </div>
+              </div>
+              <Separator />
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Dashboards:</span>{' '}
+                  <span className="font-medium">{templateData.templateDetails?.dashboard_count}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Widgets:</span>{' '}
+                  <span className="font-medium">{templateData.templateDetails?.widget_count}</span>
+                </div>
+              </div>
+            </div>
           ) : (
-            <div className="space-y-2">
-              {dataSources.map((source: any, index: number) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div>
-                    <span className="font-medium">{source.name || 'Unnamed Source'}</span>
-                    <Badge variant="outline" className="ml-2">{source.type}</Badge>
-                  </div>
-                  {source.config.sync_schedule && (
-                    <span className="text-sm text-muted-foreground">
-                      Auto-sync: {source.config.sync_schedule}
-                    </span>
+            <p className="text-muted-foreground">No template selected</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Field mappings summary */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <Map className="h-5 w-5" />
+              Field Mappings
+            </span>
+            {isMappingConfigured ? (
+              <CheckCircle className="h-5 w-5 text-green-500" />
+            ) : (
+              <AlertCircle className="h-5 w-5 text-yellow-500" />
+            )}
+          </CardTitle>
+          <CardDescription>
+            Data field mappings for the selected template
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isMappingConfigured ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Database className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm">
+                  <strong>{mappedFieldsCount}</strong> fields mapped successfully
+                </span>
+              </div>
+              
+              {/* Show first few mappings as examples */}
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Sample mappings:</p>
+                <div className="space-y-1">
+                  {Object.entries(mappingData.fieldMappings || {})
+                    .slice(0, 5)
+                    .map(([templateField, studyField]) => (
+                      <div key={templateField} className="text-sm flex items-center gap-2">
+                        <code className="bg-muted px-2 py-0.5 rounded text-xs">
+                          {templateField}
+                        </code>
+                        <span className="text-muted-foreground">→</span>
+                        <code className="bg-muted px-2 py-0.5 rounded text-xs">
+                          {studyField}
+                        </code>
+                      </div>
+                    ))}
+                  {mappedFieldsCount > 5 && (
+                    <p className="text-sm text-muted-foreground">
+                      ...and {mappedFieldsCount - 5} more mappings
+                    </p>
                   )}
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Pipeline Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <GitBranch className="h-5 w-5" />
-            Data Pipeline
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {pipelineSteps.length === 0 ? (
-            <p className="text-muted-foreground">No pipeline steps configured</p>
-          ) : (
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground mb-2">
-                {pipelineSteps.length} transformation step(s) configured
-              </p>
-              {pipelineSteps.map((step: any, index: number) => (
-                <div key={index} className="flex items-center gap-2">
-                  <span className="text-sm font-mono bg-muted px-2 py-1 rounded">
-                    {index + 1}
-                  </span>
-                  <span>{step.name || 'Unnamed Step'}</span>
-                  <Badge variant="secondary">{step.type}</Badge>
-                </div>
-              ))}
-              {data['pipeline']?.schedule && (
-                <p className="text-sm text-muted-foreground mt-2">
-                  Schedule: {data['pipeline'].schedule}
-                </p>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Dashboard Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Layout className="h-5 w-5" />
-            Dashboard Configuration
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span>Layout Type</span>
-              <Badge>{data['dashboard']?.layout || 'Not selected'}</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>Number of Widgets</span>
-              <span className="font-medium">{dashboardWidgets.length}</span>
-            </div>
-            {dashboardWidgets.length > 0 && (
-              <div className="mt-2 space-y-1">
-                {dashboardWidgets.map((widget: any, index: number) => (
-                  <div key={index} className="text-sm text-muted-foreground">
-                    • {widget.title} ({widget.type})
-                  </div>
-                ))}
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <p className="text-muted-foreground">No field mappings configured</p>
+          )}
         </CardContent>
       </Card>
 
-      {/* Activation Summary */}
-      <Card className="border-green-200 bg-green-50 dark:bg-green-950">
+      {/* Next steps */}
+      <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-green-800 dark:text-green-200">
-            <Check className="h-5 w-5" />
-            Ready to Activate
-          </CardTitle>
+          <CardTitle>Next Steps</CardTitle>
+          <CardDescription>
+            What happens after you complete the setup
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-green-700 dark:text-green-300">
-            Your study configuration is complete. Click "Complete Setup" to activate the study and make it available for data collection and analysis.
-          </p>
+          <ul className="space-y-2 text-sm">
+            <li className="flex items-start gap-2">
+              <span className="text-primary mt-0.5">1.</span>
+              <span>The selected dashboard template will be applied to your study</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-primary mt-0.5">2.</span>
+              <span>Field mappings will be configured to connect your data</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-primary mt-0.5">3.</span>
+              <span>You'll be redirected to the study dashboard</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-primary mt-0.5">4.</span>
+              <span>You can start uploading data and viewing insights immediately</span>
+            </li>
+          </ul>
         </CardContent>
       </Card>
+
+      {!isReadyToActivate && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Please complete the following before activating:
+            <ul className="list-disc list-inside mt-2">
+              {!isTemplateConfigured && <li>Select a dashboard template</li>}
+              {!isMappingConfigured && <li>Configure field mappings</li>}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
     </div>
   );
 }

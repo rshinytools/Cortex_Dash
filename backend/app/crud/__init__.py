@@ -40,6 +40,50 @@ from .activity_log import (
     log_login_attempt
 )
 
+from .widget import (
+    create_widget,
+    get_widget,
+    get_widget_by_code,
+    get_widgets,
+    update_widget,
+    delete_widget,
+    increment_widget_version,
+    get_widget_count_by_category
+)
+
+from .dashboard import (
+    create_dashboard,
+    get_dashboard,
+    get_dashboard_by_code,
+    get_dashboards,
+    update_dashboard,
+    delete_dashboard,
+    clone_dashboard,
+    extract_data_requirements,
+    validate_template_structure,
+    create_study_dashboard,
+    get_study_dashboards,
+    update_study_dashboard,
+    remove_study_dashboard,
+    get_dashboard_count_by_category
+)
+
+# Menu imports removed - menu functionality is now integrated into dashboard templates
+
+from .dashboard_audit import (
+    create_dashboard_audit_log,
+    get_audit_logs,
+    get_entity_history,
+    create_audit_log_for_create,
+    create_audit_log_for_update,
+    grant_org_admin_permission,
+    revoke_org_admin_permission,
+    get_user_org_permissions,
+    get_org_admin_permissions,
+    check_user_permission,
+    get_audit_summary
+)
+
 __all__ = [
     # User
     "get_user_by_email",
@@ -71,5 +115,41 @@ __all__ = [
     "get_activity_logs",
     "get_user_activities",
     "get_audit_trail",
-    "log_login_attempt"
+    "log_login_attempt",
+    # Widget
+    "create_widget",
+    "get_widget",
+    "get_widget_by_code",
+    "get_widgets",
+    "update_widget",
+    "delete_widget",
+    "increment_widget_version",
+    "get_widget_count_by_category",
+    # Dashboard Templates
+    "create_dashboard",
+    "get_dashboard",
+    "get_dashboard_by_code",
+    "get_dashboards",
+    "update_dashboard",
+    "delete_dashboard",
+    "clone_dashboard",
+    "extract_data_requirements",
+    "validate_template_structure",
+    "create_study_dashboard",
+    "get_study_dashboards",
+    "update_study_dashboard",
+    "remove_study_dashboard",
+    "get_dashboard_count_by_category",
+    # Dashboard Audit
+    "create_dashboard_audit_log",
+    "get_audit_logs",
+    "get_entity_history",
+    "create_audit_log_for_create",
+    "create_audit_log_for_update",
+    "grant_org_admin_permission",
+    "revoke_org_admin_permission",
+    "get_user_org_permissions",
+    "get_org_admin_permissions",
+    "check_user_permission",
+    "get_audit_summary"
 ]

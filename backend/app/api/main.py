@@ -8,7 +8,8 @@ from app.api.v1.endpoints import reports, exports
 from app.api.v1.endpoints import system_settings, notification_settings, integrations, custom_fields, workflows
 from app.api.v1.endpoints import audit_trail, electronic_signatures, data_integrity, access_control, regulatory_compliance
 from app.api.v1.endpoints import system_health, performance_monitoring, backup_recovery, job_monitoring
-from app.api.v1.endpoints import users as users_v1, branding, documentation
+from app.api.v1.endpoints import users as users_v1, branding, documentation, dashboard_templates
+from app.api.v1.endpoints.admin import widgets as admin_widgets, dashboards as admin_dashboards, menus as admin_menus
 from app.core.config import settings
 
 api_router = APIRouter()
@@ -33,6 +34,7 @@ api_router.include_router(data_archival.router, prefix="/archival", tags=["archi
 
 # Phase 5: Dashboard & Visualization APIs
 api_router.include_router(dashboards.router, prefix="/dashboards", tags=["dashboards"])
+api_router.include_router(dashboard_templates.router, prefix="/dashboard-templates", tags=["dashboard-templates"])
 api_router.include_router(widgets.router, prefix="/widgets", tags=["widgets"])
 api_router.include_router(visualizations.router, prefix="/visualizations", tags=["visualizations"])
 api_router.include_router(advanced_visualizations.router, prefix="/advanced-visualizations", tags=["advanced-visualizations"])
@@ -66,6 +68,11 @@ api_router.include_router(branding.router, prefix="/branding", tags=["branding"]
 
 # Documentation APIs
 api_router.include_router(documentation.router, prefix="/documentation", tags=["documentation"])
+
+# Admin APIs (System Administrator only)
+api_router.include_router(admin_widgets.router, prefix="/admin/widgets", tags=["admin-widgets"])
+api_router.include_router(admin_dashboards.router, prefix="/admin/dashboards", tags=["admin-dashboards"])
+api_router.include_router(admin_menus.router, prefix="/admin/menus", tags=["admin-menus"])
 
 if settings.ENVIRONMENT == "local":
     api_router.include_router(private.router)

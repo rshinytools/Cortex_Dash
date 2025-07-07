@@ -19,6 +19,7 @@ def upgrade() -> None:
     # Add new enum values to ActivityAction
     op.execute("ALTER TYPE activityaction ADD VALUE IF NOT EXISTS 'archive_study'")
     op.execute("ALTER TYPE activityaction ADD VALUE IF NOT EXISTS 'hard_delete_study'")
+    op.execute("ALTER TYPE activityaction ADD VALUE IF NOT EXISTS 'initialize_study'")
 
 
 def downgrade() -> None:

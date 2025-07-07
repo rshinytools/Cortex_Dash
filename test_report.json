@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-07-07T12:31:07.550717",
+  "timestamp": "2025-07-07T12:36:22.710010",
   "results": {
     "passed": [
       "Health Check",
@@ -11,6 +11,7 @@
       "Get Organization by ID",
       "Create Study",
       "List Studies",
+      "Initialize Study",
       "Create Data Source",
       "List Data Sources",
       "List Dashboard Templates",
@@ -20,16 +21,14 @@
       "Delete Study",
       "Delete Organization"
     ],
-    "failed": [
-      "Initialize Study"
-    ],
+    "failed": [],
     "errors": []
   },
   "summary": {
     "total": 18,
-    "passed": 17,
-    "failed": 1,
+    "passed": 18,
+    "failed": 0,
     "errors": 0,
-    "success_rate": 94.44444444444444
+    "success_rate": 100.0
   }
 }

@@ -14,7 +14,6 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useToast } from '@/components/ui/use-toast'
-import { Breadcrumbs, BreadcrumbItem } from '@/components/ui/breadcrumbs'
 import { ArrowLeft, Save, Loader2, Menu } from 'lucide-react'
 import {
   Dialog,
@@ -152,20 +151,45 @@ export default function EditMenuTemplatePage({ params }: { params: { id: string 
     )
   }
 
-  const breadcrumbItems: BreadcrumbItem[] = [
-    { label: 'Menu Templates', href: '/admin/menus', icon: <Menu className="h-4 w-4" /> },
-    { label: template.name }
-  ]
-
   return (
-    <div className="space-y-6">
-      <Breadcrumbs items={breadcrumbItems} />
-      
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Edit Menu Template</h1>
-        <p className="text-muted-foreground">
-          Modify the navigation menu template
-        </p>
+    <div className="container mx-auto py-6">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+        <Button
+          variant="link"
+          className="p-0 h-auto font-normal"
+          onClick={() => router.push('/admin')}
+        >
+          Admin
+        </Button>
+        <span>/</span>
+        <Button
+          variant="link"
+          className="p-0 h-auto font-normal"
+          onClick={() => router.push('/admin/menus')}
+        >
+          Menu Templates
+        </Button>
+        <span>/</span>
+        <span className="text-foreground">{template.name}</span>
+      </div>
+
+      <div className="flex items-center mb-6">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push('/admin/menus')}
+          className="mr-4"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Menu Templates
+        </Button>
+        <div className="flex-1">
+          <h1 className="text-3xl font-bold tracking-tight">Edit Menu Template</h1>
+          <p className="text-muted-foreground">
+            Modify the navigation menu template
+          </p>
+        </div>
       </div>
 
       <div className="grid gap-6">

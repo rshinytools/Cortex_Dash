@@ -43,8 +43,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/components/ui/use-toast'
-import { Breadcrumbs, BreadcrumbItem } from '@/components/ui/breadcrumbs'
-import { Loader2, MoreHorizontal, Plus, Search, Menu, Eye, Edit, Trash2 } from 'lucide-react'
+import { Loader2, MoreHorizontal, Plus, Search, Menu, Eye, Edit, Trash2, ArrowLeft } from 'lucide-react'
 import { format } from 'date-fns'
 import { menusApi } from '@/lib/api/menus'
 
@@ -143,16 +142,32 @@ export default function MenuTemplatesPage() {
     )
   }
 
-  const breadcrumbItems: BreadcrumbItem[] = [
-    { label: 'Menu Templates', icon: <Menu className="h-4 w-4" /> }
-  ]
-
   return (
-    <div className="space-y-6">
-      <Breadcrumbs items={breadcrumbItems} />
-      
-      <div className="flex items-center justify-between">
-        <div>
+    <div className="container mx-auto py-6">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+        <Button
+          variant="link"
+          className="p-0 h-auto font-normal"
+          onClick={() => router.push('/admin')}
+        >
+          Admin
+        </Button>
+        <span>/</span>
+        <span className="text-foreground">Menu Templates</span>
+      </div>
+
+      <div className="flex items-center mb-6">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push('/admin')}
+          className="mr-4"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Admin
+        </Button>
+        <div className="flex-1">
           <h1 className="text-3xl font-bold tracking-tight">Menu Templates</h1>
           <p className="text-muted-foreground">
             Create and manage navigation menu templates for studies

@@ -97,6 +97,10 @@ export default function EditDashboardPage() {
         menuTemplateId: dashboard.menuTemplateId || "none",
       })
       setLayoutConfig(dashboard.layout || [])
+      // Load menu layouts if available
+      if (dashboard.menuLayouts) {
+        setMenuLayouts(dashboard.menuLayouts)
+      }
     } catch (error) {
       toast({
         title: "Error",
@@ -416,6 +420,7 @@ export default function EditDashboardPage() {
         )}
         <div className="flex-1 overflow-hidden">
           <DashboardDesigner
+            key={selectedMenuItem || 'default'}
             initialLayout={getCurrentLayout()}
             onChange={handleLayoutChange}
             mode="design"

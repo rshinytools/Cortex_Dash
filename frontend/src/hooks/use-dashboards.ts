@@ -85,24 +85,29 @@ export function useDashboards() {
       try {
         const response = await dashboardTemplatesApi.list()
         // Transform API response to match our Dashboard interface
-        return response.data.map(template => ({
-          id: template.id,
-          name: template.name,
-          description: template.description,
-          category: template.category,
-          layout: template.dashboardTemplates?.[0]?.layout || [],
-          widgets: template.dashboardTemplates?.[0]?.widgets || [],
-          studyCount: 0, // TODO: Get from API
-          widgetCount: template.dashboardTemplates?.[0]?.widgets?.length || 0,
-          status: template.isActive ? "active" : "draft" as const,
-          createdAt: template.createdAt,
-          updatedAt: template.updatedAt,
-          menuTemplateId: template.menuTemplate?.id,
-          menuLayouts: template.dashboardTemplates?.reduce((acc, dt) => ({
-            ...acc,
-            [dt.menuItemId]: dt.layout
-          }), {})
-        }))
+        return response.data.map(template => {
+          const dashboards = template.template_structure?.dashboards || []
+          const defaultDashboard = dashboards.find(d => d.id === "default") || dashboards[0]
+          
+          return {
+            id: template.id,
+            name: template.name,
+            description: template.description,
+            category: template.category,
+            layout: defaultDashboard?.layout || defaultDashboard?.widgets || [],
+            widgets: defaultDashboard?.widgets || [],
+            studyCount: 0, // TODO: Get from API
+            widgetCount: defaultDashboard?.widgets?.length || 0,
+            status: template.is_active ? "active" : "draft" as const,
+            createdAt: template.created_at,
+            updatedAt: template.updated_at,
+            menuTemplateId: template.template_structure?.menu_template_id || "none",
+            menuLayouts: dashboards.reduce((acc, dashboard) => ({
+              ...acc,
+              [dashboard.id]: dashboard.layout || dashboard.widgets || []
+            }), {})
+          }
+        })
       } catch (error) {
         console.error("Failed to fetch dashboards:", error)
         // Fallback to mock data in case of error
@@ -126,6 +131,14 @@ export function useDashboards() {
         [dashboard.id]: dashboard.layout || dashboard.widgets || []
       }), {})
       
+      console.log('Loaded dashboard:', {
+        id: template.id,
+        dashboards,
+        defaultDashboard,
+        menuLayouts,
+        menu_template_id: template.template_structure?.menu_template_id
+      })
+      
       // Transform API response to match our Dashboard interface
       return {
         id: template.id,
@@ -139,7 +152,7 @@ export function useDashboards() {
         status: template.is_active ? "active" : "draft" as const,
         createdAt: template.created_at,
         updatedAt: template.updated_at,
-        menuTemplateId: template.menu_template_id,
+        menuTemplateId: template.template_structure?.menu_template_id || "none",
         menuLayouts
       }
     } catch (error) {
@@ -192,6 +205,7 @@ export function useDashboards() {
         // Build the template structure with menu and dashboard layouts
         const template_structure = {
           ...(current.template_structure || {}),
+          menu_template_id: data.menuTemplateId,
           dashboards: data.menuLayouts 
             ? Object.entries(data.menuLayouts).map(([menuItemId, layout]) => ({
                 id: menuItemId,
@@ -212,6 +226,13 @@ export function useDashboards() {
           category: data.category,
           template_structure
         }
+        
+        console.log('Updating dashboard with data:', {
+          id,
+          updateData,
+          menuLayouts: data.menuLayouts,
+          layout: data.layout
+        })
         
         const response = await dashboardTemplatesApi.update(id, updateData)
         

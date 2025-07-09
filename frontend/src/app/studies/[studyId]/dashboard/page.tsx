@@ -41,6 +41,7 @@ import { useDashboardData } from '@/hooks/use-dashboard-data';
 import { DashboardConfiguration, WidgetInstance } from '@/components/widgets/base-widget';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { StudyStatus } from '@/types';
 
 // Icon mapping function
 const getMenuIcon = (iconName?: string) => {
@@ -278,7 +279,7 @@ export default function StudyDashboardPage() {
   }
 
   // Check if study needs initialization
-  if (study.status === 'draft' || (!studyMenu && !menuError) || (!dashboardConfig && !configError)) {
+  if (study.status === StudyStatus.SETUP || study.status === StudyStatus.PLANNING || (!studyMenu && !menuError) || (!dashboardConfig && !configError)) {
     return (
       <div className="container mx-auto py-6">
         <Card>

@@ -73,9 +73,11 @@ export enum StudyPhase {
 
 export enum StudyStatus {
   PLANNING = 'planning',
+  SETUP = 'setup',
   ACTIVE = 'active',
+  PAUSED = 'paused',
   COMPLETED = 'completed',
-  TERMINATED = 'terminated',
+  ARCHIVED = 'archived',
 }
 
 export interface StudyConfiguration {

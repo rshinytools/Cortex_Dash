@@ -183,3 +183,6 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# Old project files
+OLD/

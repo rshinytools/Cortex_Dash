@@ -234,7 +234,18 @@ export default function StudyInitializePage() {
           <CardContent>
             <CurrentStepComponent
               studyId={studyId}
-              data={wizardData[steps[currentStep].id] || {}}
+              data={{
+                ...(wizardData[steps[currentStep].id] || {}),
+                // Pass template data to mapping step
+                ...(steps[currentStep].id === 'mapping' && wizardData['template'] ? {
+                  templateId: wizardData['template'].templateId,
+                  templateDetails: wizardData['template'].templateDetails,
+                } : {}),
+                // Pass datasource data to mapping step
+                ...(steps[currentStep].id === 'mapping' && wizardData['datasource'] ? {
+                  dataSources: wizardData['datasource'].dataSources,
+                } : {}),
+              }}
               onDataChange={(data: any) => handleStepData(steps[currentStep].id, data)}
             />
           </CardContent>

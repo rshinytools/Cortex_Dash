@@ -19,8 +19,23 @@ DOCKER_COMPOSE := $(shell if docker compose version > /dev/null 2>&1; then echo 
 # Project name for docker compose
 PROJECT_NAME := clinical-dashboard
 
+# Build mode (dev or prod)
+BUILD_MODE ?= dev
+
+# Docker compose files based on mode
+ifeq ($(BUILD_MODE),prod)
+    COMPOSE_FILES := -f docker-compose.local-prod.yml
+else
+    COMPOSE_FILES := -f docker-compose.local-dev.yml
+endif
+
 help: ## Show this help message
-	@echo 'Usage: make [target]'
+	@echo 'Usage: make [target] [BUILD_MODE=dev|prod]'
+	@echo ''
+	@echo 'Examples:'
+	@echo '  $(YELLOW)make restart$(NC)                    # Restart in development mode'
+	@echo '  $(YELLOW)make restart BUILD_MODE=prod$(NC)   # Restart in production mode'
+	@echo '  $(YELLOW)make restart-prod$(NC)              # Shortcut for production restart'
 	@echo ''
 	@echo 'Targets:'
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(GREEN)%-15s$(NC) %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -28,6 +43,11 @@ help: ## Show this help message
 restart-all: ## Complete restart: Stop, remove, rebuild, and start all services
 	@echo "$(RED)═══════════════════════════════════════════════════════$(NC)"
 	@echo "$(YELLOW)🔄 COMPLETE RESTART OF CLINICAL DASHBOARD$(NC)"
+	@if [ "$(BUILD_MODE)" = "prod" ]; then \
+		echo "$(BLUE)   Mode: PRODUCTION BUILD$(NC)"; \
+	else \
+		echo "$(BLUE)   Mode: DEVELOPMENT BUILD$(NC)"; \
+	fi
 	@echo "$(RED)═══════════════════════════════════════════════════════$(NC)"
 	@echo ""
 	
@@ -45,17 +65,17 @@ restart-all: ## Complete restart: Stop, remove, rebuild, and start all services
 	@echo ""
 	
 	@echo "$(YELLOW)2. Stopping all containers...$(NC)"
-	@$(DOCKER_COMPOSE) -f docker-compose.local.yml down --remove-orphans || true
+	@$(DOCKER_COMPOSE) $(COMPOSE_FILES) down --remove-orphans || true
 	@echo "$(GREEN)✓ All containers stopped$(NC)"
 	@echo ""
 	
 	@echo "$(YELLOW)3. Building Docker images...$(NC)"
-	@$(DOCKER_COMPOSE) -f docker-compose.local.yml build
+	@$(DOCKER_COMPOSE) $(COMPOSE_FILES) build
 	@echo "$(GREEN)✓ Docker images built$(NC)"
 	@echo ""
 	
 	@echo "$(YELLOW)4. Starting all services in Docker...$(NC)"
-	@$(DOCKER_COMPOSE) -f docker-compose.local.yml up -d
+	@$(DOCKER_COMPOSE) $(COMPOSE_FILES) up -d
 	@echo "$(GREEN)✓ All services started$(NC)"
 	@echo ""
 	
@@ -132,6 +152,10 @@ restart-all: ## Complete restart: Stop, remove, rebuild, and start all services
 	@echo ""
 	@echo "$(YELLOW)💡 Go to $(GREEN)http://localhost:8000/docs$(YELLOW) to test the API$(NC)"
 	@echo ""
+	@if [ "$(BUILD_MODE)" = "dev" ]; then \
+		echo "$(BLUE)📌 To use production build: make restart BUILD_MODE=prod$(NC)"; \
+		echo ""; \
+	fi
 
 build: ## Build all Docker images
 	@echo "$(YELLOW)Building Docker images...$(NC)"
@@ -150,7 +174,7 @@ build: ## Build all Docker images
 
 up: ## Start all services
 	@echo "$(GREEN)Starting Clinical Dashboard...$(NC)"
-	@$(DOCKER_COMPOSE) -f docker-compose.local.yml up -d
+	@$(DOCKER_COMPOSE) $(COMPOSE_FILES) up -d
 	@echo "$(GREEN)✓ All services started in Docker!$(NC)"
 	@echo ""
 	@echo "Waiting for services to be ready..."
@@ -165,15 +189,15 @@ up: ## Start all services
 
 down: ## Stop all services
 	@echo "$(YELLOW)Stopping services...$(NC)"
-	@$(DOCKER_COMPOSE) -f docker-compose.local.yml down
+	@$(DOCKER_COMPOSE) $(COMPOSE_FILES) down
 	@echo "$(GREEN)✓ All services stopped$(NC)"
 
 logs: ## View logs (use: make logs service=backend)
 	@if [ -z "$(service)" ]; then \
 		echo "$(YELLOW)Showing all logs (use 'make logs service=<name>' for specific service)$(NC)"; \
-		$(DOCKER_COMPOSE) -f docker-compose.local.yml logs -f; \
+		$(DOCKER_COMPOSE) $(COMPOSE_FILES) logs -f; \
 	else \
-		$(DOCKER_COMPOSE) -f docker-compose.local.yml logs -f $(service); \
+		$(DOCKER_COMPOSE) $(COMPOSE_FILES) logs -f $(service); \
 	fi
 
 test: ## Run API tests
@@ -201,7 +225,7 @@ clean: ## Remove all containers and volumes (WARNING: Deletes ALL data!)
 			echo "$(YELLOW)Stopping all services...$(NC)"; \
 			make down; \
 			echo "$(YELLOW)Removing all containers, volumes, and images...$(NC)"; \
-			$(DOCKER_COMPOSE) -f docker-compose.local.yml down -v --remove-orphans --rmi local; \
+			$(DOCKER_COMPOSE) $(COMPOSE_FILES) down -v --remove-orphans --rmi local; \
 			echo "$(GREEN)✓ All data has been deleted!$(NC)"; \
 			;; \
 		*) \
@@ -233,7 +257,7 @@ shell-db: ## Open PostgreSQL shell
 status: ## Check service status
 	@echo "$(YELLOW)Service Status:$(NC)"
 	@echo ""
-	@$(DOCKER_COMPOSE) -f docker-compose.local.yml ps
+	@$(DOCKER_COMPOSE) $(COMPOSE_FILES) ps
 
 health: ## Health check for all services
 	@echo -n "   PostgreSQL: "
@@ -264,8 +288,13 @@ health: ## Health check for all services
 		echo "$(RED)✗ Unhealthy$(NC)"; \
 	fi
 
-restart: ## Restart all services
+restart: ## Restart all services (use BUILD_MODE=prod for production)
 	@echo "$(YELLOW)Restarting services...$(NC)"
+	@if [ "$(BUILD_MODE)" = "prod" ]; then \
+		echo "$(BLUE)Mode: PRODUCTION BUILD$(NC)"; \
+	else \
+		echo "$(BLUE)Mode: DEVELOPMENT BUILD$(NC)"; \
+	fi
 	@make down
 	@sleep 2
 	@make up
@@ -325,6 +354,32 @@ lint-frontend: ## Run frontend linting
 start: up ## Alias for 'up'
 stop: down ## Alias for 'down'
 reset: clean restart-all ## Reset everything and start fresh
+
+# Production mode shortcuts
+restart-prod: ## Restart in production mode
+	@BUILD_MODE=prod make restart
+
+restart-all-prod: ## Complete restart in production mode
+	@BUILD_MODE=prod make restart-all
+
+up-prod: ## Start services in production mode
+	@BUILD_MODE=prod make up
+
+down-prod: ## Stop services in production mode
+	@BUILD_MODE=prod make down
+
+# Mode switching commands
+switch-to-prod: ## Switch from dev to production mode
+	@echo "$(YELLOW)Switching to PRODUCTION mode...$(NC)"
+	@make down
+	@BUILD_MODE=prod make restart
+	@echo "$(GREEN)✓ Now running in PRODUCTION mode$(NC)"
+
+switch-to-dev: ## Switch from production to dev mode
+	@echo "$(YELLOW)Switching to DEVELOPMENT mode...$(NC)"
+	@BUILD_MODE=prod make down
+	@make restart
+	@echo "$(GREEN)✓ Now running in DEVELOPMENT mode$(NC)"
 
 # Quick commands
 quickstart: restart-all seed-data ## Quick start with test data

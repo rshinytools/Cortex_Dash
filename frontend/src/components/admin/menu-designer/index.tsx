@@ -291,7 +291,7 @@ export function MenuDesigner({ initialItems = [], onSave, onPreview, isLoading }
             </Button>
           </div>
         </div>
-        {hasChildren && item.isExpanded && (
+        {hasChildren && item.isExpanded && item.children && (
           <div>
             {item.children.map((child) => renderMenuItem(child, depth + 1))}
           </div>

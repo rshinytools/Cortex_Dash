@@ -43,6 +43,12 @@ interface MenuItemProps {
   onUpdate: (updates: Partial<MenuItem>) => void;
   onDelete: () => void;
   onAddChild: () => void;
+  // Props to pass through to children
+  selectedItemId: string | null;
+  onSelectItem: (itemId: string) => void;
+  onUpdateItem: (itemId: string, updates: Partial<MenuItem>) => void;
+  onDeleteItem: (itemId: string) => void;
+  onAddItem: (parentId?: string) => void;
 }
 
 function MenuItemComponent({
@@ -53,6 +59,11 @@ function MenuItemComponent({
   onUpdate,
   onDelete,
   onAddChild,
+  selectedItemId,
+  onSelectItem,
+  onUpdateItem,
+  onDeleteItem,
+  onAddItem,
 }: MenuItemProps) {
   const [expanded, setExpanded] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -206,6 +217,11 @@ function ConnectedMenuItem({
       onUpdate={(updates) => onUpdateItem(item.id, updates)}
       onDelete={() => onDeleteItem(item.id)}
       onAddChild={() => onAddItem(item.id)}
+      selectedItemId={selectedItemId}
+      onSelectItem={onSelectItem}
+      onUpdateItem={onUpdateItem}
+      onDeleteItem={onDeleteItem}
+      onAddItem={onAddItem}
     />
   );
 }

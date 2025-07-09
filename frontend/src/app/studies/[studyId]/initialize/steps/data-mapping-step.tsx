@@ -103,7 +103,7 @@ export function DataMappingStep({ studyId, data, onDataChange }: DataMappingStep
   };
 
   // Convert requirements data to the format expected by DataMappingWizard
-  const dataRequirements = [];
+  const dataRequirements: any[] = [];
   if (requirementsData?.field_mappings) {
     Object.entries(requirementsData.field_mappings).forEach(([dataset, fields]) => {
       (fields as string[]).forEach(field => {

@@ -95,7 +95,7 @@ export function DashboardDesigner({
   return (
     <>
       <div
-        ref={drop}
+        ref={drop as any}
         className={cn(
           "h-full rounded-lg border-2 border-dashed bg-muted/20 p-4",
           isOver && "border-primary bg-primary/5"
@@ -118,7 +118,9 @@ export function DashboardDesigner({
             cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
             rowHeight={dashboard.layout.rowHeight || 80}
             margin={dashboard.layout.margin || [16, 16]}
-            containerPadding={dashboard.layout.containerPadding || [0, 0, 0, 0]}
+            containerPadding={dashboard.layout.containerPadding ? 
+              [dashboard.layout.containerPadding[0], dashboard.layout.containerPadding[1]] as [number, number]
+              : [0, 0]}
             onLayoutChange={handleLayoutChange}
             draggableHandle=".widget-drag-handle"
           >

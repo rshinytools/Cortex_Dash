@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Upload, AlertCircle, FileZip, Lock } from 'lucide-react';
+import { ArrowLeft, Upload, AlertCircle, FileArchive, Lock } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { studiesApi } from '@/lib/api/studies';
 import { dataSourcesApi, DataSourceType } from '@/lib/api/data-sources';
@@ -269,7 +269,7 @@ export default function DataUploadPage() {
               />
               {file && (
                 <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
-                  <FileZip className="h-4 w-4" />
+                  <FileArchive className="h-4 w-4" />
                   {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
                 </div>
               )}

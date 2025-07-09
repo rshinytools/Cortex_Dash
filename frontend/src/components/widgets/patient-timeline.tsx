@@ -70,7 +70,7 @@ const TimelineEvent: React.FC<{
   isLast: boolean;
 }> = ({ event, config, isLast }) => {
   const eventType = event[config.eventTypeField];
-  const eventConfig = config.eventTypes?.[eventType] || defaultEventTypes[eventType] || {
+  const eventConfig = config.eventTypes?.[eventType] || (defaultEventTypes as any)[eventType] || {
     label: eventType,
     color: '#666',
     icon: 'calendar'
@@ -149,7 +149,7 @@ const CompactTimelineEvent: React.FC<{
   config: PatientTimelineConfig;
 }> = ({ event, config }) => {
   const eventType = event[config.eventTypeField];
-  const eventConfig = config.eventTypes?.[eventType] || defaultEventTypes[eventType] || {
+  const eventConfig = config.eventTypes?.[eventType] || (defaultEventTypes as any)[eventType] || {
     label: eventType,
     color: '#666',
     icon: 'calendar'
@@ -225,7 +225,7 @@ const HorizontalTimeline: React.FC<{
                   {dateEvents.map((event, eventIndex) => {
                     const eventType = event[config.eventTypeField];
                     const eventConfig = config.eventTypes?.[eventType] || 
-                      defaultEventTypes[eventType] || {
+                      (defaultEventTypes as any)[eventType] || {
                         label: eventType,
                         color: '#666',
                         icon: 'calendar'
@@ -270,10 +270,10 @@ export const PatientTimeline: WidgetComponent = ({
     const records = Array.isArray(data) ? data : data?.records || [];
     
     // Filter and sort events
-    let events = records.filter(r => r[config.dateField] && r[config.eventTypeField]);
+    let events = records.filter((r: any) => r[config.dateField] && r[config.eventTypeField]);
     
     // Sort by date
-    events.sort((a, b) => {
+    events.sort((a: any, b: any) => {
       const dateA = new Date(a[config.dateField]).getTime();
       const dateB = new Date(b[config.dateField]).getTime();
       return config.sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
@@ -282,18 +282,18 @@ export const PatientTimeline: WidgetComponent = ({
     // Group by patient if requested
     let patients: string[] = [];
     if (config.groupByPatient && config.patientIdField) {
-      patients = [...new Set(events.map(e => e[config.patientIdField!]))];
+      patients = [...new Set(events.map((e: any) => e[config.patientIdField!]))] as string[];
       
       // Limit events per patient if specified
       if (config.maxEventsPerPatient) {
         const eventsByPatient = new Map<string, any[]>();
-        events.forEach(event => {
+        events.forEach((event: any) => {
           const patientId = event[config.patientIdField!];
           if (!eventsByPatient.has(patientId)) {
             eventsByPatient.set(patientId, []);
           }
           const patientEvents = eventsByPatient.get(patientId)!;
-          if (patientEvents.length < config.maxEventsPerPatient) {
+          if (patientEvents.length < config.maxEventsPerPatient!) {
             patientEvents.push(event);
           }
         });
@@ -368,7 +368,7 @@ export const PatientTimeline: WidgetComponent = ({
           <div className="space-y-0">
             {config.compactMode ? (
               <div className="space-y-0.5">
-                {events.map((event, index) => (
+                {events.map((event: any, index: number) => (
                   <CompactTimelineEvent
                     key={index}
                     event={event}
@@ -377,7 +377,7 @@ export const PatientTimeline: WidgetComponent = ({
                 ))}
               </div>
             ) : (
-              events.map((event, index) => (
+              events.map((event: any, index: number) => (
                 <TimelineEvent
                   key={index}
                   event={event}
@@ -392,11 +392,11 @@ export const PatientTimeline: WidgetComponent = ({
         {displayType === 'vertical' && config.groupByPatient && (
           <div className="space-y-6">
             {patients.map(patientId => {
-              const patientEvents = events.filter(e => e[config.patientIdField!] === patientId);
+              const patientEvents = events.filter((e: any) => e[config.patientIdField!] === patientId);
               return (
                 <div key={patientId} className="space-y-0">
                   <h4 className="font-medium text-sm mb-4">Patient: {patientId}</h4>
-                  {patientEvents.map((event, index) => (
+                  {patientEvents.map((event: any, index: number) => (
                     <TimelineEvent
                       key={index}
                       event={event}

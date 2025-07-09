@@ -9,9 +9,10 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { UnifiedDashboardDesigner } from "@/components/admin/unified-dashboard-designer";
-import { toast } from "@/components/ui/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { dashboardTemplatesApi, CreateUnifiedDashboardTemplateDto } from "@/lib/api/dashboard-templates";
 import type { WidgetDefinition } from "@/types/widget";
+import { WidgetCategory, WidgetType } from "@/types/widget";
 
 // Mock widget definitions - in production these would come from the API
 const mockWidgetDefinitions: WidgetDefinition[] = [
@@ -19,8 +20,8 @@ const mockWidgetDefinitions: WidgetDefinition[] = [
     id: "1",
     name: "Enrollment Metric",
     description: "Shows current enrollment numbers",
-    category: "enrollment",
-    type: "metric",
+    category: WidgetCategory.ENROLLMENT,
+    type: WidgetType.METRIC,
     version: "1.0.0",
     componentPath: "widgets/EnrollmentMetric",
     defaultConfig: {
@@ -54,8 +55,8 @@ const mockWidgetDefinitions: WidgetDefinition[] = [
     id: "2",
     name: "Safety Events Chart",
     description: "Displays safety events over time",
-    category: "safety",
-    type: "chart",
+    category: WidgetCategory.SAFETY,
+    type: WidgetType.CHART,
     version: "1.0.0",
     componentPath: "widgets/SafetyEventsChart",
     defaultConfig: {
@@ -83,8 +84,8 @@ const mockWidgetDefinitions: WidgetDefinition[] = [
     id: "3",
     name: "Site Performance Table",
     description: "Shows performance metrics by site",
-    category: "operations",
-    type: "table",
+    category: WidgetCategory.OPERATIONS,
+    type: WidgetType.TABLE,
     version: "1.0.0",
     componentPath: "widgets/SitePerformanceTable",
     defaultConfig: {
@@ -113,8 +114,8 @@ const mockWidgetDefinitions: WidgetDefinition[] = [
     id: "4",
     name: "Study Progress",
     description: "Overall study completion percentage",
-    category: "operations",
-    type: "metric",
+    category: WidgetCategory.OPERATIONS,
+    type: WidgetType.METRIC,
     version: "1.0.0",
     componentPath: "widgets/StudyProgress",
     defaultConfig: {
@@ -144,6 +145,7 @@ const mockWidgetDefinitions: WidgetDefinition[] = [
 
 export default function NewDashboardTemplatePage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [widgetDefinitions, setWidgetDefinitions] = useState<WidgetDefinition[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -162,7 +164,7 @@ export default function NewDashboardTemplatePage() {
         description: "Dashboard template created successfully",
       });
       router.push("/admin/dashboard-templates");
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to create dashboard template",

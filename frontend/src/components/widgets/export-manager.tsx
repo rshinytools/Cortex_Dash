@@ -76,7 +76,7 @@ export function ExportManager({ dashboardId, dashboardName, isOpen, onClose }: E
   }, [pollInterval]);
 
   const startExport = async () => {
-    if (!session?.user?.accessToken) {
+    if (!session?.user) {
       toast.error('Authentication required');
       return;
     }
@@ -91,7 +91,7 @@ export function ExportManager({ dashboardId, dashboardName, isOpen, onClose }: E
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.user.accessToken}`,
+            Authorization: `Bearer ${(session.user as any).accessToken}`,
           },
           body: JSON.stringify({
             format: selectedFormat,
@@ -130,7 +130,7 @@ export function ExportManager({ dashboardId, dashboardName, isOpen, onClose }: E
           `${process.env.NEXT_PUBLIC_API_URL}/api/v1/dashboard-exports/${exportId}/status`,
           {
             headers: {
-              Authorization: `Bearer ${session?.user?.accessToken}`,
+              Authorization: `Bearer ${(session?.user as any)?.accessToken}`,
             },
           }
         );
@@ -163,14 +163,14 @@ export function ExportManager({ dashboardId, dashboardName, isOpen, onClose }: E
   };
 
   const downloadExport = async () => {
-    if (!exportStatus?.download_url || !session?.user?.accessToken) return;
+    if (!exportStatus?.download_url || !session?.user) return;
 
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}${exportStatus.download_url}`,
         {
           headers: {
-            Authorization: `Bearer ${session.user.accessToken}`,
+            Authorization: `Bearer ${(session.user as any).accessToken}`,
           },
         }
       );

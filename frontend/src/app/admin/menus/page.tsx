@@ -84,7 +84,7 @@ export default function MenuTemplatesPage() {
   const fetchTemplates = async () => {
     try {
       const response = await menusApi.getMenuTemplates()
-      setTemplates(response.items || [])
+      setTemplates((response.items || []) as any)
     } catch (error) {
       console.error('Error fetching menu templates:', error)
       toast({
@@ -301,7 +301,7 @@ export default function MenuTemplatesPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the menu template "{templateToDelete?.name}".
+              This will permanently delete the menu template &quot;{templateToDelete?.name}&quot;.
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

@@ -172,6 +172,7 @@ export function WidgetConfigDialog({
                     setConfig({
                       ...config,
                       dataSource: {
+                        type: config.dataSource?.type || "dataset",
                         ...config.dataSource,
                         datasetId: e.target.value,
                       },
@@ -192,6 +193,7 @@ export function WidgetConfigDialog({
                     setConfig({
                       ...config,
                       dataSource: {
+                        type: config.dataSource?.type || "api",
                         ...config.dataSource,
                         endpoint: e.target.value,
                       },
@@ -218,6 +220,7 @@ export function WidgetConfigDialog({
                       setConfig({
                         ...config,
                         dataSource: {
+                          type: config.dataSource?.type || "static",
                           ...config.dataSource,
                           staticData: data,
                         },

@@ -1,0 +1,226 @@
+# ABOUTME: Production build configuration for local testing
+# ABOUTME: Uses production builds but runs locally without external dependencies
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: cortex_dash-db-1
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: changethis
+      POSTGRES_DB: clinical_dashboard
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for Celery
+  redis:
+    image: redis:7-alpine
+    container_name: cortex_dash-redis-1
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Prestart - Database migrations
+  prestart:
+    build:
+      context: ./backend
+    container_name: cortex_dash-prestart-1
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: bash scripts/prestart.sh
+    environment:
+      - PROJECT_NAME=Cortex Clinical Dashboard
+      - BACKEND_CORS_ORIGINS=["http://localhost:3000"]
+      - FRONTEND_HOST=http://localhost:3000
+      - POSTGRES_SERVER=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=changethis
+      - POSTGRES_DB=clinical_dashboard
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=your-secret-key-here-change-in-production
+      - FIRST_SUPERUSER=admin@sagarmatha.ai
+      - FIRST_SUPERUSER_PASSWORD=adadad123
+      - SMTP_HOST=mailcatcher
+      - SMTP_PORT=1025
+      - SMTP_TLS=false
+      - EMAILS_FROM_EMAIL=noreply@example.com
+    volumes:
+      - ./data:/data
+
+  # Backend - FastAPI Application (Production Build)
+  backend:
+    build:
+      context: ./backend
+    container_name: cortex_dash-backend-1
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      prestart:
+        condition: service_completed_successfully
+    environment:
+      - PROJECT_NAME=Cortex Clinical Dashboard
+      - BACKEND_CORS_ORIGINS=["http://localhost:3000"]
+      - FRONTEND_HOST=http://localhost:3000
+      - POSTGRES_SERVER=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=changethis
+      - POSTGRES_DB=clinical_dashboard
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - SECRET_KEY=your-secret-key-here-change-in-production
+      - FIRST_SUPERUSER=admin@sagarmatha.ai
+      - FIRST_SUPERUSER_PASSWORD=adadad123
+      - SMTP_HOST=mailcatcher
+      - SMTP_PORT=1025
+      - SMTP_TLS=false
+      - EMAILS_FROM_EMAIL=noreply@example.com
+    volumes:
+      - ./data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/utils/health-check/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Frontend - Next.js Application (Production Build)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: runner
+      args:
+        - NODE_ENV=production
+        - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+        - NEXTAUTH_URL=http://localhost:3000
+        - NEXTAUTH_SECRET=your-secret-key-here-change-in-production
+    container_name: cortex_dash-frontend-1
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+      - NODE_ENV=production
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=your-secret-key-here-change-in-production
+      - API_URL_INTERNAL=http://backend:8000/api/v1
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  # Celery Worker
+  celery-worker:
+    build:
+      context: ./backend
+    container_name: cortex_dash-celery-worker-1
+    command: celery -A app.core.celery_app worker --loglevel=info
+    environment:
+      - PROJECT_NAME=Cortex Clinical Dashboard
+      - POSTGRES_SERVER=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=changethis
+      - POSTGRES_DB=clinical_dashboard
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - SECRET_KEY=your-secret-key-here-change-in-production
+      - FIRST_SUPERUSER=admin@sagarmatha.ai
+      - FIRST_SUPERUSER_PASSWORD=adadad123
+    volumes:
+      - ./data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Celery Beat
+  celery-beat:
+    build:
+      context: ./backend
+    container_name: cortex_dash-celery-beat-1
+    command: celery -A app.core.celery_app beat --loglevel=info
+    environment:
+      - PROJECT_NAME=Cortex Clinical Dashboard
+      - POSTGRES_SERVER=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=changethis
+      - POSTGRES_DB=clinical_dashboard
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - SECRET_KEY=your-secret-key-here-change-in-production
+      - FIRST_SUPERUSER=admin@sagarmatha.ai
+      - FIRST_SUPERUSER_PASSWORD=adadad123
+    volumes:
+      - ./data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Adminer - Database UI
+  adminer:
+    image: adminer
+    container_name: cortex_dash-adminer-1
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    environment:
+      - ADMINER_DESIGN=pepa-linha-dark
+
+  # Flower - Celery Monitoring UI
+  flower:
+    image: mher/flower:2.0
+    container_name: cortex_dash-flower-1
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - FLOWER_PORT=5555
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+
+  # Mailcatcher - Email Testing
+  mailcatcher:
+    image: schickling/mailcatcher
+    container_name: cortex_dash-mailcatcher-1
+    ports:
+      - "1080:1080"
+      - "1025:1025"
+
+volumes:
+  postgres_data:
+
+# This configuration runs production builds locally for testing
+# All services are containerized with production settings
+# No hot reload - requires rebuild for changes

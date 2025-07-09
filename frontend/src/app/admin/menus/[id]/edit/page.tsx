@@ -36,13 +36,14 @@ interface MenuTemplate {
   created_by: string
 }
 
-export default function EditMenuTemplatePage({ params }: { params: { id: string } }) {
+export default function EditMenuTemplatePage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
   const { toast } = useToast()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewItems, setPreviewItems] = useState<MenuItem[]>([])
+  const [templateId, setTemplateId] = useState<string>('')
   
   const [template, setTemplate] = useState<MenuTemplate | null>(null)
   const [formData, setFormData] = useState({
@@ -52,12 +53,20 @@ export default function EditMenuTemplatePage({ params }: { params: { id: string 
   })
 
   useEffect(() => {
-    fetchTemplate()
-  }, [params.id])
+    params.then((p) => {
+      setTemplateId(p.id)
+    })
+  }, [params])
+
+  useEffect(() => {
+    if (templateId) {
+      fetchTemplate()
+    }
+  }, [templateId])
 
   const fetchTemplate = async () => {
     try {
-      const data = await menusApi.getMenuTemplate(params.id)
+      const data = await menusApi.getMenuTemplate(templateId)
       setTemplate(data)
       setFormData({
         name: data.name,
@@ -89,9 +98,9 @@ export default function EditMenuTemplatePage({ params }: { params: { id: string 
 
     setSaving(true)
     try {
-      await menusApi.updateMenuTemplate(params.id, {
+      await menusApi.updateMenuTemplate(templateId, {
         ...formData,
-        items: items,
+        items: items as any,
       })
 
       toast({

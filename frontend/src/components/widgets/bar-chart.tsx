@@ -87,7 +87,7 @@ const formatValue = (value: number, format?: string, decimals: number = 2): stri
   }
 };
 
-const CustomTooltip = ({ active, payload, label, config }: TooltipProps<any, any> & { config: BarChartConfig }) => {
+const CustomTooltip = ({ active, payload, label, config }: any) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-background border rounded-lg shadow-lg p-3">
@@ -219,7 +219,7 @@ export const BarChart: WidgetComponent = ({
   if (orientation === 'horizontal' && config.yAxisFields.length > 0) {
     // For simplicity, we'll use the first yAxisField for horizontal bars
     const field = config.yAxisFields[0].field;
-    chartData = chartData.map(item => ({
+    chartData = chartData.map((item: any) => ({
       ...item,
       value: item[field]
     }));

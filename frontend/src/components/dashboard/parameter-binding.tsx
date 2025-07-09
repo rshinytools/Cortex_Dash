@@ -8,8 +8,8 @@ import { useParameterManager, useWidgetParameters } from './dashboard-parameters
 
 // Parameter substitution utilities
 export class ParameterSubstitution {
-  private static readonly PARAMETER_REGEX = /\{\{([^}]+)\}\}/g;
-  private static readonly NESTED_PARAMETER_REGEX = /\{\{([^}]+(?:\.[^}]+)*)\}\}/g;
+  static readonly PARAMETER_REGEX = /\{\{([^}]+)\}\}/g;
+  static readonly NESTED_PARAMETER_REGEX = /\{\{([^}]+(?:\.[^}]+)*)\}\}/g;
 
   // Extract parameter references from a text/object
   static extractParameterReferences(input: any): string[] {
@@ -54,7 +54,7 @@ export class ParameterSubstitution {
   }
 
   // Substitute parameters in a string
-  private static substituteString(input: string, parameters: Record<string, any>): any {
+  static substituteString(input: string, parameters: Record<string, any>): any {
     // Check if the entire string is a parameter reference
     const fullMatch = input.match(/^\{\{([^}]+)\}\}$/);
     if (fullMatch) {

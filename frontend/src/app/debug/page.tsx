@@ -47,7 +47,7 @@ export default function DebugPage() {
                 <p><strong>Name:</strong> {session.user.full_name || 'Not set'}</p>
                 <p><strong>Role:</strong> {session.user.role || 'Not set'}</p>
                 <p><strong>Org ID:</strong> {session.user.org_id || 'Not set'}</p>
-                <p><strong>Is Superuser:</strong> {session.user.is_superuser ? 'Yes' : 'No'}</p>
+                <p><strong>Is Superuser:</strong> {(session.user as any).is_superuser ? 'Yes' : 'No'}</p>
               </div>
             )}
           </CardContent>

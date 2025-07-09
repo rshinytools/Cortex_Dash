@@ -55,7 +55,7 @@ export function useStudyMenu(studyId: string): UseStudyMenuResult {
     // Check cache first
     const cached = menuCache.get(studyId)
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      const userPermissions = session.user.permissions || []
+      const userPermissions = (session.user as any).permissions || []
       setMenuItems(filterMenuItemsByPermissions(cached.items, userPermissions))
       setLoading(false)
       return
@@ -100,7 +100,7 @@ export function useStudyMenu(studyId: string): UseStudyMenuResult {
       })
 
       // Filter by user permissions
-      const userPermissions = session.user.permissions || []
+      const userPermissions = (session.user as any).permissions || []
       const filteredItems = filterMenuItemsByPermissions(menuTemplate.items, userPermissions)
       
       setMenuItems(filteredItems)

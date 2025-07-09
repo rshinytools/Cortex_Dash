@@ -235,7 +235,6 @@ export function DesignCanvas({
           draggableHandle=".drag-handle"
           margin={[16, 16]}
           containerPadding={[0, 0]}
-          currentBreakpoint={breakpoint}
         >
           {layout.map(renderWidget)}
         </ResponsiveGridLayout>

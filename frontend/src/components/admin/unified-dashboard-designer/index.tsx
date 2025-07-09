@@ -10,7 +10,7 @@ import { v4 as uuidv4 } from "uuid";
 import { Plus, Save, Eye, Download, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { toast } from "@/components/ui/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { MenuDesigner } from "./menu-designer";
 import { DashboardDesigner } from "./dashboard-designer";
 import { DataRequirementsPanel } from "../data-requirements-panel";
@@ -22,7 +22,9 @@ import type {
   CreateUnifiedDashboardTemplateDto,
 } from "@/lib/api/dashboard-templates";
 import type { MenuItem, MenuTemplate } from "@/types/menu";
+import { MenuItemType, MenuPosition } from "@/types/menu";
 import type { DashboardTemplate, DashboardWidget } from "@/types/dashboard";
+import { DashboardCategory, LayoutType } from "@/types/dashboard";
 import type { WidgetDefinition } from "@/types/widget";
 
 export interface UnifiedDashboardDesignerProps {
@@ -42,6 +44,8 @@ export function UnifiedDashboardDesigner({
   onExport,
   onImport,
 }: UnifiedDashboardDesignerProps) {
+  const { toast } = useToast();
+  
   // Template metadata
   const [name, setName] = useState(initialTemplate?.name || "");
   const [description, setDescription] = useState(initialTemplate?.description || "");
@@ -104,7 +108,7 @@ export function UnifiedDashboardDesigner({
     const newItem: MenuItem = {
       id: uuidv4(),
       label: "New Item",
-      type: "link",
+      type: MenuItemType.LINK,
       url: "#",
       order: menuItems.length,
       isVisible: true,
@@ -140,10 +144,10 @@ export function UnifiedDashboardDesigner({
       id: uuidv4(),
       menuItemId: newItem.id,
       name: newItem.label,
-      category: "custom",
+      category: DashboardCategory.CUSTOM,
       version: "1.0.0",
       layout: {
-        type: "grid",
+        type: LayoutType.GRID,
         columns: 12,
         rowHeight: 80,
         margin: [16, 16],
@@ -189,7 +193,7 @@ export function UnifiedDashboardDesigner({
         ...prev,
         [itemId]: {
           ...prev[itemId],
-          name: updates.label,
+          name: updates.label || prev[itemId].name,
         },
       }));
     }
@@ -317,7 +321,7 @@ export function UnifiedDashboardDesigner({
       category,
       menuTemplate: {
         name: `${name} Menu`,
-        position: "sidebar",
+        position: MenuPosition.SIDEBAR,
         items: menuItems,
         version: "1.0.0",
         isActive: true,

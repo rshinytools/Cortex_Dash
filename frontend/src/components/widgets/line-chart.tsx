@@ -87,7 +87,7 @@ const formatValue = (value: number, format?: string, decimals: number = 2): stri
   }
 };
 
-const CustomTooltip = ({ active, payload, label, config }: TooltipProps<any, any> & { config: LineChartConfig }) => {
+const CustomTooltip = ({ active, payload, label, config }: any) => {
   if (active && payload && payload.length) {
     const isDate = !isNaN(Date.parse(label));
     const formattedLabel = isDate && config.dateFormat
@@ -160,7 +160,7 @@ export const LineChart: WidgetComponent = ({
   }
 
   const ChartComponent = config.areaChart ? AreaChart : RechartsLineChart;
-  const LineComponent = config.areaChart ? Area : Line;
+  const LineComponent: any = config.areaChart ? Area : Line;
 
   return (
     <Card className={cn("h-full flex flex-col", className)}>

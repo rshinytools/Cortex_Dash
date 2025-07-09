@@ -241,13 +241,13 @@ export function DashboardStep({ studyId, data, onDataChange }: DashboardStepProp
   };
 
   const updateWidget = (widgetId: string, updates: any) => {
-    setWidgets(widgets.map(w => 
+    setWidgets(widgets.map((w: any) => 
       w.id === widgetId ? { ...w, ...updates } : w
     ));
   };
 
   const removeWidget = (widgetId: string) => {
-    setWidgets(widgets.filter(w => w.id !== widgetId));
+    setWidgets(widgets.filter((w: any) => w.id !== widgetId));
   };
 
   const getWidgetIcon = (type: string) => {
@@ -302,7 +302,7 @@ export function DashboardStep({ studyId, data, onDataChange }: DashboardStepProp
                   key={template.id}
                   className={cn(
                     'cursor-pointer transition-colors',
-                    selectedTemplate === template.id && 'border-primary'
+                    selectedTemplate === template.id ? 'border-primary' : ''
                   )}
                   onClick={() => setSelectedTemplate(template.id)}
                 >
@@ -362,7 +362,7 @@ export function DashboardStep({ studyId, data, onDataChange }: DashboardStepProp
             </Card>
           ) : (
             <div className="space-y-2">
-              {widgets.map((widget) => {
+              {widgets.map((widget: any) => {
                 const Icon = getWidgetIcon(widget.type);
                 return (
                   <Card key={widget.id}>
@@ -431,7 +431,7 @@ export function DashboardStep({ studyId, data, onDataChange }: DashboardStepProp
             <CardContent>
               <div className="bg-muted rounded-lg p-4 min-h-[400px]">
                 <div className="grid grid-cols-10 gap-2">
-                  {widgets.map((widget) => {
+                  {widgets.map((widget: any) => {
                     const Icon = getWidgetIcon(widget.type);
                     return (
                       <div

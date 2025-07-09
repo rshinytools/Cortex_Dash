@@ -8,7 +8,6 @@ import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { 
   Users,
   Shield,
@@ -18,19 +17,15 @@ import {
   Activity,
   ArrowRight,
   BarChart3,
-  Calendar,
   FlaskConical,
   Plus,
   TrendingUp,
   Database,
   Server,
   AlertCircle,
-  CheckCircle2,
   Package,
-  Zap,
   Bell,
   Lock,
-  GitBranch,
   LayoutDashboard,
   Menu,
   Palette
@@ -39,7 +34,6 @@ import { UserRole } from '@/types';
 import { apiClient } from '@/lib/api/client';
 import { format } from 'date-fns';
 import { UserMenu } from '@/components/user-menu';
-import { MainLayout } from '@/components/layout/main-layout';
 
 interface SystemMetrics {
   organizations: number;
@@ -99,7 +93,7 @@ export default function AdminPage() {
   // Calculate metrics from real data
   const metrics: SystemMetrics = {
     organizations: organizationsData?.length || 0,
-    activeStudies: studiesData?.filter((s: any) => s.status === 'active').length || 0,
+    activeStudies: studiesData?.filter((s: { status: string }) => s.status === 'active').length || 0,
     totalEnrollment: 2845, // TODO: Get from studies data
     dataQualityScore: 94.2, // TODO: Calculate from actual data
     completionRate: 78.5, // TODO: Calculate from actual data
@@ -109,7 +103,6 @@ export default function AdminPage() {
     qualityTrend: 2.1, // TODO: Calculate trend
   };
 
-  const metricsLoading = !organizationsData || !studiesData;
 
   // Fetch recent activity
   const { data: recentActivity } = useQuery({
@@ -193,7 +186,7 @@ export default function AdminPage() {
               <Shield className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold mb-2">Access Denied</h3>
               <p className="text-muted-foreground">
-                You don't have permission to access the admin panel.
+                You don&apos;t have permission to access the admin panel.
               </p>
             </div>
           </CardContent>

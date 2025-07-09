@@ -69,7 +69,6 @@ export function WidgetContainer({
     refetch,
     isRefetching,
   } = useWidgetData(widgetInstance, studyId, {
-    filters: filterQuery, // Pass filters to data hook
     onError: (err) => {
       console.error(`Error loading widget ${widgetInstance.id}:`, err);
     },
@@ -84,11 +83,11 @@ export function WidgetContainer({
     }
   }, [refetch]);
 
-  const handleExport = useCallback((format: 'png' | 'csv' | 'json') => {
+  const handleExport = useCallback((exportFormat: 'png' | 'csv' | 'json') => {
     const timestamp = format(new Date(), 'yyyy-MM-dd-HHmmss');
     const filename = `${widgetInstance.config?.display?.title || widgetInstance.widgetDefinition?.name || 'widget'}-${timestamp}`;
 
-    switch (format) {
+    switch (exportFormat) {
       case 'png':
         exportWidgetAsImage(widgetId, `${filename}.png`);
         break;
@@ -137,13 +136,7 @@ export function WidgetContainer({
       onDataRefresh={refetch}
       className={cn("relative h-full", className)}
     >
-      <DashboardAnnotations
-        widgetId={widgetInstance.id}
-        dashboardId="current-dashboard-id" // Would come from context
-        currentUserId="current-user-id"   // Would come from auth context
-        currentUserName="Current User"    // Would come from auth context
-        className="absolute inset-0"
-      >
+      <>
         <div id={widgetId} className="h-full">
         {/* Loading overlay */}
       {isRefreshing && (
@@ -246,13 +239,11 @@ export function WidgetContainer({
 
           {/* Render widget */}
           <WidgetRenderer
-            widgetInstance={widgetInstance}
+            instance={widgetInstance as any}
             data={data}
             loading={isLoading}
             error={isError ? error?.message : undefined}
             onRefresh={handleRefresh}
-            onExport={handleExport}
-            onDataPointClick={canDrillDown ? handleDataPointClick : undefined}
           />
 
           {/* Last updated timestamp */}
@@ -264,7 +255,7 @@ export function WidgetContainer({
         </div>
       )}
         </div>
-      </DashboardAnnotations>
+      </>
     </WidgetFilterConnector>
   );
 }

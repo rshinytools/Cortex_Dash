@@ -132,13 +132,15 @@ export function DashboardViewer({
     xxs: 0,
   };
 
-  const cols = dashboard.layout?.cols || {
-    lg: 12,
-    md: 10,
-    sm: 6,
-    xs: 4,
-    xxs: 2,
-  };
+  const cols = typeof dashboard.layout?.cols === 'object' 
+    ? dashboard.layout.cols 
+    : {
+        lg: 12,
+        md: 10,
+        sm: 6,
+        xs: 4,
+        xxs: 2,
+      };
 
   return (
     <ParameterManagerProvider

@@ -269,9 +269,9 @@ export const KpiComparison: WidgetComponent = ({
   if (config.comparisonType === 'period-over-period') {
     if (config.groupByField) {
       // Group comparison across periods
-      const groups = [...new Set(records.map(r => r[config.groupByField!]))];
+      const groups = [...new Set(records.map((r: any) => r[config.groupByField!]))];
       processedData = groups.map(group => {
-        const groupRecords = records.filter(r => r[config.groupByField!] === group);
+        const groupRecords = records.filter((r: any) => r[config.groupByField!] === group);
         const current = groupRecords[0]?.[config.currentPeriodField || config.kpiField] || 0;
         const previous = groupRecords[0]?.[config.previousPeriodField || 'previousValue'] || 0;
         const change = calculateChange(current, previous);
@@ -298,9 +298,9 @@ export const KpiComparison: WidgetComponent = ({
     }
   } else if (config.comparisonType === 'target-vs-actual') {
     if (config.groupByField) {
-      const groups = [...new Set(records.map(r => r[config.groupByField!]))];
+      const groups = [...new Set(records.map((r: any) => r[config.groupByField!]))];
       processedData = groups.map(group => {
-        const groupRecord = records.find(r => r[config.groupByField!] === group);
+        const groupRecord = records.find((r: any) => r[config.groupByField!] === group);
         const actual = groupRecord?.[config.kpiField] || 0;
         const target = groupRecord?.[config.targetField || 'target'] || 0;
         const achievement = target > 0 ? (actual / target) * 100 : 0;
@@ -326,9 +326,9 @@ export const KpiComparison: WidgetComponent = ({
     }
   } else if (config.comparisonType === 'benchmark') {
     if (config.groupByField) {
-      const groups = [...new Set(records.map(r => r[config.groupByField!]))];
+      const groups = [...new Set(records.map((r: any) => r[config.groupByField!]))];
       processedData = groups.map(group => {
-        const groupRecord = records.find(r => r[config.groupByField!] === group);
+        const groupRecord = records.find((r: any) => r[config.groupByField!] === group);
         const actual = groupRecord?.[config.kpiField] || 0;
         const benchmark = groupRecord?.[config.benchmarkField || 'benchmark'] || 0;
         const variance = benchmark > 0 ? ((actual - benchmark) / benchmark) * 100 : 0;
@@ -354,9 +354,9 @@ export const KpiComparison: WidgetComponent = ({
     }
   } else if (config.comparisonType === 'group-comparison') {
     // Simple group comparison
-    const groups = config.groups || [...new Set(records.map(r => r[config.groupByField!]))];
+    const groups = config.groups || [...new Set(records.map((r: any) => r[config.groupByField!]))];
     processedData = groups.map(group => {
-      const groupRecord = records.find(r => r[config.groupByField!] === group);
+      const groupRecord = records.find((r: any) => r[config.groupByField!] === group);
       return {
         name: group,
         value: groupRecord?.[config.kpiField] || 0

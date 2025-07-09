@@ -1,0 +1,79 @@
+# ABOUTME: Simplified production requirements for Clinical Dashboard Platform backend
+# ABOUTME: Pins specific versions to avoid dependency conflicts
+
+# Core FastAPI dependencies
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+gunicorn==23.0.0
+python-multipart==0.0.18
+email-validator==2.2.0
+
+# Database
+sqlmodel==0.0.22
+alembic==1.15.0
+psycopg[binary]==3.2.3
+asyncpg==0.30.0
+
+# Authentication & Security
+passlib[bcrypt]==1.7.4
+bcrypt==4.3.0
+pyjwt==2.10.1
+python-jose[cryptography]==3.3.0
+cryptography==45.0.0
+
+# Settings & Config
+pydantic==2.10.4
+pydantic-settings==2.6.1
+python-dotenv==1.0.1
+
+# Redis & Celery
+redis==5.2.1
+celery[redis]==5.4.0
+
+# Data Processing
+pandas==2.2.3
+numpy==2.2.1
+pyarrow==17.0.0
+openpyxl==3.1.5
+scipy==1.14.1
+scikit-learn==1.5.2
+
+# HTTP & Async
+httpx==0.27.2
+aiohttp==3.11.11
+aiofiles==24.1.0
+asyncssh==2.19.0
+
+# Monitoring & Logging
+sentry-sdk[fastapi]==2.19.2
+prometheus-client==0.22.1
+structlog==25.1.0
+
+# Email
+emails==0.6
+
+# Utilities
+tenacity==9.0.0
+psutil==6.1.0
+croniter==5.0.1
+pyotp==2.9.0
+
+# Reporting
+Pillow==10.4.0
+markdown==3.7
+reportlab==4.2.5
+python-pptx==1.0.2
+weasyprint==63.0
+
+# Development/Testing (included for CI/CD)
+pytest==8.3.4
+pytest-asyncio==0.24.0
+pytest-cov==6.0.0
+pytest-mock==3.14.1
+httpx-sse==0.4.0
+
+# Additional dependencies
+jinja2==3.1.4
+matplotlib==3.9.3
+seaborn==0.13.2
+ddtrace==2.16.5

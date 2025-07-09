@@ -113,7 +113,7 @@ const calculateLinearRegression = (data: any[], xField: string, yField: string) 
   return { slope, intercept, rSquared };
 };
 
-const CustomTooltip = ({ active, payload, config }: TooltipProps<any, any> & { config: ScatterPlotConfig }) => {
+const CustomTooltip = ({ active, payload, config }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     
@@ -170,7 +170,7 @@ export const ScatterPlot: WidgetComponent = ({
     const records = Array.isArray(data) ? data : data?.records || [];
     
     // Filter valid data points
-    const validData = records.filter(d => 
+    const validData = records.filter((d: any) => 
       d[config.xAxisField] !== null && 
       d[config.xAxisField] !== undefined &&
       d[config.yAxisField] !== null &&
@@ -179,7 +179,7 @@ export const ScatterPlot: WidgetComponent = ({
     
     // Group data if groupByField is specified
     const groups = config.groupByField 
-      ? [...new Set(validData.map(d => d[config.groupByField]))]
+      ? [...new Set(validData.map((d: any) => d[config.groupByField!]))]
       : ['all'];
     
     // Calculate regression if requested
@@ -227,7 +227,7 @@ export const ScatterPlot: WidgetComponent = ({
   const trendLineData = useMemo(() => {
     if (!regression || !config.showTrendLine) return [];
     
-    const xValues = scatterData.map(d => d[config.xAxisField]);
+    const xValues = scatterData.map((d: any) => d[config.xAxisField]);
     const minX = Math.min(...xValues);
     const maxX = Math.max(...xValues);
     
@@ -241,7 +241,7 @@ export const ScatterPlot: WidgetComponent = ({
   const sizeRange = useMemo(() => {
     if (!config.sizeField) return [64, 64]; // Fixed size if no size field
     
-    const sizes = scatterData.map(d => d[config.sizeField]).filter(s => s !== null && s !== undefined);
+    const sizes = scatterData.map((d: any) => d[config.sizeField!]).filter((s: any) => s !== null && s !== undefined);
     if (sizes.length === 0) return [64, 64];
     
     const minData = Math.min(...sizes);
@@ -305,7 +305,7 @@ export const ScatterPlot: WidgetComponent = ({
               <ZAxis 
                 type="number" 
                 dataKey={config.sizeField} 
-                range={sizeRange}
+                range={sizeRange as [number, number]}
                 name={config.sizeField}
               />
             )}
@@ -333,16 +333,16 @@ export const ScatterPlot: WidgetComponent = ({
                 data={trendLineData}
                 fill="none"
                 line={{ stroke: '#666', strokeWidth: 2, strokeDasharray: '5 5' }}
-                shape={() => null}
+                shape={undefined}
               />
             )}
             {/* Data points */}
             {config.groupByField && groups.length > 1 ? (
               groups.map((group, index) => (
                 <Scatter
-                  key={group}
-                  name={group}
-                  data={scatterData.filter(d => d[config.groupByField] === group)}
+                  key={String(group)}
+                  name={String(group)}
+                  data={scatterData.filter((d: any) => d[config.groupByField!] === group)}
                   fill={colors[index % colors.length]}
                 />
               ))
@@ -351,10 +351,10 @@ export const ScatterPlot: WidgetComponent = ({
                 data={scatterData}
                 fill={colors[0]}
               >
-                {config.colorField && scatterData.map((entry, index) => (
+                {config.colorField && scatterData.map((entry: any, index: number) => (
                   <Cell 
                     key={`cell-${index}`} 
-                    fill={entry[config.colorField] || colors[0]}
+                    fill={entry[config.colorField!] || colors[0]}
                   />
                 ))}
               </Scatter>

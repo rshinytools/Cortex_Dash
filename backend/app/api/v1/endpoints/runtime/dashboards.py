@@ -33,6 +33,7 @@ class StudyDashboardResponse(BaseModel):
     layout_config: Dict[str, Any]
     widgets: List[Dict[str, Any]]
     customizations: Optional[Dict[str, Any]] = None
+    menu_layouts: Optional[Dict[str, List[Dict[str, Any]]]] = None  # Layout per menu item
 
 
 class WidgetDataRequest(BaseModel):
@@ -359,6 +360,70 @@ async def get_widget_data(
     )
 
 
+@router.get("/{study_id}/dashboard-config")
+async def get_study_dashboard_config(
+    study_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> Any:
+    """
+    Get the complete dashboard configuration for a study including menu layouts.
+    
+    This returns the dashboard template structure with all menu items and their
+    associated widget layouts.
+    """
+    # Check study access
+    study = check_study_access(db, study_id, current_user, Permission.VIEW_DASHBOARDS)
+    
+    # Get the active study dashboard
+    study_dashboard = db.exec(
+        select(StudyDashboard).where(
+            StudyDashboard.study_id == study_id,
+            StudyDashboard.is_active == True
+        )
+    ).first()
+    
+    if not study_dashboard:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active dashboard found for this study"
+        )
+    
+    dashboard_template = study_dashboard.dashboard_template
+    template_structure = dashboard_template.template_structure or {}
+    
+    # Extract menu layouts from template structure
+    menu_layouts = {}
+    dashboards = template_structure.get("dashboards", [])
+    
+    for dashboard in dashboards:
+        menu_item_id = dashboard.get("id")
+        if menu_item_id:
+            menu_layouts[menu_item_id] = dashboard.get("layout", dashboard.get("widgets", []))
+    
+    # Get the default layout (for items without specific layouts)
+    default_dashboard = next((d for d in dashboards if d.get("id") == "default"), None)
+    if not default_dashboard and dashboards:
+        default_dashboard = dashboards[0]
+    
+    default_layout = default_dashboard.get("layout", default_dashboard.get("widgets", [])) if default_dashboard else []
+    
+    # Apply study customizations if any
+    if study_dashboard.customizations and "menu_layouts" in study_dashboard.customizations:
+        menu_layouts.update(study_dashboard.customizations["menu_layouts"])
+    
+    return {
+        "id": study_dashboard.id,
+        "dashboard_template_id": dashboard_template.id,
+        "dashboard_code": dashboard_template.code,
+        "dashboard_name": dashboard_template.name,
+        "template_structure": template_structure,
+        "menu_layouts": menu_layouts,
+        "default_layout": default_layout,
+        "customizations": study_dashboard.customizations
+    }
+
+
 @router.get("/{study_id}/menus", response_model=StudyMenuResponse)
 async def get_study_menu(
     study_id: UUID,
@@ -377,12 +442,11 @@ async def get_study_menu(
     study_dashboard = db.exec(
         select(StudyDashboard).where(
             StudyDashboard.study_id == study_id,
-            StudyDashboard.menu_template_id.isnot(None),
             StudyDashboard.is_active == True
         )
     ).first()
     
-    if not study_dashboard or not study_dashboard.menu_template:
+    if not study_dashboard or not study_dashboard.dashboard_template:
         # Return a default menu structure if no menu is assigned
         default_menu = {
             "items": [
@@ -403,7 +467,34 @@ async def get_study_menu(
             last_updated=datetime.utcnow()
         )
     
-    menu_template = study_dashboard.menu_template
+    dashboard_template = study_dashboard.dashboard_template
+    
+    # Extract menu structure from the template
+    menu_structure = dashboard_template.template_structure.get("menu_structure", {})
+    if not menu_structure:
+        # Check if it's under "menu" key instead
+        menu_structure = dashboard_template.template_structure.get("menu", {})
+    
+    if not menu_structure:
+        # Return default menu if no menu structure found
+        default_menu = {
+            "items": [
+                {
+                    "id": "overview",
+                    "type": "dashboard",
+                    "label": "Dashboard",
+                    "icon": "LayoutDashboard",
+                    "dashboard_code": dashboard_template.code,
+                    "order": 1
+                }
+            ]
+        }
+        
+        return StudyMenuResponse(
+            menu_structure=default_menu,
+            version=dashboard_template.major_version,
+            last_updated=dashboard_template.updated_at
+        )
     
     # Get user permissions
     user_permissions = set()
@@ -420,12 +511,12 @@ async def get_study_menu(
     
     # Filter menu by permissions
     filtered_menu = crud_menu.filter_menu_by_permissions(
-        menu_template.menu_structure,
+        menu_structure,
         user_permissions
     )
     
     return StudyMenuResponse(
         menu_structure=filtered_menu,
-        version=menu_template.version,
-        last_updated=menu_template.updated_at
+        version=dashboard_template.major_version,
+        last_updated=dashboard_template.updated_at
     )

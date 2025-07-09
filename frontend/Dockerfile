@@ -24,8 +24,18 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Accept build arguments and convert to environment variables
+ARG NEXT_PUBLIC_API_URL
+ARG NEXTAUTH_URL
+ARG NEXTAUTH_SECRET
+ARG NODE_ENV=production
+
 # Set environment variables for build
-ENV NEXT_TELEMETRY_DISABLED 1
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV NEXTAUTH_URL=${NEXTAUTH_URL}
+ENV NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+ENV NODE_ENV=${NODE_ENV}
 
 RUN npm run build
 

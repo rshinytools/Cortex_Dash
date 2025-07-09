@@ -48,7 +48,7 @@ export default function NewWidgetPage() {
       </div>
 
       <WidgetForm
-        onSubmit={handleSubmit}
+        onSubmit={handleSubmit as any}
         isLoading={createWidget.isPending}
       />
     </div>

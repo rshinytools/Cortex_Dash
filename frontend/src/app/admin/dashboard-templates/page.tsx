@@ -4,8 +4,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Plus, Search, Filter, Download, Upload, Eye, Edit, Trash2, Copy } from "lucide-react";
+import { Plus, Search, Download, Upload, Eye, Edit, Trash2, Copy } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,10 +41,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { toast } from "@/components/ui/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { dashboardTemplatesApi, UnifiedDashboardTemplate } from "@/lib/api/dashboard-templates";
-import { DashboardCategory } from "@/types/dashboard";
-import { MenuPreview } from "@/components/admin/menu-preview";
+import { DashboardCategory, LayoutType } from "@/types/dashboard";
+import { MenuPosition, MenuItemType } from "@/types/menu";
 import { DashboardTemplatePreview } from "@/components/admin/dashboard-template-preview";
 
 // Mock data - in production this would come from the API
@@ -60,12 +59,12 @@ const mockTemplates: UnifiedDashboardTemplate[] = [
     menuTemplate: {
       id: "1",
       name: "Executive Menu",
-      position: "sidebar",
+      position: MenuPosition.SIDEBAR,
       items: [
         {
           id: "1-1",
           label: "Overview",
-          type: "link",
+          type: MenuItemType.LINK,
           url: "#overview",
           icon: "Home",
           order: 0,
@@ -75,7 +74,7 @@ const mockTemplates: UnifiedDashboardTemplate[] = [
         {
           id: "1-2",
           label: "Safety",
-          type: "dropdown",
+          type: MenuItemType.DROPDOWN,
           order: 1,
           isVisible: true,
           isEnabled: true,
@@ -84,7 +83,7 @@ const mockTemplates: UnifiedDashboardTemplate[] = [
             {
               id: "1-2-1",
               label: "Adverse Events",
-              type: "link",
+              type: MenuItemType.LINK,
               url: "#safety-ae",
               order: 0,
               isVisible: true,
@@ -93,7 +92,7 @@ const mockTemplates: UnifiedDashboardTemplate[] = [
             {
               id: "1-2-2",
               label: "SAE Summary",
-              type: "link",
+              type: MenuItemType.LINK,
               url: "#safety-sae",
               order: 1,
               isVisible: true,
@@ -104,7 +103,7 @@ const mockTemplates: UnifiedDashboardTemplate[] = [
         {
           id: "1-3",
           label: "Enrollment",
-          type: "link",
+          type: MenuItemType.LINK,
           url: "#enrollment",
           icon: "Users",
           order: 2,
@@ -125,7 +124,7 @@ const mockTemplates: UnifiedDashboardTemplate[] = [
         category: DashboardCategory.EXECUTIVE,
         version: "1.0.0",
         layout: {
-          type: "grid",
+          type: LayoutType.GRID,
           columns: 12,
           rowHeight: 80,
         },
@@ -161,7 +160,7 @@ const mockTemplates: UnifiedDashboardTemplate[] = [
 ];
 
 export default function DashboardTemplatesPage() {
-  const router = useRouter();
+  const { toast } = useToast();
   const [templates, setTemplates] = useState<UnifiedDashboardTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -181,7 +180,7 @@ export default function DashboardTemplatesPage() {
       
       // For now, use mock data
       setTemplates(mockTemplates);
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to load dashboard templates",
@@ -200,7 +199,7 @@ export default function DashboardTemplatesPage() {
         description: "Dashboard template deleted successfully",
       });
       loadTemplates();
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to delete dashboard template",
@@ -217,7 +216,7 @@ export default function DashboardTemplatesPage() {
         description: "Dashboard template duplicated successfully",
       });
       loadTemplates();
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to duplicate dashboard template",
@@ -239,7 +238,7 @@ export default function DashboardTemplatesPage() {
         title: "Success",
         description: "Dashboard template exported successfully",
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to export dashboard template",
@@ -292,7 +291,7 @@ export default function DashboardTemplatesPage() {
                         description: "Dashboard template imported successfully",
                       });
                       loadTemplates();
-                    } catch (error) {
+                    } catch {
                       toast({
                         title: "Error",
                         description: "Failed to import dashboard template",
@@ -524,7 +523,12 @@ export default function DashboardTemplatesPage() {
 }
 
 // Helper function to count menu items including children
-function countMenuItems(items: any[]): number {
+interface MenuItemCount {
+  id: string;
+  children?: MenuItemCount[];
+}
+
+function countMenuItems(items: MenuItemCount[]): number {
   return items.reduce((count, item) => {
     return count + 1 + (item.children ? countMenuItems(item.children) : 0);
   }, 0);

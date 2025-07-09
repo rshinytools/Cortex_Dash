@@ -54,7 +54,7 @@ export default function NewMenuTemplatePage() {
     try {
       await menusApi.createMenuTemplate({
         ...formData,
-        items: items,
+        items: items as any,
       })
 
       toast({

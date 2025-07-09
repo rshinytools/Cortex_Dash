@@ -17,6 +17,8 @@ interface Dashboard {
   status: "active" | "draft"
   createdAt: string
   updatedAt: string
+  menuTemplateId?: string
+  menuLayouts?: Record<string, any[]>
 }
 
 interface CreateDashboardData {
@@ -25,9 +27,11 @@ interface CreateDashboardData {
   category?: string
   layout: any[]
   widgets: any[]
+  menuTemplateId?: string
+  menuLayouts?: Record<string, any[]>
 }
 
-interface UpdateDashboardData extends Partial<CreateDashboardData> {}
+type UpdateDashboardData = Partial<CreateDashboardData>;
 
 // For development, we'll use mock data
 const MOCK_DASHBOARDS: Dashboard[] = [
@@ -87,7 +91,7 @@ export function useDashboards() {
         // Transform API response to match our Dashboard interface
         return response.data.map(template => {
           const dashboards = template.template_structure?.dashboards || []
-          const defaultDashboard = dashboards.find(d => d.id === "default") || dashboards[0]
+          const defaultDashboard = dashboards.find((d: any) => d.id === "default") || dashboards[0]
           
           return {
             id: template.id,
@@ -102,7 +106,7 @@ export function useDashboards() {
             createdAt: template.created_at,
             updatedAt: template.updated_at,
             menuTemplateId: template.template_structure?.menu_template_id || "none",
-            menuLayouts: dashboards.reduce((acc, dashboard) => ({
+            menuLayouts: dashboards.reduce((acc: any, dashboard: any) => ({
               ...acc,
               [dashboard.id]: dashboard.layout || dashboard.widgets || []
             }), {})
@@ -123,10 +127,10 @@ export function useDashboards() {
       
       // Extract dashboard layouts from template structure
       const dashboards = template.template_structure?.dashboards || []
-      const defaultDashboard = dashboards.find(d => d.id === "default") || dashboards[0]
+      const defaultDashboard = dashboards.find((d: any) => d.id === "default") || dashboards[0]
       
       // Build menu layouts from dashboards
-      const menuLayouts = dashboards.reduce((acc, dashboard) => ({
+      const menuLayouts = dashboards.reduce((acc: any, dashboard: any) => ({
         ...acc,
         [dashboard.id]: dashboard.layout || dashboard.widgets || []
       }), {})
@@ -238,7 +242,7 @@ export function useDashboards() {
         
         // Transform back to our format
         const dashboards = response.template_structure?.dashboards || []
-        const defaultDashboard = dashboards.find(d => d.id === "default") || dashboards[0]
+        const defaultDashboard = dashboards.find((d: any) => d.id === "default") || dashboards[0]
         
         return {
           id: response.id,
@@ -253,7 +257,7 @@ export function useDashboards() {
           createdAt: response.created_at,
           updatedAt: response.updated_at,
           menuTemplateId: data.menuTemplateId,
-          menuLayouts: dashboards.reduce((acc, dashboard) => ({
+          menuLayouts: dashboards.reduce((acc: any, dashboard: any) => ({
             ...acc,
             [dashboard.id]: dashboard.layout || dashboard.widgets || []
           }), {})

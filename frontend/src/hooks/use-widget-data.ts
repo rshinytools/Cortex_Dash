@@ -38,11 +38,11 @@ export function useWidgetData(
   options?: WidgetDataOptions
 ) {
   const queryClient = useQueryClient();
-  const refreshIntervalRef = useRef<NodeJS.Timeout>();
+  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Determine refresh interval from widget config or options
   const refreshInterval = options?.refreshInterval || 
-    widgetInstance.config?.dataSource?.refreshInterval || 
+    (widgetInstance.config as any)?.dataSource?.refreshInterval || 
     widgetInstance.widgetDefinition?.dataRequirements?.refreshInterval;
 
   // Build the API endpoint based on widget configuration
@@ -52,12 +52,12 @@ export function useWidgetData(
 
     // Add data source parameters
     if (widgetInstance.config?.dataSource?.type === 'dataset') {
-      params.append('dataset_id', widgetInstance.config.dataSource.datasetId);
+      params.append('dataset_id', widgetInstance.config.dataSource.datasetId!);
     }
 
     // Add any filters from widget config
-    if (widgetInstance.config?.filters) {
-      Object.entries(widgetInstance.config.filters).forEach(([key, value]) => {
+    if ((widgetInstance.config as any)?.filters) {
+      Object.entries((widgetInstance.config as any).filters).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
           params.append(key, String(value));
         }
@@ -65,8 +65,8 @@ export function useWidgetData(
     }
 
     // Add time range if specified
-    if (widgetInstance.config?.timeRange) {
-      const { start, end } = widgetInstance.config.timeRange;
+    if ((widgetInstance.config as any)?.timeRange) {
+      const { start, end } = (widgetInstance.config as any).timeRange;
       if (start) params.append('start_date', start);
       if (end) params.append('end_date', end);
     }
@@ -98,6 +98,7 @@ export function useWidgetData(
       }
       return failureCount < 3;
     },
+    // @ts-expect-error - onError type mismatch with useQuery expectations
     onError: (error: any) => {
       if (options?.onError) {
         options.onError(error);
@@ -123,11 +124,11 @@ export function useWidgetData(
   }, [refreshInterval, query.isSuccess, queryClient, widgetInstance.id, studyId]);
 
   // Transform the data based on widget type
-  const transformedData = query.data?.data ? transformData(query.data.data, widgetInstance) : null;
+  const transformedData = (query.data as any)?.data ? transformData((query.data as any).data, widgetInstance) : null;
 
   return {
     data: transformedData,
-    metadata: query.data?.metadata,
+    metadata: (query.data as any)?.metadata,
     isLoading: query.isLoading,
     isError: query.isError,
     error: query.error,
@@ -138,7 +139,7 @@ export function useWidgetData(
 
 // Transform data based on widget type and configuration
 function transformData(rawData: any, widgetInstance: WidgetInstance): any {
-  const widgetType = widgetInstance.widgetDefinition?.type || widgetInstance.type;
+  const widgetType = widgetInstance.widgetDefinition?.type || (widgetInstance as any).type;
   
   // Handle different data formats
   if (!rawData) return null;

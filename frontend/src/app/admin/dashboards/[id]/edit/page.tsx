@@ -22,6 +22,7 @@ import { DashboardDesigner } from "@/components/admin/dashboard-designer"
 import { useDashboards } from "@/hooks/use-dashboards"
 import { useToast } from "@/hooks/use-toast"
 import { menusApi } from "@/lib/api/menus"
+import { MenuTemplate as ApiMenuTemplate } from "@/types/menu"
 
 export default function EditDashboardPage() {
   const router = useRouter()
@@ -31,9 +32,9 @@ export default function EditDashboardPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
-  const [layoutConfig, setLayoutConfig] = useState<any[]>([])
+  const [layoutConfig, setLayoutConfig] = useState<unknown[]>([])
   const [selectedMenuItem, setSelectedMenuItem] = useState<string>("")
-  const [menuLayouts, setMenuLayouts] = useState<Record<string, any[]>>({})
+  const [menuLayouts, setMenuLayouts] = useState<Record<string, unknown[]>>({})
   
   const [metadata, setMetadata] = useState({
     name: "",
@@ -41,9 +42,22 @@ export default function EditDashboardPage() {
     category: "general",
     menuTemplateId: "none",
   })
-  const [menuTemplates, setMenuTemplates] = useState<any[]>([])
+  interface MenuTemplate {
+    id: string;
+    name: string;
+    items?: MenuTemplateItem[];
+  }
+  
+  interface MenuTemplateItem {
+    id: string;
+    label: string;
+    type: 'group' | 'dashboard';
+    children?: MenuTemplateItem[];
+  }
+  
+  const [menuTemplates, setMenuTemplates] = useState<ApiMenuTemplate[]>([])
   const [loadingMenus, setLoadingMenus] = useState(false)
-  const [selectedMenuTemplate, setSelectedMenuTemplate] = useState<any>(null)
+  const [selectedMenuTemplate, setSelectedMenuTemplate] = useState<ApiMenuTemplate | null>(null)
 
   useEffect(() => {
     loadDashboard()
@@ -74,10 +88,10 @@ export default function EditDashboardPage() {
   const loadSelectedMenuTemplate = async (templateId: string) => {
     try {
       const template = await menusApi.getMenuTemplate(templateId)
-      setSelectedMenuTemplate(template)
+      setSelectedMenuTemplate(template as any)
       // Select the first menu item by default
       if (template.items && template.items.length > 0) {
-        const firstDashboardItem = template.items.find((item: any) => item.type === 'dashboard')
+        const firstDashboardItem = template.items.find((item: MenuTemplateItem) => item.type === 'dashboard')
         if (firstDashboardItem) {
           setSelectedMenuItem(firstDashboardItem.id)
         }
@@ -94,14 +108,14 @@ export default function EditDashboardPage() {
         name: dashboard.name,
         description: dashboard.description || "",
         category: dashboard.category || "general",
-        menuTemplateId: dashboard.menuTemplateId || "none",
+        menuTemplateId: (dashboard as any).menuTemplateId || "none",
       })
       setLayoutConfig(dashboard.layout || [])
       // Load menu layouts if available
-      if (dashboard.menuLayouts) {
-        setMenuLayouts(dashboard.menuLayouts)
+      if ((dashboard as any).menuLayouts) {
+        setMenuLayouts((dashboard as any).menuLayouts)
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to load dashboard. Please try again.",
@@ -113,7 +127,7 @@ export default function EditDashboardPage() {
     }
   }
 
-  const handleLayoutChange = (newLayout: any[]) => {
+  const handleLayoutChange = (newLayout: unknown[]) => {
     if (selectedMenuItem) {
       // Save layout for the current menu item
       setMenuLayouts(prev => ({
@@ -143,7 +157,7 @@ export default function EditDashboardPage() {
         ...metadata,
         layout: currentLayout,
         menuLayouts: selectedMenuTemplate ? menuLayouts : undefined,
-        widgets: currentLayout.map(item => ({
+        widgets: currentLayout.map((item: any) => ({
           id: item.i,
           type: item.type,
           config: item.config || {},
@@ -161,7 +175,7 @@ export default function EditDashboardPage() {
       if (showSettings) {
         setShowSettings(false)
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to update dashboard. Please try again.",
@@ -364,7 +378,7 @@ export default function EditDashboardPage() {
               {selectedMenuTemplate.name}
             </h3>
             <div className="space-y-1">
-              {selectedMenuTemplate.items?.map((item: any) => {
+              {(selectedMenuTemplate as any).items?.map((item: MenuTemplateItem) => {
                 if (item.type === 'group') {
                   return (
                     <div key={item.id} className="mt-3">
@@ -372,7 +386,7 @@ export default function EditDashboardPage() {
                         {item.label}
                       </p>
                       <div className="space-y-1 ml-2">
-                        {item.children?.map((child: any) => (
+                        {item.children?.map((child: MenuTemplateItem) => (
                           <Button
                             key={child.id}
                             variant={selectedMenuItem === child.id ? "secondary" : "ghost"}
@@ -406,13 +420,13 @@ export default function EditDashboardPage() {
               <div className="mt-6 p-3 bg-muted rounded-md">
                 <p className="text-xs font-medium text-muted-foreground">Currently designing:</p>
                 <p className="text-sm font-medium mt-1">
-                  {selectedMenuTemplate.items?.find((item: any) => 
+                  {(selectedMenuTemplate as any).items?.find((item: MenuTemplateItem) => 
                     item.id === selectedMenuItem || 
-                    item.children?.some((child: any) => child.id === selectedMenuItem)
+                    item.children?.some((child: MenuTemplateItem) => child.id === selectedMenuItem)
                   )?.label || 
-                  selectedMenuTemplate.items?.find((item: any) => 
-                    item.children?.some((child: any) => child.id === selectedMenuItem)
-                  )?.children?.find((child: any) => child.id === selectedMenuItem)?.label}
+                  (selectedMenuTemplate as any).items?.find((item: MenuTemplateItem) => 
+                    item.children?.some((child: MenuTemplateItem) => child.id === selectedMenuItem)
+                  )?.children?.find((child: MenuTemplateItem) => child.id === selectedMenuItem)?.label}
                 </p>
               </div>
             )}

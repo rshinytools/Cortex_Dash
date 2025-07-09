@@ -163,8 +163,8 @@ export const Heatmap: WidgetComponent = ({
     const records = Array.isArray(data) ? data : data?.records || [];
     
     // Get unique x and y values
-    let xLabels = [...new Set(records.map(d => d[config.xAxisField]))].filter(Boolean);
-    let yLabels = [...new Set(records.map(d => d[config.yAxisField]))].filter(Boolean);
+    const xLabels = [...new Set(records.map((d: any) => d[config.xAxisField]))].filter(Boolean);
+    const yLabels = [...new Set(records.map((d: any) => d[config.yAxisField]))].filter(Boolean);
     
     // Sort if requested
     if (config.sortX === 'asc') xLabels.sort();
@@ -175,7 +175,7 @@ export const Heatmap: WidgetComponent = ({
     
     // Create value map for quick lookup
     const valueMap = new Map<string, number>();
-    records.forEach(record => {
+    records.forEach((record: any) => {
       const x = record[config.xAxisField];
       const y = record[config.yAxisField];
       const value = record[config.valueField];
@@ -260,11 +260,11 @@ export const Heatmap: WidgetComponent = ({
               <div style={{ height: cellSize + cellGap }} />
               {yLabels.map(label => (
                 <div
-                  key={label}
+                  key={label as React.Key}
                   className="text-xs text-muted-foreground flex items-center justify-end"
                   style={{ height: cellSize + cellGap }}
                 >
-                  {label}
+                  {label as React.ReactNode}
                 </div>
               ))}
             </div>
@@ -275,23 +275,23 @@ export const Heatmap: WidgetComponent = ({
               <div className="flex mb-1">
                 {xLabels.map(label => (
                   <div
-                    key={label}
+                    key={label as React.Key}
                     className="text-xs text-muted-foreground text-center truncate"
                     style={{ width: cellSize + cellGap }}
                   >
-                    {label}
+                    {label as React.ReactNode}
                   </div>
                 ))}
               </div>
               
               {/* Cells */}
               {matrix.map((row, rowIndex) => (
-                <div key={yLabels[rowIndex]} className="flex">
+                <div key={yLabels[rowIndex] as React.Key} className="flex">
                   {row.map((value, colIndex) => (
                     <HeatmapCell
-                      key={`${xLabels[colIndex]}-${yLabels[rowIndex]}`}
-                      x={xLabels[colIndex]}
-                      y={yLabels[rowIndex]}
+                      key={`${xLabels[colIndex] as string}-${yLabels[rowIndex] as string}`}
+                      x={xLabels[colIndex] as string}
+                      y={yLabels[rowIndex] as string}
                       value={value}
                       color={value !== null ? getColor(value, config, minValue, maxValue) : '#f3f4f6'}
                       size={cellSize}

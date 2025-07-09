@@ -332,6 +332,7 @@ interface RealTimeCursorsProps {
   showPresenceList?: boolean;
   onCursorUpdate?: (cursor: UserCursor) => void;
   onPresenceUpdate?: (presence: UserPresence) => void;
+  children?: React.ReactNode;
 }
 
 export function RealTimeCursors({
@@ -344,6 +345,7 @@ export function RealTimeCursors({
   showPresenceList = true,
   onCursorUpdate,
   onPresenceUpdate,
+  children,
 }: RealTimeCursorsProps) {
   const [cursors, setCursors] = useState<UserCursor[]>([]);
   const [presences, setPresences] = useState<UserPresence[]>([]);
@@ -476,7 +478,7 @@ export function RealTimeCursors({
 
   // Handle user activity tracking
   const trackActivity = useCallback((
-    type: UserCursor['activity']['type'],
+    type: 'viewing' | 'editing' | 'commenting' | 'filtering',
     description?: string,
     target?: string
   ) => {
@@ -520,6 +522,9 @@ export function RealTimeCursors({
 
   return (
     <div ref={containerRef} className={cn("relative h-full w-full", className)}>
+      {/* Render children */}
+      {children}
+      
       {/* Render other users' cursors */}
       {visibleCursors.map((cursor) => (
         <React.Fragment key={cursor.user_id}>

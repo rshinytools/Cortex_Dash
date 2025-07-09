@@ -71,10 +71,10 @@ const formatValue = (value: number, format?: string, decimals: number = 2): stri
   }
 };
 
-const CustomTooltip = ({ active, payload, config }: TooltipProps<any, any> & { config: PieChartConfig }) => {
+const CustomTooltip = ({ active, payload, config }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0];
-    const percentage = ((data.value / data.payload.total) * 100).toFixed(1);
+    const percentage = ((data.value / (data.payload?.total || 1)) * 100).toFixed(1);
     
     return (
       <div className="bg-background border rounded-lg shadow-lg p-3">
@@ -196,7 +196,7 @@ export const PieChart: WidgetComponent = ({
   }
 
   // Process data for pie chart
-  const processedData = chartData.map((item, index) => {
+  const processedData = chartData.map((item: any, index: number) => {
     const value = item[config.valueField];
     const name = item[config.labelField];
     return {
@@ -207,8 +207,8 @@ export const PieChart: WidgetComponent = ({
   });
 
   // Calculate total for percentage calculations
-  const total = processedData.reduce((sum, item) => sum + item.value, 0);
-  processedData.forEach(item => {
+  const total = processedData.reduce((sum: number, item: any) => sum + item.value, 0);
+  processedData.forEach((item: any) => {
     (item as any).total = total;
   });
 
@@ -252,17 +252,16 @@ export const PieChart: WidgetComponent = ({
               cx="50%"
               cy="50%"
               labelLine={false}
-              label={config.showLabels !== false ? (props) => renderCustomLabel(props, config) : undefined}
+              label={config.showLabels !== false ? (props: any) => renderCustomLabel(props, config) : undefined}
               outerRadius="80%"
               innerRadius={config.innerRadius || 0}
               startAngle={config.startAngle || 90}
               endAngle={config.endAngle || -270}
-              activeIndex={activeIndex}
               activeShape={config.activeOnHover ? renderActiveShape : undefined}
               onMouseEnter={onPieEnter}
               onMouseLeave={onPieLeave}
             >
-              {processedData.map((entry, index) => (
+              {processedData.map((entry: any, index: number) => (
                 <Cell key={`cell-${index}`} fill={entry.fill} />
               ))}
             </Pie>

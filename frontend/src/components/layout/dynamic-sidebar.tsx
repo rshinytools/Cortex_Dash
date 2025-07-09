@@ -127,7 +127,7 @@ export function DynamicSidebar({ studyId, className, onNavigate }: DynamicSideba
             <Icon className="mr-2 h-4 w-4" />
             <span className="flex-1 text-left">{item.label}</span>
           </Button>
-          {isExpanded && (
+          {isExpanded && item.children && (
             <div className="ml-4">
               {item.children.map((child) => renderMenuItem(child, depth + 1))}
             </div>

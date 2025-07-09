@@ -63,12 +63,12 @@ export default function PreviewDashboardPage() {
       setMetadata({
         name: dashboard.name,
         description: dashboard.description || "",
-        menuTemplateId: dashboard.menuTemplateId || "none",
+        menuTemplateId: (dashboard as any).menuTemplateId || "none",
       })
       setLayoutConfig(dashboard.layout || [])
       // Load menu layouts if available
-      if (dashboard.menuLayouts) {
-        setMenuLayouts(dashboard.menuLayouts)
+      if ((dashboard as any).menuLayouts) {
+        setMenuLayouts((dashboard as any).menuLayouts)
       }
     } catch (error) {
       toast({

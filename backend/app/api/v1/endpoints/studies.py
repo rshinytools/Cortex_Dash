@@ -372,9 +372,37 @@ async def initialize_study(
                     detail="Dashboard template not found"
                 )
             
+            # Create StudyDashboard assignment
+            from app.models import StudyDashboard, StudyDashboardCreate
+            
+            # Check if study already has a dashboard assignment
+            existing_dashboard = db.exec(
+                select(StudyDashboard).where(
+                    StudyDashboard.study_id == study_id,
+                    StudyDashboard.dashboard_template_id == template.id
+                )
+            ).first()
+            
+            if not existing_dashboard:
+                study_dashboard_create = StudyDashboardCreate(
+                    study_id=study_id,
+                    dashboard_template_id=template.id,
+                    customizations={},
+                    data_mappings=initialization_request.field_mappings or {},
+                    is_active=True
+                )
+                
+                study_dashboard = StudyDashboard(
+                    **study_dashboard_create.model_dump(),
+                    created_by=current_user.id
+                )
+                db.add(study_dashboard)
+                db.commit()
+                db.refresh(study_dashboard)
+            
             study.dashboard_template_id = template.id
             # Initialize with empty field mappings - to be configured later
-            study.field_mappings = {}
+            study.field_mappings = initialization_request.field_mappings or {}
             study.template_overrides = {}
             initialized_components.append("dashboard_template")
         

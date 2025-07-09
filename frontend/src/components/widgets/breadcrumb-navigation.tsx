@@ -142,7 +142,7 @@ export function BreadcrumbNavigation({
       )}
 
       {/* Back button */}
-      {showBackButton && breadcrumbs.length > 1 && variant !== 'minimal' && (
+      {showBackButton && breadcrumbs.length > 1 && (variant as string) !== 'minimal' && (
         <>
           <Button
             variant="ghost"

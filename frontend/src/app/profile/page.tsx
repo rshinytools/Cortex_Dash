@@ -75,13 +75,15 @@ export default function ProfilePage() {
       await refetchUser();
       
       // Update the session with new user data
-      await updateSession({
-        ...session,
-        user: {
-          ...session.user,
-          ...updatedUser,
-        },
-      });
+      if (session) {
+        await updateSession({
+          ...session,
+          user: {
+            ...session.user,
+            ...updatedUser,
+          },
+        });
+      }
       
       // Invalidate queries that might depend on user data
       queryClient.invalidateQueries({ queryKey: ['currentUser'] });

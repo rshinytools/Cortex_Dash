@@ -16,7 +16,8 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
-import type { WidgetDefinition, WidgetCategory } from "@/types/widget";
+import type { WidgetDefinition } from "@/types/widget";
+import { WidgetCategory } from "@/types/widget";
 
 interface WidgetPaletteProps {
   widgetDefinitions: WidgetDefinition[];
@@ -39,7 +40,7 @@ function WidgetItem({ widget, onAdd }: WidgetItemProps) {
 
   return (
     <div
-      ref={drag}
+      ref={drag as any}
       className={cn(
         "cursor-move rounded-lg border p-3 transition-all hover:border-primary hover:shadow-sm",
         isDragging && "opacity-50"

@@ -175,7 +175,7 @@ export default function DashboardsPage() {
                     {new Date(dashboard.updatedAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={dashboard.status === "active" ? "success" : "secondary"}>
+                    <Badge variant={dashboard.status === "active" ? "default" : "secondary"}>
                       {dashboard.status}
                     </Badge>
                   </TableCell>

@@ -183,7 +183,7 @@ export default function StudyDataSourcesPage() {
               </TableHeader>
               <TableBody>
                 {dataSources.map((source: any) => {
-                  const Icon = dataSourceIcons[source.type] || Database;
+                  const Icon = dataSourceIcons[source.type as keyof typeof dataSourceIcons] || Database;
                   return (
                     <TableRow key={source.id}>
                       <TableCell className="font-medium">

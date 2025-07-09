@@ -97,7 +97,7 @@ export function ScheduledExports({ dashboardId, dashboardName, isOpen, onClose }
   }, [isOpen]);
 
   const fetchScheduledExports = async () => {
-    if (!session?.user?.accessToken) return;
+    if (!session?.user) return;
 
     setIsLoading(true);
     try {
@@ -105,7 +105,7 @@ export function ScheduledExports({ dashboardId, dashboardName, isOpen, onClose }
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/dashboards/${dashboardId}/scheduled-exports`,
         {
           headers: {
-            Authorization: `Bearer ${session.user.accessToken}`,
+            Authorization: `Bearer ${(session.user as any).accessToken}`,
           },
         }
       );
@@ -123,7 +123,7 @@ export function ScheduledExports({ dashboardId, dashboardName, isOpen, onClose }
   };
 
   const handleCreate = async () => {
-    if (!session?.user?.accessToken) return;
+    if (!session?.user) return;
 
     try {
       const recipients = formData.email_recipients
@@ -137,7 +137,7 @@ export function ScheduledExports({ dashboardId, dashboardName, isOpen, onClose }
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.user.accessToken}`,
+            Authorization: `Bearer ${(session.user as any).accessToken}`,
           },
           body: JSON.stringify({
             ...formData,
@@ -163,7 +163,7 @@ export function ScheduledExports({ dashboardId, dashboardName, isOpen, onClose }
   };
 
   const handleUpdate = async () => {
-    if (!session?.user?.accessToken || !editingExport) return;
+    if (!session?.user || !editingExport) return;
 
     try {
       const recipients = formData.email_recipients
@@ -177,7 +177,7 @@ export function ScheduledExports({ dashboardId, dashboardName, isOpen, onClose }
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.user.accessToken}`,
+            Authorization: `Bearer ${(session.user as any).accessToken}`,
           },
           body: JSON.stringify({
             ...formData,
@@ -199,7 +199,7 @@ export function ScheduledExports({ dashboardId, dashboardName, isOpen, onClose }
   };
 
   const handleDelete = async (id: string) => {
-    if (!session?.user?.accessToken) return;
+    if (!session?.user) return;
 
     try {
       const response = await fetch(
@@ -207,7 +207,7 @@ export function ScheduledExports({ dashboardId, dashboardName, isOpen, onClose }
         {
           method: 'DELETE',
           headers: {
-            Authorization: `Bearer ${session.user.accessToken}`,
+            Authorization: `Bearer ${(session.user as any).accessToken}`,
           },
         }
       );
@@ -223,7 +223,7 @@ export function ScheduledExports({ dashboardId, dashboardName, isOpen, onClose }
   };
 
   const handleToggleActive = async (exportItem: ScheduledExport) => {
-    if (!session?.user?.accessToken) return;
+    if (!session?.user) return;
 
     try {
       const response = await fetch(
@@ -232,7 +232,7 @@ export function ScheduledExports({ dashboardId, dashboardName, isOpen, onClose }
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.user.accessToken}`,
+            Authorization: `Bearer ${(session.user as any).accessToken}`,
           },
           body: JSON.stringify({
             is_active: !exportItem.is_active,
@@ -253,7 +253,7 @@ export function ScheduledExports({ dashboardId, dashboardName, isOpen, onClose }
   };
 
   const handleRunNow = async (id: string) => {
-    if (!session?.user?.accessToken) return;
+    if (!session?.user) return;
 
     try {
       const response = await fetch(
@@ -261,7 +261,7 @@ export function ScheduledExports({ dashboardId, dashboardName, isOpen, onClose }
         {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${session.user.accessToken}`,
+            Authorization: `Bearer ${(session.user as any).accessToken}`,
           },
         }
       );
@@ -305,8 +305,8 @@ export function ScheduledExports({ dashboardId, dashboardName, isOpen, onClose }
   const getStatusBadge = (status?: string) => {
     if (!status) return null;
 
-    const variants: Record<string, 'default' | 'success' | 'destructive'> = {
-      success: 'success',
+    const variants: Record<string, 'default' | 'destructive' | 'secondary' | 'outline'> = {
+      success: 'secondary',
       failed: 'destructive',
       skipped: 'default',
     };

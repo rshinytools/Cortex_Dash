@@ -3,6 +3,7 @@
 
 'use client'
 
+import React from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useWidget, useUpdateWidget } from '@/hooks/use-widgets'
@@ -21,18 +22,24 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { ArrowLeft, AlertCircle } from 'lucide-react'
 
 interface EditWidgetPageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 export default function EditWidgetPage({ params }: EditWidgetPageProps) {
   const router = useRouter()
-  const { id } = params
+  const [id, setId] = React.useState<string>('')
+  
+  React.useEffect(() => {
+    params.then((p) => {
+      setId(p.id)
+    })
+  }, [params])
 
   // Fetch widget data
-  const { data: widget, isLoading, error } = useWidget(id)
-  const updateWidget = useUpdateWidget(id)
+  const { data: widget, isLoading, error } = useWidget(id || '')
+  const updateWidget = useUpdateWidget(id || '')
 
   const handleSubmit = async (data: UpdateWidgetRequest) => {
     try {
@@ -43,7 +50,7 @@ export default function EditWidgetPage({ params }: EditWidgetPageProps) {
     }
   }
 
-  if (isLoading) {
+  if (!id || isLoading) {
     return (
       <div className="flex-1 space-y-4 p-8 pt-6">
         <div className="flex items-center gap-4">

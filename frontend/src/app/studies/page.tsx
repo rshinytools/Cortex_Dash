@@ -200,8 +200,12 @@ export default function StudiesPage() {
         return 'secondary';
       case StudyStatus.COMPLETED:
         return 'outline';
-      case StudyStatus.TERMINATED:
+      case StudyStatus.ARCHIVED:
         return 'destructive';
+      case StudyStatus.PAUSED:
+        return 'outline';
+      case StudyStatus.SETUP:
+        return 'secondary';
       default:
         return 'secondary';
     }
@@ -281,9 +285,11 @@ export default function StudiesPage() {
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value={StudyStatus.PLANNING}>Planning</SelectItem>
+                <SelectItem value={StudyStatus.SETUP}>Setup</SelectItem>
                 <SelectItem value={StudyStatus.ACTIVE}>Active</SelectItem>
+                <SelectItem value={StudyStatus.PAUSED}>Paused</SelectItem>
                 <SelectItem value={StudyStatus.COMPLETED}>Completed</SelectItem>
-                <SelectItem value={StudyStatus.TERMINATED}>Terminated</SelectItem>
+                <SelectItem value={StudyStatus.ARCHIVED}>Archived</SelectItem>
               </SelectContent>
             </Select>
           </div>

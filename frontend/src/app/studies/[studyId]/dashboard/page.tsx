@@ -146,19 +146,24 @@ export default function StudyDashboardPage() {
   const [menuLayouts, setMenuLayouts] = useState<Record<string, any[]>>({});
   const [defaultLayout, setDefaultLayout] = useState<any[]>([]);
 
-  const { data: study, isLoading: studyLoading } = useQuery({
+  const { data: study, isLoading: studyLoading, error: studyError } = useQuery({
     queryKey: ['study', studyId],
     queryFn: () => studiesApi.getStudy(studyId),
+    retry: 1,
   });
 
-  const { data: studyMenu, isLoading: menuLoading } = useQuery({
+  const { data: studyMenu, isLoading: menuLoading, error: menuError } = useQuery({
     queryKey: ['study-menu', studyId],
     queryFn: () => studiesApi.getStudyMenu(studyId),
+    enabled: !!study,
+    retry: 1,
   });
 
-  const { data: dashboardConfig, isLoading: configLoading } = useQuery({
+  const { data: dashboardConfig, isLoading: configLoading, error: configError } = useQuery({
     queryKey: ['study-dashboard-config', studyId],
     queryFn: () => studiesApi.getStudyDashboardConfig(studyId),
+    enabled: !!study,
+    retry: 1,
   });
 
   const {
@@ -265,6 +270,30 @@ export default function StudyDashboardPage() {
               <p className="text-muted-foreground">
                 The study you're looking for doesn't exist or you don't have access to it.
               </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Check if study needs initialization
+  if (study.status === 'draft' || (!studyMenu && !menuError) || (!dashboardConfig && !configError)) {
+    return (
+      <div className="container mx-auto py-6">
+        <Card>
+          <CardContent className="py-12">
+            <div className="text-center">
+              <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Study Not Initialized</h3>
+              <p className="text-muted-foreground mb-4">
+                This study needs to be configured before you can view the dashboard.
+              </p>
+              <Button 
+                onClick={() => window.location.href = `/studies/${studyId}/initialize`}
+              >
+                Initialize Study
+              </Button>
             </div>
           </CardContent>
         </Card>

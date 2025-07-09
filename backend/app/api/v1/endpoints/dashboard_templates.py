@@ -63,16 +63,30 @@ async def read_dashboard_templates(
     for template in templates:
         # Count dashboards and widgets in the template
         template_structure = template.template_structure or {}
-        menu_items = template_structure.get("menu", {}).get("items", [])
         
         dashboard_count = 0
         widget_count = 0
         
-        for item in menu_items:
-            if item.get("type") == "dashboard" and "dashboard" in item:
-                dashboard_count += 1
-                widgets = item["dashboard"].get("widgets", [])
+        # Handle both old format (menu.items) and new format (menu_structure + dashboards)
+        if "menu_structure" in template_structure and "dashboards" in template_structure:
+            # New format: A template represents ONE dashboard with multiple views
+            # Each view can have widgets
+            dashboard_count = 1  # One dashboard per template
+            
+            # Count total widgets across all views
+            dashboards_array = template_structure.get("dashboards", [])
+            for dashboard_view in dashboards_array:
+                widgets = dashboard_view.get("widgets", [])
                 widget_count += len(widgets)
+        else:
+            # Old format: look for menu.items
+            menu_items = template_structure.get("menu", {}).get("items", [])
+            
+            for item in menu_items:
+                if item.get("type") == "dashboard" and "dashboard" in item:
+                    dashboard_count += 1
+                    widgets = item["dashboard"].get("widgets", [])
+                    widget_count += len(widgets)
         
         # Create public template with all required fields
         template_dict = template.model_dump()
@@ -105,16 +119,30 @@ async def read_dashboard_template(
     
     # Count dashboards and widgets in the template
     template_structure = template.template_structure or {}
-    menu_items = template_structure.get("menu", {}).get("items", [])
     
     dashboard_count = 0
     widget_count = 0
     
-    for item in menu_items:
-        if item.get("type") == "dashboard" and "dashboard" in item:
-            dashboard_count += 1
-            widgets = item["dashboard"].get("widgets", [])
+    # Handle both old format (menu.items) and new format (menu_structure + dashboards)
+    if "menu_structure" in template_structure and "dashboards" in template_structure:
+        # New format: A template represents ONE dashboard with multiple views
+        # Each view can have widgets
+        dashboard_count = 1  # One dashboard per template
+        
+        # Count total widgets across all views
+        dashboards_array = template_structure.get("dashboards", [])
+        for dashboard_view in dashboards_array:
+            widgets = dashboard_view.get("widgets", [])
             widget_count += len(widgets)
+    else:
+        # Old format: look for menu.items
+        menu_items = template_structure.get("menu", {}).get("items", [])
+        
+        for item in menu_items:
+            if item.get("type") == "dashboard" and "dashboard" in item:
+                dashboard_count += 1
+                widgets = item["dashboard"].get("widgets", [])
+                widget_count += len(widgets)
     
     # Create public template with all required fields
     template_dict = template.model_dump()
@@ -153,19 +181,36 @@ async def get_template_data_requirements(
     
     # Extract widget-specific requirements
     widget_requirements = []
-    menu_items = template_structure.get("menu", {}).get("items", [])
     
-    for item in menu_items:
-        if item.get("type") == "dashboard" and "dashboard" in item:
-            widgets = item["dashboard"].get("widgets", [])
+    # Handle both old format (menu.items) and new format (menu_structure + dashboards)
+    if "menu_structure" in template_structure and "dashboards" in template_structure:
+        # New format: iterate through dashboards array
+        dashboards = template_structure.get("dashboards", [])
+        for dashboard in dashboards:
+            widgets = dashboard.get("widgets", [])
             for widget in widgets:
                 if "data_requirements" in widget:
                     widget_req = {
-                        "widget_code": widget.get("widget_code"),
-                        "title": widget.get("instance_config", {}).get("title"),
+                        "widget_code": widget.get("type"),  # In new format, it's 'type' not 'widget_code'
+                        "title": widget.get("config", {}).get("title"),  # In new format, it's 'config' not 'instance_config'
                         "requirements": widget["data_requirements"]
                     }
                     widget_requirements.append(widget_req)
+    else:
+        # Old format: look for menu.items
+        menu_items = template_structure.get("menu", {}).get("items", [])
+        
+        for item in menu_items:
+            if item.get("type") == "dashboard" and "dashboard" in item:
+                widgets = item["dashboard"].get("widgets", [])
+                for widget in widgets:
+                    if "data_requirements" in widget:
+                        widget_req = {
+                            "widget_code": widget.get("widget_code"),
+                            "title": widget.get("instance_config", {}).get("title"),
+                            "requirements": widget["data_requirements"]
+                        }
+                        widget_requirements.append(widget_req)
     
     return DashboardTemplateDataRequirements(
         template_id=template.id,
@@ -210,16 +255,30 @@ async def create_dashboard_template(
     
     # Count dashboards and widgets in the template
     template_structure = template.template_structure or {}
-    menu_items = template_structure.get("menu", {}).get("items", [])
     
     dashboard_count = 0
     widget_count = 0
     
-    for item in menu_items:
-        if item.get("type") == "dashboard" and "dashboard" in item:
-            dashboard_count += 1
-            widgets = item["dashboard"].get("widgets", [])
+    # Handle both old format (menu.items) and new format (menu_structure + dashboards)
+    if "menu_structure" in template_structure and "dashboards" in template_structure:
+        # New format: A template represents ONE dashboard with multiple views
+        # Each view can have widgets
+        dashboard_count = 1  # One dashboard per template
+        
+        # Count total widgets across all views
+        dashboards_array = template_structure.get("dashboards", [])
+        for dashboard_view in dashboards_array:
+            widgets = dashboard_view.get("widgets", [])
             widget_count += len(widgets)
+    else:
+        # Old format: look for menu.items
+        menu_items = template_structure.get("menu", {}).get("items", [])
+        
+        for item in menu_items:
+            if item.get("type") == "dashboard" and "dashboard" in item:
+                dashboard_count += 1
+                widgets = item["dashboard"].get("widgets", [])
+                widget_count += len(widgets)
     
     # Create public template with all required fields
     template_dict = template.model_dump()
@@ -262,16 +321,30 @@ async def update_dashboard_template(
     
     # Count dashboards and widgets in the template
     template_structure = template.template_structure or {}
-    menu_items = template_structure.get("menu", {}).get("items", [])
     
     dashboard_count = 0
     widget_count = 0
     
-    for item in menu_items:
-        if item.get("type") == "dashboard" and "dashboard" in item:
-            dashboard_count += 1
-            widgets = item["dashboard"].get("widgets", [])
+    # Handle both old format (menu.items) and new format (menu_structure + dashboards)
+    if "menu_structure" in template_structure and "dashboards" in template_structure:
+        # New format: A template represents ONE dashboard with multiple views
+        # Each view can have widgets
+        dashboard_count = 1  # One dashboard per template
+        
+        # Count total widgets across all views
+        dashboards_array = template_structure.get("dashboards", [])
+        for dashboard_view in dashboards_array:
+            widgets = dashboard_view.get("widgets", [])
             widget_count += len(widgets)
+    else:
+        # Old format: look for menu.items
+        menu_items = template_structure.get("menu", {}).get("items", [])
+        
+        for item in menu_items:
+            if item.get("type") == "dashboard" and "dashboard" in item:
+                dashboard_count += 1
+                widgets = item["dashboard"].get("widgets", [])
+                widget_count += len(widgets)
     
     # Create public template with all required fields
     template_dict = template.model_dump()

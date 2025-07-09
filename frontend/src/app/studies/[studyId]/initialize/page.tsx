@@ -11,7 +11,8 @@ import {
   Check, 
   Layout, 
   Map,
-  Eye
+  Eye,
+  Database
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +24,7 @@ import { cn } from '@/lib/utils';
 
 // Import step components
 import { TemplateSelectionStep } from './steps/template-selection-step';
+import { DataSourceStep } from './steps/data-source-step';
 import { DataMappingStep } from './steps/data-mapping-step';
 import { ReviewStep } from './steps/review-step';
 
@@ -41,6 +43,13 @@ const steps: WizardStep[] = [
     description: 'Choose a dashboard template for your study',
     icon: Layout,
     component: TemplateSelectionStep,
+  },
+  {
+    id: 'datasource',
+    title: 'Configure Data Source',
+    description: 'Set up how data will be imported into your study',
+    icon: Database,
+    component: DataSourceStep,
   },
   {
     id: 'mapping',

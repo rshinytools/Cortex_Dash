@@ -36,8 +36,7 @@ services:
 
   # Prestart - Database migrations
   prestart:
-    build:
-      context: ./backend
+    image: cortex-backend:prod
     container_name: cortex_dash-prestart-1
     depends_on:
       postgres:
@@ -66,6 +65,7 @@ services:
   backend:
     build:
       context: ./backend
+    image: cortex-backend:prod
     container_name: cortex_dash-backend-1
     ports:
       - "8000:8000"
@@ -132,8 +132,7 @@ services:
 
   # Celery Worker
   celery-worker:
-    build:
-      context: ./backend
+    image: cortex-backend:prod
     container_name: cortex_dash-celery-worker-1
     command: celery -A app.core.celery_app worker --loglevel=info
     environment:
@@ -161,8 +160,7 @@ services:
 
   # Celery Beat
   celery-beat:
-    build:
-      context: ./backend
+    image: cortex-backend:prod
     container_name: cortex_dash-celery-beat-1
     command: celery -A app.core.celery_app beat --loglevel=info
     environment:

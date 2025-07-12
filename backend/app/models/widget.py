@@ -11,6 +11,7 @@ from sqlalchemy import JSON, DateTime, String, Text, Boolean, Integer
 
 if TYPE_CHECKING:
     from .user import User
+    from .data_mapping import WidgetDataMapping
 
 
 class WidgetCategory(str, Enum):
@@ -40,24 +41,32 @@ class WidgetDefinitionBase(SQLModel):
     
     # Data requirements
     data_requirements: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
-    # Example: {"datasets": ["ADSL", "ADAE"], "minimum_fields": ["USUBJID"]}
+    # Example: {"dataType": "metric", "supportsFiltering": true, "supportsComparison": true}
     
-    # Data contract - defines what data fields the widget needs and how they map
+    # Data contract - defines widget capabilities for data mapping
     data_contract: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSON))
-    # Example: {
-    #   "required_fields": [
-    #     {"name": "subject_id", "type": "string", "description": "Unique subject identifier", "sdtm_mapping": "USUBJID"},
-    #     {"name": "visit_date", "type": "date", "description": "Visit date", "sdtm_mapping": "VISITDT"}
-    #   ],
-    #   "optional_fields": [
-    #     {"name": "site_id", "type": "string", "description": "Site identifier", "sdtm_mapping": "SITEID"}
-    #   ],
-    #   "calculated_fields": [
-    #     {"name": "days_from_baseline", "type": "number", "calculation": "visit_date - baseline_date"}
-    #   ],
-    #   "data_sources": {
-    #     "primary": {"dataset_type": "ADSL", "refresh_rate": 3600},
-    #     "secondary": [{"dataset_type": "ADAE", "join_on": "subject_id"}]
+    # Example for MetricCard: {
+    #   "aggregation_options": {
+    #     "methods": ["COUNT", "COUNT_DISTINCT", "SUM", "AVG", "MIN", "MAX", "MEDIAN"],
+    #     "supports_grouping": true,
+    #     "supports_unique_by": true
+    #   },
+    #   "filter_options": {
+    #     "supports_complex_logic": true,
+    #     "operators": {
+    #       "string": ["equals", "not_equals", "contains", "not_contains", "is_null", "not_null"],
+    #       "numeric": ["equals", "not_equals", "greater_than", "less_than", "between", "is_null", "not_null"],
+    #       "date": ["equals", "before", "after", "between", "is_null", "not_null"]
+    #     }
+    #   },
+    #   "comparison_options": {
+    #     "types": ["previous_extract", "target_value", "previous_period"],
+    #     "default": "previous_extract"
+    #   },
+    #   "display_options": {
+    #     "formats": ["number", "percentage", "currency"],
+    #     "decimal_places": [0, 1, 2],
+    #     "show_trend": true
     #   }
     # }
     
@@ -108,6 +117,10 @@ class WidgetDefinition(WidgetDefinitionBase, table=True):
         sa_relationship_kwargs={"foreign_keys": "[WidgetDefinition.created_by]"}
     )
     # Widget instances are now embedded in dashboard templates, not separate entities
+    data_mappings: List["WidgetDataMapping"] = Relationship(
+        back_populates="widget",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
 
 
 class WidgetDefinitionPublic(WidgetDefinitionBase):

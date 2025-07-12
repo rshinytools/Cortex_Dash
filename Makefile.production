@@ -1,0 +1,236 @@
+# ABOUTME: Production-specific Makefile commands for managing deployments
+# ABOUTME: Includes commands for updates, backups, and feature additions
+
+# Include this in your main Makefile with: include Makefile.production
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PRODUCTION UPDATE COMMANDS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+## Regular Updates (Zero Downtime)
+update-backend: ## Update only backend with rolling restart (zero downtime)
+	@echo "$(YELLOW)📦 Updating backend service...$(NC)"
+	@$(DOCKER_COMPOSE) -f docker-compose.prod.yml build backend
+	@$(DOCKER_COMPOSE) -f docker-compose.prod.yml up -d --no-deps --scale backend=2 backend
+	@sleep 10
+	@$(DOCKER_COMPOSE) -f docker-compose.prod.yml up -d --no-deps --scale backend=1 backend
+	@echo "$(GREEN)✅ Backend updated successfully$(NC)"
+
+update-frontend: ## Update only frontend with rolling restart (zero downtime)
+	@echo "$(YELLOW)📦 Updating frontend service...$(NC)"
+	@$(DOCKER_COMPOSE) -f docker-compose.prod.yml build frontend
+	@$(DOCKER_COMPOSE) -f docker-compose.prod.yml up -d --no-deps --scale frontend=2 frontend
+	@sleep 10
+	@$(DOCKER_COMPOSE) -f docker-compose.prod.yml up -d --no-deps --scale frontend=1 frontend
+	@echo "$(GREEN)✅ Frontend updated successfully$(NC)"
+
+update-prod: ## Complete production update with zero downtime
+	@echo "$(BLUE)🚀 Starting zero-downtime production update...$(NC)"
+	@make update-backend
+	@make update-frontend
+	@$(DOCKER_COMPOSE) -f docker-compose.prod.yml up -d --no-deps nginx redis
+	@make run-migrations
+	@echo "$(GREEN)✅ Production update complete!$(NC)"
+
+quick-fix-backend: ## Quick backend code fix without rebuild (for hotfixes)
+	@echo "$(YELLOW)🔧 Applying quick backend fix...$(NC)"
+	@docker cp backend/. $$(docker ps -qf "name=backend" | head -1):/app/backend/
+	@docker exec $$(docker ps -qf "name=backend" | head -1) supervisorctl restart all
+	@echo "$(GREEN)✅ Backend fix applied$(NC)"
+
+quick-fix-frontend: ## Quick frontend fix without rebuild
+	@echo "$(YELLOW)🔧 Applying quick frontend fix...$(NC)"
+	@$(DOCKER_COMPOSE) -f docker-compose.prod.yml restart frontend
+	@echo "$(GREEN)✅ Frontend fix applied$(NC)"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# FEATURE ADDITION COMMANDS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+add-widget: ## Add a new widget to running system (usage: make add-widget WIDGET=metrics_card)
+	@echo "$(YELLOW)➕ Adding widget: $(WIDGET)$(NC)"
+	@docker exec $$(docker ps -qf "name=backend" | head -1) python -m app.db.seed_$(WIDGET)_widget || echo "Widget seeding completed"
+	@echo "$(GREEN)✅ Widget added successfully$(NC)"
+
+add-migration: ## Create and run a new database migration
+	@echo "$(YELLOW)🗄️ Creating new migration...$(NC)"
+	@docker exec -it $$(docker ps -qf "name=backend" | head -1) alembic revision --autogenerate -m "$(MSG)"
+	@make run-migrations
+	@echo "$(GREEN)✅ Migration created and applied$(NC)"
+
+run-migrations: ## Run pending database migrations
+	@echo "$(YELLOW)🗄️ Running database migrations...$(NC)"
+	@docker exec $$(docker ps -qf "name=backend" | head -1) alembic upgrade head
+	@echo "$(GREEN)✅ Migrations complete$(NC)"
+
+seed-widgets: ## Seed all widgets into running system
+	@echo "$(YELLOW)🌱 Seeding widgets...$(NC)"
+	@docker exec $$(docker ps -qf "name=backend" | head -1) python scripts/seed_widgets.py
+	@docker exec $$(docker ps -qf "name=backend" | head -1) python scripts/seed_data_quality_widgets.py
+	@docker exec $$(docker ps -qf "name=backend" | head -1) python scripts/seed_more_widgets.py
+	@docker exec $$(docker ps -qf "name=backend" | head -1) python -m app.db.seed_metrics_card_widget
+	@echo "$(GREEN)✅ All widgets seeded$(NC)"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# BACKUP AND RESTORE COMMANDS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+backup-db: ## Create database backup
+	@echo "$(YELLOW)💾 Creating database backup...$(NC)"
+	@mkdir -p backups/db
+	@docker exec $$(docker ps -qf "name=db") pg_dump -U postgres app > backups/db/backup_$$(date +%Y%m%d_%H%M%S).sql
+	@echo "$(GREEN)✅ Database backed up to backups/db/$(NC)"
+
+backup-files: ## Backup uploaded files and data
+	@echo "$(YELLOW)💾 Creating files backup...$(NC)"
+	@mkdir -p backups/files
+	@docker run --rm -v $$(docker volume ls -qf "name=app_data"):/data -v $$(pwd)/backups/files:/backup alpine \
+		tar czf /backup/files_backup_$$(date +%Y%m%d_%H%M%S).tar.gz -C /data .
+	@echo "$(GREEN)✅ Files backed up to backups/files/$(NC)"
+
+backup-all: ## Complete backup (database + files)
+	@echo "$(BLUE)💾 Creating complete backup...$(NC)"
+	@make backup-db
+	@make backup-files
+	@echo "$(GREEN)✅ Complete backup finished$(NC)"
+
+restore-db: ## Restore database from backup (usage: make restore-db FILE=backup.sql)
+	@echo "$(RED)⚠️  WARNING: This will overwrite the current database!$(NC)"
+	@echo "Press Ctrl+C to cancel, or wait 5 seconds to continue..."
+	@sleep 5
+	@echo "$(YELLOW)📥 Restoring database from $(FILE)...$(NC)"
+	@docker exec -i $$(docker ps -qf "name=db") psql -U postgres app < $(FILE)
+	@echo "$(GREEN)✅ Database restored$(NC)"
+
+restore-files: ## Restore files from backup (usage: make restore-files FILE=files_backup.tar.gz)
+	@echo "$(RED)⚠️  WARNING: This will overwrite current files!$(NC)"
+	@echo "Press Ctrl+C to cancel, or wait 5 seconds to continue..."
+	@sleep 5
+	@echo "$(YELLOW)📥 Restoring files from $(FILE)...$(NC)"
+	@docker run --rm -v $$(docker volume ls -qf "name=app_data"):/data -v $$(pwd)/backups/files:/backup alpine \
+		tar xzf /backup/$(FILE) -C /data
+	@echo "$(GREEN)✅ Files restored$(NC)"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# MAINTENANCE COMMANDS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+health-check: ## Check health of all services
+	@echo "$(YELLOW)🏥 Checking service health...$(NC)"
+	@echo "Backend: $$(curl -s http://localhost/api/health | jq -r .status || echo "❌ DOWN")"
+	@echo "Frontend: $$(curl -s http://localhost:3000/api/health | jq -r .status || echo "❌ DOWN")"
+	@echo "Database: $$(docker exec $$(docker ps -qf "name=db") pg_isready -U postgres || echo "❌ DOWN")"
+	@echo "Redis: $$(docker exec $$(docker ps -qf "name=redis") redis-cli ping || echo "❌ DOWN")"
+
+prod-logs: ## Tail production logs
+	@$(DOCKER_COMPOSE) -f docker-compose.prod.yml logs -f --tail=100
+
+prod-logs-backend: ## Tail backend logs only
+	@$(DOCKER_COMPOSE) -f docker-compose.prod.yml logs -f --tail=100 backend
+
+prod-logs-frontend: ## Tail frontend logs only
+	@$(DOCKER_COMPOSE) -f docker-compose.prod.yml logs -f --tail=100 frontend
+
+prod-stats: ## Show resource usage statistics
+	@echo "$(YELLOW)📊 Resource Usage:$(NC)"
+	@docker stats --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}\t{{.BlockIO}}"
+
+scale-backend: ## Scale backend service (usage: make scale-backend REPLICAS=3)
+	@echo "$(YELLOW)⚖️ Scaling backend to $(REPLICAS) replicas...$(NC)"
+	@$(DOCKER_COMPOSE) -f docker-compose.prod.yml up -d --scale backend=$(REPLICAS) backend
+	@echo "$(GREEN)✅ Backend scaled to $(REPLICAS) replicas$(NC)"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DEPLOYMENT WORKFLOW COMMANDS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+deploy-patch: ## Deploy a patch update (bug fixes only)
+	@echo "$(BLUE)🩹 Deploying patch update...$(NC)"
+	@make backup-db
+	@make update-prod
+	@make health-check
+	@echo "$(GREEN)✅ Patch deployed successfully$(NC)"
+
+deploy-minor: ## Deploy minor update (new features, backward compatible)
+	@echo "$(BLUE)📦 Deploying minor update...$(NC)"
+	@make backup-all
+	@make update-prod
+	@make seed-widgets
+	@make health-check
+	@echo "$(GREEN)✅ Minor update deployed successfully$(NC)"
+
+deploy-major: ## Deploy major update (breaking changes, full restart)
+	@echo "$(RED)🚀 Deploying major update...$(NC)"
+	@echo "$(RED)⚠️  This will cause downtime! Press Ctrl+C to cancel...$(NC)"
+	@sleep 5
+	@make backup-all
+	@make down-prod
+	@make up-prod
+	@make run-migrations
+	@make seed-widgets
+	@make health-check
+	@echo "$(GREEN)✅ Major update deployed successfully$(NC)"
+
+rollback: ## Rollback to previous version using git
+	@echo "$(RED)⏪ Rolling back to previous version...$(NC)"
+	@git checkout HEAD~1
+	@make deploy-patch
+	@echo "$(GREEN)✅ Rollback complete$(NC)"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SCHEDULED MAINTENANCE
+# ═══════════════════════════════════════════════════════════════════════════════
+
+schedule-backup: ## Create a cron job for automated backups
+	@echo "$(YELLOW)⏰ Setting up automated backups...$(NC)"
+	@echo "0 2 * * * cd $(shell pwd) && make backup-all" | crontab -
+	@echo "$(GREEN)✅ Daily backups scheduled at 2 AM$(NC)"
+
+cleanup-old-backups: ## Remove backups older than 30 days
+	@echo "$(YELLOW)🧹 Cleaning old backups...$(NC)"
+	@find backups -type f -mtime +30 -delete
+	@echo "$(GREEN)✅ Old backups removed$(NC)"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# EMERGENCY COMMANDS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+emergency-stop: ## Emergency stop all services
+	@echo "$(RED)🚨 EMERGENCY STOP$(NC)"
+	@$(DOCKER_COMPOSE) -f docker-compose.prod.yml stop
+
+emergency-restart: ## Emergency restart (use when system is unresponsive)
+	@echo "$(RED)🚨 EMERGENCY RESTART$(NC)"
+	@$(DOCKER_COMPOSE) -f docker-compose.prod.yml restart
+
+fix-permissions: ## Fix file permissions issues
+	@echo "$(YELLOW)🔧 Fixing permissions...$(NC)"
+	@docker exec $$(docker ps -qf "name=backend") chown -R app:app /app/data
+	@echo "$(GREEN)✅ Permissions fixed$(NC)"
+
+clear-cache: ## Clear all caches
+	@echo "$(YELLOW)🧹 Clearing caches...$(NC)"
+	@docker exec $$(docker ps -qf "name=redis") redis-cli FLUSHALL
+	@echo "$(GREEN)✅ Caches cleared$(NC)"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# MONITORING AND DEBUGGING
+# ═══════════════════════════════════════════════════════════════════════════════
+
+monitor: ## Open monitoring dashboard
+	@echo "$(YELLOW)📊 Opening monitoring dashboard...$(NC)"
+	@echo "Backend logs: make prod-logs-backend"
+	@echo "Frontend logs: make prod-logs-frontend"
+	@echo "Resource usage: make prod-stats"
+	@echo "Health status: make health-check"
+
+debug-backend: ## Connect to backend for debugging
+	@docker exec -it $$(docker ps -qf "name=backend" | head -1) bash
+
+debug-db: ## Connect to database for debugging
+	@docker exec -it $$(docker ps -qf "name=db") psql -U postgres app
+
+analyze-db: ## Analyze database performance
+	@echo "$(YELLOW)🔍 Analyzing database...$(NC)"
+	@docker exec $$(docker ps -qf "name=db") psql -U postgres app -c "SELECT pg_size_pretty(pg_database_size('app'));"
+	@docker exec $$(docker ps -qf "name=db") psql -U postgres app -c "SELECT tablename, pg_size_pretty(pg_total_relation_size(tablename::regclass)) as size FROM pg_tables WHERE schemaname = 'public' ORDER BY pg_total_relation_size(tablename::regclass) DESC LIMIT 10;"

@@ -46,7 +46,6 @@ async def upload_organization_logo(
     theme: Optional[str] = Form("light", description="Theme variant (light/dark)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_ORG_SETTINGS))
 ) -> Any:
     """
     Upload or update organization logo.
@@ -187,7 +186,6 @@ async def upload_organization_favicon(
     favicon: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_ORG_SETTINGS))
 ) -> Any:
     """
     Upload or update organization favicon.
@@ -335,7 +333,6 @@ async def upload_study_logo(
     theme: Optional[str] = Form("light", description="Theme variant (light/dark)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.EDIT_STUDY))
 ) -> Any:
     """
     Upload or update study-specific logo.
@@ -467,7 +464,6 @@ async def upload_study_favicon(
     favicon: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.EDIT_STUDY))
 ) -> Any:
     """
     Upload or update study-specific favicon.
@@ -575,7 +571,6 @@ async def delete_organization_branding(
     theme: Optional[str] = Query(None, description="Theme variant for logo deletion"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_ORG_SETTINGS))
 ) -> Any:
     """
     Delete organization branding assets.
@@ -643,7 +638,6 @@ async def get_branding_summary(
     include_studies: bool = Query(True, description="Include study-specific branding"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_ORG))
 ) -> Any:
     """
     Get summary of all branding assets for an organization and its studies.

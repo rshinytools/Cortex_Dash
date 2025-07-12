@@ -143,12 +143,11 @@ class DataSourceConnector(ABC):
         # Import the folder structure utility
         from app.clinical_modules.utils.folder_structure import get_study_data_path, ensure_folder_exists
         
-        # Get the standardized path with current date in DDMMMYYYY format
+        # Get the standardized path with current timestamp
         dataset_path = get_study_data_path(
             org_id=self.study.org_id,
             study_id=self.study.id,
-            extract_date=None,  # Will use current date in DDMMMYYYY format
-            data_type="raw"
+            timestamp=None  # Will use current timestamp in YYYYMMDD_HHMMSS format
         )
         
         # Ensure the folder exists

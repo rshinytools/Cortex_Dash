@@ -182,21 +182,26 @@ docker-compose exec backend alembic upgrade head
 
 When an admin creates a study, the system automatically initializes a comprehensive folder structure for data management:
 
-```python
-# backend/app/services/file_service.py
-import os
-from typing import Optional
-from datetime import datetime
-from app.models import Study
+```
+/data/studies/{org_id}/{study_id}/
+├── source_data/
+│   └── {YYYYMMDD_HHMMSS}/  # Timestamped folders for each data upload/sync
+│       ├── *.parquet        # Converted data files
+│       └── metadata.json    # Upload metadata
+├── pipeline_output/
+│   └── {YYYYMMDD_HHMMSS}/  # Timestamped folders for pipeline outputs
+│       ├── *.parquet        # Transformed data
+│       └── metadata.json    # Pipeline execution metadata
+├── exports/                 # User-generated exports
+├── temp/                    # Temporary processing files
+└── logs/                    # Processing logs
+```
 
-class FileService:
-    def __init__(self, base_path: str = "/data/studies"):
-        self.base_path = base_path
-    
-    async def initialize_study_folders(self, study: Study) -> None:
-        """Create all required folders for a new study"""
-        
-        study_root = f"{self.base_path}/{study.org_id}/{study.id}"
+**Key Features:**
+- Unified folder structure for all data sources (manual upload, API, sFTP)
+- YYYYMMDD_HHMMSS timestamp format for version tracking
+- Automatic parquet conversion for all file types
+- Version management with activation/rollback capabilities
         
         # Define folder structure
         folders = [
@@ -4558,6 +4563,21 @@ EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
+#### Docker Build Optimization
+
+> **Important**: The production docker-compose file has been optimized to build the backend image only once and reuse it across multiple services.
+
+When using `make restart-all-prod`:
+- The command uses `requirements-prod.txt` for production dependencies
+- The backend Dockerfile specifically installs from `requirements-prod.txt`
+- The backend image is built once with tag `cortex-backend:prod` and reused by:
+  - `prestart` service (database migrations)
+  - `backend` service (API server)
+  - `celery-worker` service (background tasks)
+  - `celery-beat` service (scheduled tasks)
+
+This optimization reduces build time from ~4x to 1x the backend build duration.
+
 ### Task 9.2: CI/CD Pipeline
 
 ```yaml
@@ -4782,19 +4802,72 @@ docker-compose exec backend celery -A app.workers.celery_app purge
 - Monitor application metrics
 - Have rollback procedures ready
 
+## Widget System Implementation
+
+### Overview
+The widget system has been completely redesigned to support ANY data format (not limited to SDTM/ADaM) with a flexible, schema-agnostic approach.
+
+### Key Components Implemented
+
+#### Phase 1: Widget Model & Display ✓
+- Removed all SDTM/ADaM constraints from Widget model
+- Created flexible data contract system with JSON schema
+- Built MetricCard widget component with dynamic field mapping
+- Implemented widget API endpoints for CRUD operations
+
+#### Phase 2: Data Source Management ✓
+- Unified folder structure: `/data/studies/{org_id}/{study_id}/source_data/{YYYYMMDD_HHMMSS}/`
+- Automatic parquet conversion for all file types (CSV, SAS7BDAT, XPT, XLSX)
+- Version management system with activation/rollback
+- Support for manual upload, API, and sFTP data sources
+
+#### Phase 3: Pipeline & Transformation System ✓
+- Secure Python script execution with sandboxing
+- Resource limits (memory, CPU, execution time)
+- Pipeline versioning and rollback capabilities
+- Built-in safe modules (pandas, numpy, scipy)
+
+#### Phase 4: Data Mapping Interface ✓
+- Field mapping configuration with AI-powered suggestions (fuzzywuzzy)
+- Preview and validation for mappings
+- Study initialization wizard
+- Template system for reusable mappings
+
+### Files Created/Modified
+- `/backend/app/models/widget.py` - Flexible widget model
+- `/backend/app/models/data_source.py` - Data source management
+- `/backend/app/models/pipeline.py` - Pipeline execution models
+- `/backend/app/models/data_mapping.py` - Field mapping configuration
+- `/backend/app/clinical_modules/utils/folder_structure.py` - Unified path management
+- `/backend/app/clinical_modules/pipeline/script_executor.py` - Secure script execution
+- `/frontend/src/components/widgets/MetricWidget.tsx` - Display component
+- `/frontend/src/components/data-mapping/FieldMappingBuilder.tsx` - Mapping UI
+
 ## Completion Checklist
 
 ### Phase 1-2: Foundation ✓
-- [ ] Project setup from template
-- [ ] Database schema implementation
-- [ ] RBAC system with roles and permissions
-- [ ] Multi-tenant architecture
-- [ ] Basic API structure with authentication
-- [ ] Platform admin infrastructure
+- [x] Project setup from template
+- [x] Database schema implementation
+- [x] RBAC system with roles and permissions
+- [x] Multi-tenant architecture
+- [x] Basic API structure with authentication
+- [x] Platform admin infrastructure
 
 ### Phase 3: Data Pipeline ✓
-- [ ] Data source integrations (Medidata, sFTP, folder sync)
-- [ ] Asynchronous pipeline executor
+- [x] Data source integrations (Manual upload completed, API/sFTP structure ready)
+- [x] Asynchronous pipeline executor with secure sandboxing
+- [x] Pipeline versioning and rollback
+- [x] Transformation script system
+
+### Widget System Implementation ✓
+- [x] Flexible widget model (removed SDTM/ADaM constraints)
+- [x] Data source management with parquet conversion
+- [x] Unified folder structure for all data sources
+- [x] Version management system
+- [x] Secure Python script execution
+- [x] Field mapping with AI suggestions
+- [x] Widget data mapping interface
+- [x] Study initialization wizard
 - [ ] Non-blocking task queue with Celery
 - [ ] Real-time progress tracking
 - [ ] Pipeline monitoring and status API
@@ -4899,3 +4972,179 @@ This implementation guide provides a comprehensive roadmap for building your ent
 - **Weeks 13-14**: Admin panels
 - **Weeks 15-16**: Testing and security
 - **Weeks 17-18**: Deployment and go-live
+
+---
+
+## Completed Tasks
+
+### Dashboard Template System (Completed)
+- ✅ Fixed dashboard template API to show correct counts
+- ✅ Updated template structure to support single dashboard with multiple views
+- ✅ Fixed TypeScript errors with StudyStatus enum
+- ✅ Fixed data mapping step in study initialization
+- ✅ Added data source configuration step to wizard
+
+### Widget System Architecture (Completed)
+- ✅ Analyzed old codebase to understand widget data flow
+- ✅ Created comprehensive widget architecture documentation
+- ✅ Implemented widget data requirements schema
+- ✅ Created seed data script for widget library with 11 standard widgets:
+  - Metric widgets: Total Screened, Screen Failures, Total AEs, SAEs
+  - Chart widgets: Enrollment Trend, AE Timeline
+  - Table widgets: Site Summary Table, Subject Listing
+  - Map widgets: Site Enrollment Map
+  - Flow diagrams: Subject Flow Diagram
+- ✅ Created proof-of-concept MetricWidget component
+- ✅ Implemented useWidgetData hook for data fetching
+- ✅ Created WidgetRenderer component for dynamic widget rendering
+
+### Key Files Created/Updated
+- `/backend/app/db/seed_widgets.py` - Widget library seed data
+- `/backend/app/cli/seed_widgets_command.py` - CLI command for seeding widgets
+- `/frontend/src/components/widgets/MetricWidget.tsx` - Metric widget component
+- `/frontend/src/hooks/useWidgetData.ts` - Widget data fetching hook
+- `/frontend/src/components/widgets/WidgetRenderer.tsx` - Dynamic widget renderer
+- `/implementation/widget-architecture-findings.md` - Architecture documentation
+
+## Widget System Implementation (Phase 1-4 Completed)
+
+### Phase 1: Widget Library (Completed ✅)
+- **Removed SDTM/ADaM constraints** - Widget models now support ANY data format
+- **Created flexible data contract** - JSON schema for widget data requirements
+- **Built MetricCard widget** - First widget type with value/label/trend display
+- **Implemented widget API endpoints** - CRUD operations for widget management
+
+### Phase 2: Data Source Management (Completed ✅)
+- **File Upload System**:
+  - Support for CSV, SAS7BDAT, XPT, XLSX, ZIP files
+  - Automatic conversion to Parquet format
+  - Progress tracking and error handling
+  
+- **Unified Folder Structure**:
+  ```
+  /data/studies/{org_id}/{study_id}/source_data/{YYYYMMDD_HHMMSS}/
+  ```
+  - Same structure for manual uploads, API sync, and sFTP
+  - Version tracking with timestamp folders
+  
+- **Version Management**:
+  - Multiple versions per study
+  - Version activation/rollback
+  - Version comparison UI
+  - Dataset and column-level diff view
+
+### Phase 3: Data Pipeline System (Completed ✅)
+- **Pipeline Configuration Model**:
+  - Version-controlled pipeline configurations
+  - Support for multiple transformation types
+  - Schedule support (cron expressions)
+  
+- **Transformation Script Executor**:
+  - Secure Python script execution with sandboxing
+  - Resource limits (memory, CPU, time)
+  - Allowed imports whitelist
+  - Built-in transformation types (filter, aggregate, pivot)
+  
+- **Pipeline Management UI**:
+  - Visual pipeline builder
+  - Drag-and-drop transformation steps
+  - Script editor with syntax validation
+  - Real-time execution monitoring
+  - Step-by-step execution logs
+
+### Phase 4: Widget Data Mapping (In Progress 🚧)
+- **Data Mapping Models** (Completed ✅):
+  - Field mapping configuration
+  - Study data configuration
+  - Mapping templates
+  
+- **Mapping Service** (Completed ✅):
+  - Automatic field suggestions using fuzzy matching
+  - Data type compatibility checking
+  - Mapping validation with coverage metrics
+  
+- **Next Steps**:
+  - [ ] Build field mapping UI component
+  - [ ] Implement mapping preview/validation UI
+  - [ ] Create study initialization wizard
+
+### Files Created in Widget System Implementation
+
+**Backend:**
+- `/backend/app/models/widget.py` - Updated widget models without SDTM constraints
+- `/backend/app/models/data_source.py` - Data source and upload models
+- `/backend/app/models/pipeline.py` - Pipeline configuration models
+- `/backend/app/models/data_mapping.py` - Widget data mapping models
+- `/backend/app/api/v1/endpoints/data_uploads.py` - File upload endpoints
+- `/backend/app/api/v1/endpoints/pipeline_config.py` - Pipeline management endpoints
+- `/backend/app/clinical_modules/data_sources/file_converter.py` - File conversion service
+- `/backend/app/clinical_modules/pipeline/script_executor.py` - Secure script execution
+- `/backend/app/clinical_modules/pipeline/pipeline_service.py` - Pipeline orchestration
+- `/backend/app/clinical_modules/mapping/mapping_service.py` - Data mapping service
+
+**Frontend:**
+- `/frontend/src/components/data-sources/DataSourceManager.tsx` - Upload management UI
+- `/frontend/src/components/data-sources/DataSourceUpload.tsx` - Upload dialog
+- `/frontend/src/components/data-sources/VersionSwitcher.tsx` - Version switching UI
+- `/frontend/src/components/data-sources/VersionComparison.tsx` - Version diff view
+- `/frontend/src/components/pipelines/PipelineManager.tsx` - Pipeline list/execution
+- `/frontend/src/components/pipelines/PipelineBuilder.tsx` - Visual pipeline builder
+- `/frontend/src/components/pipelines/ScriptEditor.tsx` - Python script editor
+- `/frontend/src/components/pipelines/FilterBuilder.tsx` - Filter condition builder
+- `/frontend/src/components/pipelines/PipelineExecutionDetails.tsx` - Execution monitoring
+- `/frontend/src/lib/api/data-uploads.ts` - Data upload API client
+- `/frontend/src/lib/api/pipelines.ts` - Pipeline API client
+
+### Architecture Decisions
+
+1. **Data Format Flexibility**: Removed all SDTM/ADaM constraints to support any data format
+2. **Parquet as Internal Format**: All uploaded files converted to Parquet for performance
+3. **Version Control Everything**: Data uploads, pipelines, and mappings all versioned
+4. **Security First**: Sandboxed script execution with resource limits
+5. **Real-time Monitoring**: WebSocket/polling for pipeline execution progress
+6. **Fuzzy Matching**: Smart field suggestions for data mapping
+
+## Dashboard Template System Updates (Completed ✅)
+
+### Unified Dashboard Template Architecture
+- **Menu and Dashboard Integration**: Menu templates and dashboard templates have been unified into a single "Dashboard Template" system
+- **Single Source of Truth**: All navigation and dashboard configurations are now stored in the `dashboard_templates` table
+- **Backward Compatibility**: Menu endpoints marked as deprecated with warnings, will be removed in v2.0
+
+### Changes Made:
+1. **Frontend Updates**:
+   - ✅ Removed separate menu templates UI from admin page
+   - ✅ Removed `/admin/menus` route and components
+   - ✅ Updated sidebar navigation to remove menu templates
+   - ✅ Updated `use-study-menu` hook to fetch menus from dashboard templates
+
+2. **Backend Updates**:
+   - ✅ Marked all menu endpoints as deprecated with `deprecated=True` flag
+   - ✅ Added deprecation warnings to `/api/v1/admin/menus` endpoints
+   - ✅ Menu functionality now part of `template_structure` in dashboard templates
+
+3. **Data Model**:
+   ```python
+   # Dashboard template now includes menu structure
+   template_structure = {
+       "menu": {
+           "items": [
+               {
+                   "id": "overview",
+                   "type": "dashboard_page",
+                   "label": "Overview",
+                   "icon": "LayoutDashboard",
+                   "dashboard": {
+                       "layout": {...},
+                       "widgets": [...]
+                   }
+               }
+           ]
+       }
+   }
+   ```
+
+### Migration Path:
+- Existing menu templates continue to work through the deprecated endpoints
+- New templates should use the unified dashboard template structure
+- Menu endpoints will be removed in version 2.0

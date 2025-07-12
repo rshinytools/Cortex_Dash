@@ -50,7 +50,7 @@ function WidgetItem({ widget, onAdd }: WidgetItemProps) {
       <div className="mb-2 flex items-start justify-between">
         <h4 className="text-sm font-medium">{widget.name}</h4>
         <Badge variant="secondary" className="text-xs">
-          {widget.type}
+          {widget.type || widget.code}
         </Badge>
       </div>
       {widget.description && (
@@ -60,7 +60,8 @@ function WidgetItem({ widget, onAdd }: WidgetItemProps) {
       )}
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <span>
-          {widget.size.defaultWidth}x{widget.size.defaultHeight}
+          {widget.size_constraints?.defaultWidth || widget.size?.defaultWidth || 4}x
+          {widget.size_constraints?.defaultHeight || widget.size?.defaultHeight || 3}
         </span>
         {widget.tags && widget.tags.length > 0 && (
           <>
@@ -95,13 +96,11 @@ export function WidgetPalette({ widgetDefinitions, onAddWidget }: WidgetPaletteP
   }, {} as Record<WidgetCategory, WidgetDefinition[]>);
 
   const categoryLabels: Record<WidgetCategory, string> = {
-    [WidgetCategory.SAFETY]: "Safety",
-    [WidgetCategory.EFFICACY]: "Efficacy",
-    [WidgetCategory.ENROLLMENT]: "Enrollment",
-    [WidgetCategory.OPERATIONS]: "Operations",
-    [WidgetCategory.QUALITY]: "Quality",
-    [WidgetCategory.FINANCE]: "Finance",
-    [WidgetCategory.CUSTOM]: "Custom",
+    [WidgetCategory.METRICS]: "Metrics",
+    [WidgetCategory.CHARTS]: "Charts",
+    [WidgetCategory.TABLES]: "Tables",
+    [WidgetCategory.MAPS]: "Maps",
+    [WidgetCategory.SPECIALIZED]: "Specialized",
   };
 
   return (

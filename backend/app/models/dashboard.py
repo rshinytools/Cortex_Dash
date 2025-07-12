@@ -42,11 +42,10 @@ class InheritanceType(str, Enum):
 
 class MenuItemType(str, Enum):
     """Menu item types for navigation structure"""
-    DASHBOARD = "dashboard"
-    STATIC_PAGE = "static_page"
-    EXTERNAL_LINK = "external"
-    GROUP = "group"
-    DIVIDER = "divider"
+    DASHBOARD_PAGE = "dashboard_page"  # Has its own canvas in the dashboard
+    GROUP = "group"                    # Placeholder for submenus
+    DIVIDER = "divider"                # Visual separator
+    EXTERNAL = "external"              # External link
 
 
 class DashboardTemplateBase(SQLModel):

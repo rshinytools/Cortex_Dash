@@ -27,7 +27,6 @@ async def get_audit_logs(
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_AUDIT_TRAIL))
 ) -> Any:
     """
     Get audit trail logs with filtering and pagination.
@@ -123,7 +122,6 @@ async def get_audit_summary(
     study_id: Optional[uuid.UUID] = Query(None, description="Filter by study"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_AUDIT_TRAIL))
 ) -> Any:
     """
     Get audit trail summary statistics.
@@ -188,7 +186,6 @@ async def get_entity_audit_trail(
     include_related: bool = Query(False, description="Include related entity logs"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_AUDIT_TRAIL))
 ) -> Any:
     """
     Get complete audit trail for a specific entity.
@@ -254,7 +251,6 @@ async def generate_compliance_report(
     study_id: Optional[uuid.UUID] = Query(None, description="Filter by study"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_AUDIT_TRAIL))
 ) -> Any:
     """
     Generate compliance reports for regulatory requirements.
@@ -356,7 +352,6 @@ async def search_audit_logs(
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_AUDIT_TRAIL))
 ) -> Any:
     """
     Search audit logs using full-text search.

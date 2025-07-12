@@ -12,8 +12,10 @@ from sqlalchemy import JSON, DateTime, String, Text
 if TYPE_CHECKING:
     from .organization import Organization
     from .data_source import DataSource
+    from .data_source_upload import DataSourceUpload
     from .activity_log import ActivityLog
     from .dashboard import DashboardTemplate
+    from .data_mapping import WidgetDataMapping
 
 
 class StudyStatus(str, Enum):
@@ -135,8 +137,16 @@ class Study(StudyBase, table=True):
         back_populates="study",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
+    data_uploads: List["DataSourceUpload"] = Relationship(
+        back_populates="study",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
     activity_logs: List["ActivityLog"] = Relationship(back_populates="study")
     dashboard_template: Optional["DashboardTemplate"] = Relationship()
+    widget_mappings: List["WidgetDataMapping"] = Relationship(
+        back_populates="study",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
 
 
 class StudyPublic(StudyBase):

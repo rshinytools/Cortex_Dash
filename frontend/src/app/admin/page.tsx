@@ -509,7 +509,7 @@ export default function AdminPage() {
               </CardContent>
             </Card>
             
-            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => router.push('/admin/dashboards')}>
+            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => router.push('/admin/dashboard-templates')}>
               <CardContent className="p-6">
                 <LayoutDashboard className="h-8 w-8 text-primary mb-2" />
                 <p className="font-semibold">Dashboard Templates</p>
@@ -517,13 +517,6 @@ export default function AdminPage() {
               </CardContent>
             </Card>
             
-            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => router.push('/admin/menus')}>
-              <CardContent className="p-6">
-                <Menu className="h-8 w-8 text-primary mb-2" />
-                <p className="font-semibold">Menu Templates</p>
-                <p className="text-sm text-muted-foreground">Configure navigation menus</p>
-              </CardContent>
-            </Card>
           </div>
         </div>
 

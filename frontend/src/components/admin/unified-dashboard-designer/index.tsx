@@ -26,6 +26,17 @@ import { MenuItemType, MenuPosition } from "@/types/menu";
 import type { DashboardTemplate, DashboardWidget } from "@/types/dashboard";
 import { DashboardCategory, LayoutType } from "@/types/dashboard";
 import type { WidgetDefinition } from "@/types/widget";
+import { PreviewDialog } from "../dashboard-template-preview/preview-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export interface UnifiedDashboardDesignerProps {
   initialTemplate?: UnifiedDashboardTemplate;
@@ -51,6 +62,12 @@ export function UnifiedDashboardDesigner({
   const [description, setDescription] = useState(initialTemplate?.description || "");
   const [tags, setTags] = useState<string[]>(initialTemplate?.tags || []);
   const [category, setCategory] = useState(initialTemplate?.category || "custom");
+  const [showPreview, setShowPreview] = useState(false);
+  const [typeChangeWarning, setTypeChangeWarning] = useState<{
+    itemId: string;
+    newType: MenuItemType;
+    oldType: MenuItemType;
+  } | null>(null);
 
   // Menu state
   const [menuItems, setMenuItems] = useState<MenuItem[]>(
@@ -59,15 +76,52 @@ export function UnifiedDashboardDesigner({
   const [selectedMenuItemId, setSelectedMenuItemId] = useState<string | null>(null);
 
   // Dashboard states (keyed by menu item ID)
-  const [dashboards, setDashboards] = useState<Record<string, DashboardTemplateWithMenu>>(
-    initialTemplate?.dashboardTemplates?.reduce(
+  const [dashboards, setDashboards] = useState<Record<string, DashboardTemplateWithMenu>>(() => {
+    // Initialize from template
+    const initialDashboards: Record<string, DashboardTemplateWithMenu> = initialTemplate?.dashboardTemplates?.reduce(
       (acc, dashboard) => ({
         ...acc,
         [dashboard.menuItemId]: dashboard,
       }),
-      {}
-    ) || {}
-  );
+      {} as Record<string, DashboardTemplateWithMenu>
+    ) || {};
+    
+    // Create dashboards for any dashboard pages that don't have one
+    const ensureAllDashboards = (items: MenuItem[]): void => {
+      for (const item of items) {
+        if (item.type === MenuItemType.DASHBOARD_PAGE && !initialDashboards[item.id]) {
+          initialDashboards[item.id] = {
+            id: uuidv4(),
+            menuItemId: item.id,
+            name: item.label,
+            category: DashboardCategory.CUSTOM,
+            version: "1.0.0",
+            layout: {
+              type: LayoutType.GRID,
+              columns: 12,
+              rowHeight: 80,
+              margin: [16, 16],
+              containerPadding: [24, 24, 24, 24],
+              isResponsive: true,
+            },
+            widgets: [],
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        if (item.children) {
+          ensureAllDashboards(item.children);
+        }
+      }
+    };
+    
+    if (initialTemplate?.menuTemplate?.items) {
+      ensureAllDashboards(initialTemplate.menuTemplate.items);
+    }
+    
+    return initialDashboards;
+  });
 
   // Currently selected dashboard
   const selectedDashboard = selectedMenuItemId ? dashboards[selectedMenuItemId] : null;
@@ -82,8 +136,11 @@ export function UnifiedDashboardDesigner({
         const widgetDef = widgetDefinitions.find(
           (def) => def.id === widget.widgetInstance?.widgetDefinitionId
         );
-        if (widgetDef?.dataRequirements?.requiredFields) {
-          widgetDef.dataRequirements.requiredFields.forEach((field) => {
+        // Handle both old and new widget definition formats
+        const dataReqs = widgetDef?.data_requirements || widgetDef?.dataRequirements;
+        const requiredFields = dataReqs?.requiredFields || dataReqs?.required_fields;
+        if (requiredFields) {
+          requiredFields.forEach((field: string) => {
             if (!requirements.has(field)) {
               requirements.set(field, new Set());
             }
@@ -103,16 +160,89 @@ export function UnifiedDashboardDesigner({
     }));
   }, [dashboards, widgetDefinitions]);
 
+  // Helper function to check if a menu item can have a dashboard
+  const canHaveDashboard = (item: MenuItem): boolean => {
+    // Dashboard pages can have dashboards regardless of their parent
+    return item.type === MenuItemType.DASHBOARD_PAGE;
+  };
+
+  // Handle type change for menu items
+  const handleTypeChange = useCallback((itemId: string, currentItem: MenuItem, newType: MenuItemType) => {
+    const updateItems = (items: MenuItem[]): MenuItem[] =>
+      items.map((item) => {
+        if (item.id === itemId) {
+          return { ...item, type: newType };
+        }
+        if (item.children) {
+          return {
+            ...item,
+            children: updateItems(item.children),
+          };
+        }
+        return item;
+      });
+
+    setMenuItems(updateItems(menuItems));
+
+    const oldCanHaveDashboard = canHaveDashboard(currentItem);
+    const newCanHaveDashboard = newType === MenuItemType.DASHBOARD_PAGE;
+
+    if (oldCanHaveDashboard && !newCanHaveDashboard) {
+      // Remove dashboard if changing from dashboard page to other type
+      setDashboards((prev) => {
+        const { [itemId]: deleted, ...rest } = prev;
+        return rest;
+      });
+      // Clear selection if this was selected
+      if (selectedMenuItemId === itemId) {
+        setSelectedMenuItemId(null);
+      }
+    } else if (!oldCanHaveDashboard && newCanHaveDashboard) {
+      // Create dashboard if changing to dashboard page type
+      const newDashboard: DashboardTemplateWithMenu = {
+        id: uuidv4(),
+        menuItemId: itemId,
+        name: currentItem.label,
+        category: DashboardCategory.CUSTOM,
+        version: "1.0.0",
+        layout: {
+          type: LayoutType.GRID,
+          columns: 12,
+          rowHeight: 80,
+          margin: [16, 16],
+          containerPadding: [24, 24, 24, 24],
+          isResponsive: true,
+        },
+        widgets: [],
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      setDashboards((prev) => ({
+        ...prev,
+        [itemId]: newDashboard,
+      }));
+    }
+  }, [menuItems, selectedMenuItemId]);
+
   // Add menu item
   const handleAddMenuItem = useCallback((parentId?: string) => {
     const newItem: MenuItem = {
       id: uuidv4(),
       label: "New Item",
-      type: MenuItemType.LINK,
-      url: "#",
+      type: MenuItemType.DASHBOARD_PAGE, // Default to dashboard page
       order: menuItems.length,
       isVisible: true,
       isEnabled: true,
+      dashboardConfig: {
+        viewId: uuidv4(),
+        layout: {
+          type: "grid",
+          columns: 12,
+          rows: 10,
+        },
+      },
     };
 
     if (parentId) {
@@ -139,31 +269,33 @@ export function UnifiedDashboardDesigner({
       setMenuItems([...menuItems, newItem]);
     }
 
-    // Create corresponding dashboard
-    const newDashboard: DashboardTemplateWithMenu = {
-      id: uuidv4(),
-      menuItemId: newItem.id,
-      name: newItem.label,
-      category: DashboardCategory.CUSTOM,
-      version: "1.0.0",
-      layout: {
-        type: LayoutType.GRID,
-        columns: 12,
-        rowHeight: 80,
-        margin: [16, 16],
-        containerPadding: [24, 24, 24, 24],
-        isResponsive: true,
-      },
-      widgets: [],
-      isActive: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    // Only create corresponding dashboard if it's a dashboard page
+    if (canHaveDashboard(newItem)) {
+      const newDashboard: DashboardTemplateWithMenu = {
+        id: uuidv4(),
+        menuItemId: newItem.id,
+        name: newItem.label,
+        category: DashboardCategory.CUSTOM,
+        version: "1.0.0",
+        layout: {
+          type: LayoutType.GRID,
+          columns: 12,
+          rowHeight: 80,
+          margin: [16, 16],
+          containerPadding: [24, 24, 24, 24],
+          isResponsive: true,
+        },
+        widgets: [],
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
 
-    setDashboards((prev) => ({
-      ...prev,
-      [newItem.id]: newDashboard,
-    }));
+      setDashboards((prev) => ({
+        ...prev,
+        [newItem.id]: newDashboard,
+      }));
+    }
 
     // Select the new item
     setSelectedMenuItemId(newItem.id);
@@ -171,6 +303,37 @@ export function UnifiedDashboardDesigner({
 
   // Update menu item
   const handleUpdateMenuItem = useCallback((itemId: string, updates: Partial<MenuItem>) => {
+    // Find the current item to check type changes
+    const findItem = (items: MenuItem[]): MenuItem | null => {
+      for (const item of items) {
+        if (item.id === itemId) return item;
+        if (item.children) {
+          const found = findItem(item.children);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    const currentItem = findItem(menuItems);
+    if (!currentItem) return;
+
+    // Check if type is changing
+    if (updates.type && updates.type !== currentItem.type) {
+      const oldType = currentItem.type;
+      const newType = updates.type;
+      
+      // Check if changing from dashboard page to something else (would lose widgets)
+      if (oldType === MenuItemType.DASHBOARD_PAGE && newType !== MenuItemType.DASHBOARD_PAGE && dashboards[itemId]?.widgets.length > 0) {
+        setTypeChangeWarning({ itemId, newType, oldType });
+        return;
+      }
+      
+      // Otherwise proceed with the type change
+      handleTypeChange(itemId, currentItem, newType);
+      return;
+    }
+
     const updateItems = (items: MenuItem[]): MenuItem[] =>
       items.map((item) => {
         if (item.id === itemId) {
@@ -197,7 +360,7 @@ export function UnifiedDashboardDesigner({
         },
       }));
     }
-  }, [menuItems, dashboards]);
+  }, [menuItems, dashboards, selectedMenuItemId, handleTypeChange]);
 
   // Delete menu item
   const handleDeleteMenuItem = useCallback((itemId: string) => {
@@ -230,13 +393,19 @@ export function UnifiedDashboardDesigner({
     const widgetDef = widgetDefinitions.find((def) => def.id === widgetDefId);
     if (!widgetDef) return;
 
+    // Handle both old and new widget definition formats
+    const sizeConstraints = widgetDef.size_constraints || widgetDef.size;
+    const defaultWidth = sizeConstraints?.defaultWidth || 4;
+    const defaultHeight = sizeConstraints?.defaultHeight || 3;
+    const defaultConfig = widgetDef.default_config || widgetDef.defaultConfig || {};
+
     const newWidget: DashboardWidget = {
       widgetInstanceId: uuidv4(),
       position: {
         x: 0,
         y: 0,
-        width: widgetDef.size.defaultWidth,
-        height: widgetDef.size.defaultHeight,
+        width: defaultWidth,
+        height: defaultHeight,
       },
       order: selectedDashboard.widgets.length,
       isVisible: true,
@@ -245,7 +414,7 @@ export function UnifiedDashboardDesigner({
         widgetDefinitionId: widgetDef.id,
         widgetDefinition: widgetDef,
         studyId: "", // Will be set when applied to study
-        config: widgetDef.defaultConfig,
+        config: defaultConfig,
         isVisible: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -330,15 +499,120 @@ export function UnifiedDashboardDesigner({
     };
 
     try {
+      console.log("Saving template:", template);
+      console.log("Menu items:", JSON.stringify(menuItems, null, 2));
+      console.log("Dashboards:", JSON.stringify(dashboards, null, 2));
+      console.log("Dashboard count:", Object.keys(dashboards).length);
+      
+      // Log all dashboard page menu items
+      const getAllDashboardPages = (items: MenuItem[]): MenuItem[] => {
+        const result: MenuItem[] = [];
+        for (const item of items) {
+          if (item.type === MenuItemType.DASHBOARD_PAGE) {
+            result.push(item);
+          }
+          if (item.children) {
+            result.push(...getAllDashboardPages(item.children));
+          }
+        }
+        return result;
+      };
+      
+      const dashboardPages = getAllDashboardPages(menuItems);
+      console.log("Dashboard pages found:", dashboardPages.map(p => ({ id: p.id, label: p.label })));
+      console.log("Dashboards for pages:", dashboardPages.map(p => ({ 
+        id: p.id, 
+        label: p.label, 
+        hasDashboard: !!dashboards[p.id],
+        widgetCount: dashboards[p.id]?.widgets?.length || 0
+      })));
+      
+      // Log the actual template being sent
+      console.log("Template being sent to API:", JSON.stringify(template, null, 2));
+      
       await onSave(template);
       toast({
         title: "Success",
         description: "Dashboard template saved successfully",
       });
     } catch (error) {
+      console.error("Failed to save template:", error);
       toast({
         title: "Error",
-        description: "Failed to save dashboard template",
+        description: error instanceof Error ? error.message : "Failed to save dashboard template",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleExport = () => {
+    const template = {
+      name,
+      description,
+      tags,
+      category,
+      menuTemplate: {
+        name: `${name} Menu`,
+        position: MenuPosition.SIDEBAR,
+        items: menuItems,
+        version: "1.0.0",
+        isActive: true,
+      },
+      dashboardTemplates: Object.values(dashboards),
+      exportedAt: new Date().toISOString(),
+      version: "1.0.0"
+    };
+
+    const blob = new Blob([JSON.stringify(template, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${name.toLowerCase().replace(/\s+/g, "-")}-template.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "Success",
+      description: "Dashboard template exported successfully",
+    });
+  };
+
+  const handleImport = async (file: File) => {
+    try {
+      const text = await file.text();
+      const imported = JSON.parse(text);
+
+      // Validate the imported structure
+      if (!imported.name || !imported.menuTemplate || !imported.dashboardTemplates) {
+        throw new Error("Invalid template format");
+      }
+
+      // Set the imported values
+      setName(imported.name);
+      setDescription(imported.description || "");
+      setTags(imported.tags || []);
+      setCategory(imported.category || "custom");
+      setMenuItems(imported.menuTemplate.items || []);
+      
+      // Convert dashboards array to object keyed by menuItemId
+      const dashboardsObj: Record<string, DashboardTemplateWithMenu> = {};
+      imported.dashboardTemplates.forEach((dashboard: DashboardTemplateWithMenu) => {
+        dashboardsObj[dashboard.menuItemId] = dashboard;
+      });
+      setDashboards(dashboardsObj);
+
+      toast({
+        title: "Success",
+        description: "Dashboard template imported successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to import dashboard template. Please check the file format.",
         variant: "destructive",
       });
     }
@@ -346,9 +620,9 @@ export function UnifiedDashboardDesigner({
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="flex h-full flex-col">
+      <div className="flex h-[calc(100vh-4rem)] flex-col">
         {/* Header */}
-        <div className="border-b p-4">
+        <div className="flex-shrink-0 border-b p-4">
           <div className="flex items-center justify-between">
             <TemplateMetadataForm
               name={name}
@@ -361,35 +635,29 @@ export function UnifiedDashboardDesigner({
               onCategoryChange={setCategory}
             />
             <div className="flex items-center gap-2">
-              {onPreview && (
-                <Button variant="outline" size="sm" onClick={onPreview}>
-                  <Eye className="mr-2 h-4 w-4" />
-                  Preview
-                </Button>
-              )}
-              {onExport && (
-                <Button variant="outline" size="sm" onClick={onExport}>
-                  <Download className="mr-2 h-4 w-4" />
-                  Export
-                </Button>
-              )}
-              {onImport && (
-                <Button variant="outline" size="sm" asChild>
-                  <label>
-                    <Upload className="mr-2 h-4 w-4" />
-                    Import
-                    <input
-                      type="file"
-                      accept=".json"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) onImport(file);
-                      }}
-                    />
-                  </label>
-                </Button>
-              )}
+              <Button variant="outline" size="sm" onClick={() => setShowPreview(true)}>
+                <Eye className="mr-2 h-4 w-4" />
+                Preview
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExport}>
+                <Download className="mr-2 h-4 w-4" />
+                Export
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <label>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Import
+                  <input
+                    type="file"
+                    accept=".json"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleImport(file);
+                    }}
+                  />
+                </label>
+              </Button>
               <Button onClick={handleSave}>
                 <Save className="mr-2 h-4 w-4" />
                 Save Template
@@ -401,7 +669,7 @@ export function UnifiedDashboardDesigner({
         {/* Main content */}
         <div className="flex flex-1 overflow-hidden">
           {/* Left panel - Menu Designer */}
-          <div className="w-80 border-r bg-muted/20">
+          <div className="w-80 flex-shrink-0 border-r bg-muted/20">
             <div className="flex h-full flex-col">
               <div className="border-b p-4">
                 <div className="flex items-center justify-between">
@@ -420,7 +688,57 @@ export function UnifiedDashboardDesigner({
                 <MenuDesigner
                   items={menuItems}
                   selectedItemId={selectedMenuItemId}
-                  onSelectItem={setSelectedMenuItemId}
+                  onSelectItem={(itemId) => {
+                    // Only allow selecting items that can have dashboards
+                    const findItem = (items: MenuItem[]): MenuItem | null => {
+                      for (const item of items) {
+                        if (item.id === itemId) return item;
+                        if (item.children) {
+                          const found = findItem(item.children);
+                          if (found) return found;
+                        }
+                      }
+                      return null;
+                    };
+                    
+                    const item = findItem(menuItems);
+                    console.log("Selected item:", item);
+                    console.log("Can have dashboard:", item ? canHaveDashboard(item) : false);
+                    console.log("Dashboard exists:", dashboards[itemId]);
+                    
+                    if (item) {
+                      // Always allow selection - we'll show appropriate UI based on type
+                      setSelectedMenuItemId(itemId);
+                      
+                      // Create dashboard if it's a dashboard page and doesn't exist
+                      if (canHaveDashboard(item) && !dashboards[itemId]) {
+                        const newDashboard: DashboardTemplateWithMenu = {
+                          id: uuidv4(),
+                          menuItemId: itemId,
+                          name: item.label,
+                          category: DashboardCategory.CUSTOM,
+                          version: "1.0.0",
+                          layout: {
+                            type: LayoutType.GRID,
+                            columns: 12,
+                            rowHeight: 80,
+                            margin: [16, 16],
+                            containerPadding: [24, 24, 24, 24],
+                            isResponsive: true,
+                          },
+                          widgets: [],
+                          isActive: true,
+                          createdAt: new Date().toISOString(),
+                          updatedAt: new Date().toISOString(),
+                        };
+                        
+                        setDashboards((prev) => ({
+                          ...prev,
+                          [itemId]: newDashboard,
+                        }));
+                      }
+                    }
+                  }}
                   onUpdateItem={handleUpdateMenuItem}
                   onDeleteItem={handleDeleteMenuItem}
                   onAddItem={handleAddMenuItem}
@@ -431,50 +749,128 @@ export function UnifiedDashboardDesigner({
 
           {/* Right panel - Dashboard Designer */}
           <div className="flex flex-1 flex-col">
-            {selectedMenuItemId && selectedDashboard ? (
-              <Tabs defaultValue="design" className="flex h-full flex-col">
-                <TabsList className="mx-4 mt-4 w-fit">
-                  <TabsTrigger value="design">Design</TabsTrigger>
-                  <TabsTrigger value="data">Data Requirements</TabsTrigger>
-                </TabsList>
+            {selectedMenuItemId ? (
+              selectedDashboard ? (
+                // Show dashboard designer for dashboard pages
+                <Tabs defaultValue="design" className="flex h-full flex-col">
+                  <TabsList className="mx-4 mt-4 w-fit">
+                    <TabsTrigger value="design">Design</TabsTrigger>
+                    <TabsTrigger value="data">Data Requirements</TabsTrigger>
+                  </TabsList>
 
-                <TabsContent value="design" className="flex-1 overflow-hidden">
-                  <div className="flex h-full">
-                    {/* Dashboard canvas */}
-                    <div className="flex-1 overflow-auto p-4">
-                      <DashboardDesigner
-                        dashboard={selectedDashboard}
-                        widgets={selectedDashboard.widgets}
-                        onUpdateWidget={handleUpdateWidget}
-                        onDeleteWidget={handleDeleteWidget}
-                      />
-                    </div>
+                  <TabsContent value="design" className="flex-1 overflow-hidden">
+                    <div className="flex h-full">
+                      {/* Dashboard canvas */}
+                      <div className="flex-1 flex flex-col overflow-hidden">
+                        <div className="flex-1 overflow-auto p-4">
+                          <DashboardDesigner
+                            dashboard={selectedDashboard}
+                            widgets={selectedDashboard.widgets}
+                            onUpdateWidget={handleUpdateWidget}
+                            onDeleteWidget={handleDeleteWidget}
+                          />
+                        </div>
+                      </div>
 
-                    {/* Widget palette */}
-                    <div className="w-64 border-l bg-muted/20">
-                      <WidgetPalette
-                        widgetDefinitions={widgetDefinitions}
-                        onAddWidget={handleAddWidget}
-                      />
+                      {/* Widget palette */}
+                      <div className="w-64 flex-shrink-0 border-l bg-muted/20">
+                        <WidgetPalette
+                          widgetDefinitions={widgetDefinitions}
+                          onAddWidget={handleAddWidget}
+                        />
+                      </div>
                     </div>
+                  </TabsContent>
+
+                  <TabsContent value="data" className="flex-1 overflow-auto p-4">
+                    <DataRequirementsPanel requirements={dataRequirements} />
+                  </TabsContent>
+                </Tabs>
+              ) : (
+                // Show info for non-dashboard pages (groups, external links, etc.)
+                <div className="flex flex-1 items-center justify-center text-muted-foreground">
+                  <div className="text-center max-w-md">
+                    <p className="mb-2 text-lg font-medium">Menu Item Settings</p>
+                    <p className="text-sm mb-4">
+                      This menu item is set to "{findMenuItem(menuItems, selectedMenuItemId)?.type?.replace('_', ' ')}" type.
+                    </p>
+                    <p className="text-sm">
+                      To add widgets, change the type to "Dashboard Page" in the menu settings on the left.
+                    </p>
                   </div>
-                </TabsContent>
-
-                <TabsContent value="data" className="flex-1 overflow-auto p-4">
-                  <DataRequirementsPanel requirements={dataRequirements} />
-                </TabsContent>
-              </Tabs>
+                </div>
+              )
             ) : (
               <div className="flex flex-1 items-center justify-center text-muted-foreground">
                 <div className="text-center">
                   <p className="mb-2">No menu item selected</p>
-                  <p className="text-sm">Select a menu item to design its dashboard</p>
+                  <p className="text-sm">Select a menu item from the menu structure</p>
                 </div>
               </div>
             )}
           </div>
         </div>
       </div>
+
+      {/* Preview Dialog */}
+      <PreviewDialog
+        open={showPreview}
+        onOpenChange={setShowPreview}
+        name={name}
+        description={description}
+        category={category}
+        menuItems={menuItems}
+        dashboards={dashboards}
+      />
+      
+      {/* Type change warning dialog */}
+      <AlertDialog
+        open={!!typeChangeWarning}
+        onOpenChange={(open) => {
+          if (!open) setTypeChangeWarning(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Warning: Dashboard Content Will Be Deleted</AlertDialogTitle>
+            <AlertDialogDescription>
+              Changing this menu item from "Dashboard Page" to another type will permanently delete all widgets 
+              on this dashboard. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setTypeChangeWarning(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (typeChangeWarning) {
+                  const { itemId, newType } = typeChangeWarning;
+                  const item = findMenuItem(menuItems, itemId);
+                  if (item) {
+                    handleTypeChange(itemId, item, newType);
+                  }
+                  setTypeChangeWarning(null);
+                }
+              }}
+            >
+              Delete Dashboard & Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DndProvider>
   );
+  
+  function findMenuItem(items: MenuItem[], id: string): MenuItem | null {
+    for (const item of items) {
+      if (item.id === id) return item;
+      if (item.children) {
+        const found = findMenuItem(item.children, id);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
 }

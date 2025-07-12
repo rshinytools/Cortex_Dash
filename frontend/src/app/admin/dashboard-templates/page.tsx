@@ -4,7 +4,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Search, Download, Upload, Eye, Edit, Trash2, Copy } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Plus, Search, Download, Upload, Eye, Edit, Trash2, Copy, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,7 +46,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { dashboardTemplatesApi, UnifiedDashboardTemplate } from "@/lib/api/dashboard-templates";
 import { DashboardCategory, LayoutType } from "@/types/dashboard";
 import { MenuPosition, MenuItemType } from "@/types/menu";
-import { DashboardTemplatePreview } from "@/components/admin/dashboard-template-preview";
+import { PreviewDialog } from "@/components/admin/dashboard-template-preview/preview-dialog";
 
 // Mock data - in production this would come from the API
 const mockTemplates: UnifiedDashboardTemplate[] = [
@@ -64,17 +65,24 @@ const mockTemplates: UnifiedDashboardTemplate[] = [
         {
           id: "1-1",
           label: "Overview",
-          type: MenuItemType.LINK,
-          url: "#overview",
+          type: MenuItemType.DASHBOARD_PAGE,
           icon: "Home",
           order: 0,
           isVisible: true,
           isEnabled: true,
+          dashboardConfig: {
+            viewId: "overview",
+            layout: {
+              type: "grid",
+              columns: 12,
+              rows: 10,
+            },
+          },
         },
         {
           id: "1-2",
           label: "Safety",
-          type: MenuItemType.DROPDOWN,
+          type: MenuItemType.GROUP,
           order: 1,
           isVisible: true,
           isEnabled: true,
@@ -83,32 +91,53 @@ const mockTemplates: UnifiedDashboardTemplate[] = [
             {
               id: "1-2-1",
               label: "Adverse Events",
-              type: MenuItemType.LINK,
-              url: "#safety-ae",
+              type: MenuItemType.DASHBOARD_PAGE,
               order: 0,
               isVisible: true,
               isEnabled: true,
+              dashboardConfig: {
+                viewId: "safety-ae",
+                layout: {
+                  type: "grid",
+                  columns: 12,
+                  rows: 10,
+                },
+              },
             },
             {
               id: "1-2-2",
               label: "SAE Summary",
-              type: MenuItemType.LINK,
-              url: "#safety-sae",
+              type: MenuItemType.DASHBOARD_PAGE,
               order: 1,
               isVisible: true,
               isEnabled: true,
+              dashboardConfig: {
+                viewId: "safety-sae",
+                layout: {
+                  type: "grid",
+                  columns: 12,
+                  rows: 10,
+                },
+              },
             },
           ],
         },
         {
           id: "1-3",
           label: "Enrollment",
-          type: MenuItemType.LINK,
-          url: "#enrollment",
+          type: MenuItemType.DASHBOARD_PAGE,
           icon: "Users",
           order: 2,
           isVisible: true,
           isEnabled: true,
+          dashboardConfig: {
+            viewId: "enrollment",
+            layout: {
+              type: "grid",
+              columns: 12,
+              rows: 10,
+            },
+          },
         },
       ],
       version: "1.0.0",
@@ -160,6 +189,7 @@ const mockTemplates: UnifiedDashboardTemplate[] = [
 ];
 
 export default function DashboardTemplatesPage() {
+  const router = useRouter();
   const { toast } = useToast();
   const [templates, setTemplates] = useState<UnifiedDashboardTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -174,13 +204,72 @@ export default function DashboardTemplatesPage() {
 
   const loadTemplates = async () => {
     try {
-      // In production, use the API
-      // const response = await dashboardTemplatesApi.list();
-      // setTemplates(response.data);
+      const response = await dashboardTemplatesApi.list();
       
-      // For now, use mock data
-      setTemplates(mockTemplates);
-    } catch {
+      // Transform backend format to frontend format
+      const transformedTemplates = response.data.map((template: any) => {
+        // Extract menu items and dashboards from template structure
+        const menuItems = template.template_structure?.menu?.items || [];
+        const dashboardTemplates: any[] = [];
+        
+        // Extract dashboards from menu items
+        const extractDashboards = (items: any[]): void => {
+          items.forEach(item => {
+            if (item.dashboard) {
+              dashboardTemplates.push({
+                id: `dt-${item.id}`,
+                menuItemId: item.id,
+                name: item.label,
+                category: template.category,
+                version: "1.0.0",
+                layout: item.dashboard.layout || {
+                  type: "grid",
+                  columns: 12,
+                  rowHeight: 80,
+                },
+                widgets: item.dashboard.widgets || [],
+                isActive: true,
+                createdAt: template.created_at,
+                updatedAt: template.updated_at,
+              });
+            }
+            if (item.children) {
+              extractDashboards(item.children);
+            }
+          });
+        };
+        
+        extractDashboards(menuItems);
+        
+        return {
+          id: template.id,
+          name: template.name,
+          description: template.description,
+          tags: template.tags || [],
+          category: template.category,
+          version: `${template.major_version}.${template.minor_version}.${template.patch_version}`,
+          menuTemplate: {
+            id: `mt-${template.id}`,
+            name: `${template.name} Menu`,
+            position: MenuPosition.SIDEBAR,
+            items: menuItems,
+            version: "1.0.0",
+            isActive: template.is_active,
+            createdAt: template.created_at,
+            updatedAt: template.updated_at,
+          },
+          dashboardTemplates,
+          dataRequirements: [],
+          isActive: template.is_active,
+          isDefault: false,
+          createdAt: template.created_at,
+          updatedAt: template.updated_at,
+        };
+      });
+      
+      setTemplates(transformedTemplates);
+    } catch (error) {
+      console.error('Failed to load templates:', error);
       toast({
         title: "Error",
         description: "Failed to load dashboard templates",
@@ -263,16 +352,38 @@ export default function DashboardTemplatesPage() {
     : null;
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto py-6">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+        <Button
+          variant="link"
+          className="p-0 h-auto font-normal"
+          onClick={() => router.push('/admin')}
+        >
+          Admin
+        </Button>
+        <span>/</span>
+        <span className="text-foreground">Dashboard Templates</span>
+      </div>
+
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center mb-6">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push('/admin')}
+          className="mr-4"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Admin
+        </Button>
+        <div className="flex-1">
           <h1 className="text-3xl font-bold">Dashboard Templates</h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground mt-1">
             Manage unified dashboard templates with integrated menu structures
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <Button variant="outline" asChild>
             <label>
               <Upload className="mr-2 h-4 w-4" />
@@ -312,8 +423,10 @@ export default function DashboardTemplatesPage() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-4">
+      {/* Filters and Grid in Card */}
+      <Card>
+        <CardHeader>
+          <div className="flex gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -338,10 +451,11 @@ export default function DashboardTemplatesPage() {
             <SelectItem value={DashboardCategory.CUSTOM}>Custom</SelectItem>
           </SelectContent>
         </Select>
-      </div>
-
-      {/* Templates Grid */}
-      {loading ? (
+          </div>
+        </CardHeader>
+        <CardContent>
+          {/* Templates Grid */}
+          {loading ? (
         <div className="flex h-64 items-center justify-center">
           <p className="text-muted-foreground">Loading templates...</p>
         </div>
@@ -358,12 +472,8 @@ export default function DashboardTemplatesPage() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredTemplates.map((template) => {
-            const totalWidgets = template.dashboardTemplates.reduce(
-              (sum, dt) => sum + dt.widgets.length,
-              0
-            );
-            const totalDashboards = template.dashboardTemplates.length;
             const menuItemsCount = countMenuItems(template.menuTemplate.items);
+            const totalWidgets = countTotalWidgets(template.menuTemplate.items);
 
             return (
               <Card key={template.id} className="flex flex-col">
@@ -428,14 +538,10 @@ export default function DashboardTemplatesPage() {
                 </CardHeader>
                 <CardContent className="flex-1 space-y-4">
                   {/* Stats */}
-                  <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="grid grid-cols-2 gap-4 text-center">
                     <div>
                       <p className="text-2xl font-semibold">{menuItemsCount}</p>
                       <p className="text-xs text-muted-foreground">Menu Items</p>
-                    </div>
-                    <div>
-                      <p className="text-2xl font-semibold">{totalDashboards}</p>
-                      <p className="text-xs text-muted-foreground">Dashboards</p>
                     </div>
                     <div>
                       <p className="text-2xl font-semibold">{totalWidgets}</p>
@@ -475,6 +581,8 @@ export default function DashboardTemplatesPage() {
           })}
         </div>
       )}
+        </CardContent>
+      </Card>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog
@@ -510,12 +618,19 @@ export default function DashboardTemplatesPage() {
 
       {/* Preview Dialog */}
       {previewTemplate && (
-        <DashboardTemplatePreview
-          template={previewTemplate}
+        <PreviewDialog
           open={!!previewTemplateId}
           onOpenChange={(open) => {
             if (!open) setPreviewTemplateId(null);
           }}
+          name={previewTemplate.name}
+          description={previewTemplate.description}
+          category={previewTemplate.category}
+          menuItems={previewTemplate.menuTemplate.items}
+          dashboards={previewTemplate.dashboardTemplates.reduce((acc, dt) => {
+            acc[dt.menuItemId] = dt;
+            return acc;
+          }, {} as Record<string, any>)}
         />
       )}
     </div>
@@ -526,10 +641,22 @@ export default function DashboardTemplatesPage() {
 interface MenuItemCount {
   id: string;
   children?: MenuItemCount[];
+  dashboard?: {
+    widgets?: any[];
+  };
 }
 
 function countMenuItems(items: MenuItemCount[]): number {
   return items.reduce((count, item) => {
     return count + 1 + (item.children ? countMenuItems(item.children) : 0);
+  }, 0);
+}
+
+// Helper function to count total widgets across all menu items
+function countTotalWidgets(items: MenuItemCount[]): number {
+  return items.reduce((count, item) => {
+    const widgetCount = item.dashboard?.widgets?.length || 0;
+    const childrenWidgetCount = item.children ? countTotalWidgets(item.children) : 0;
+    return count + widgetCount + childrenWidgetCount;
   }, 0);
 }

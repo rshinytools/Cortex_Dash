@@ -21,8 +21,10 @@ import {
   TrendingUp,
   Map,
   Grid3x3,
-  Loader2
+  Loader2,
+  AlertCircle
 } from "lucide-react"
+import { WidgetRenderer } from "@/components/widgets/WidgetRenderer"
 
 // Import react-grid-layout CSS
 import "react-grid-layout/css/styles.css"
@@ -42,18 +44,30 @@ interface DesignCanvasProps {
   breakpoint: "lg" | "md" | "sm" | "xs"
 }
 
-// Widget icon mapping
+// Widget icon mapping - now based on widget codes from backend
 const widgetIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+  // Metrics
+  "total_screened": Hash,
+  "screen_failures": TrendingUp,
+  "total_aes": Activity,
+  "saes": Activity,
+  // Charts
+  "enrollment_trend": LineChart,
+  "ae_timeline": Activity,
+  // Tables
+  "site_summary_table": Table2,
+  "subject_listing": Table2,
+  // Maps
+  "site_enrollment_map": Map,
+  // Specialized
+  "subject_flow_diagram": Activity,
+  // Legacy fallbacks
   "metric-card": Hash,
   "line-chart": LineChart,
   "bar-chart": BarChart3,
   "pie-chart": PieChart,
   "table": Table2,
-  "text": Type,
-  "scatter-plot": Activity,
-  "heatmap": Grid3x3,
-  "geo-map": Map,
-  "progress": Loader2
+  "text": Type
 }
 
 export function DesignCanvas({
@@ -106,7 +120,20 @@ export function DesignCanvas({
     setIsDraggingOver(false)
 
     const widgetType = e.dataTransfer.getData("widgetType")
+    const widgetDataStr = e.dataTransfer.getData("widgetData")
     if (!widgetType) return
+
+    // Store widget data if available
+    if (widgetDataStr) {
+      let parsedData: any
+      try {
+        parsedData = JSON.parse(widgetDataStr)
+        // Store in a temporary map or pass through the drop handler
+        (window as any).__tempWidgetData = parsedData
+      } catch (err) {
+        console.error('Failed to parse widget data:', err)
+      }
+    }
 
     // Calculate grid position from mouse position
     const rect = e.currentTarget.getBoundingClientRect()
@@ -165,24 +192,12 @@ export function DesignCanvas({
         </div>
 
         {/* Widget Content */}
-        <div className="p-4 h-[calc(100%-49px)] flex items-center justify-center">
-          {mode === "preview" ? (
-            <div className="text-center">
-              <Icon className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">
-                Widget preview will appear here
-              </p>
-            </div>
-          ) : (
-            <div className="text-center">
-              <p className="text-xs text-muted-foreground">
-                {item.type.replace(/-/g, " ")}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {item.w} × {item.h}
-              </p>
-            </div>
-          )}
+        <div className="h-[calc(100%-49px)]">
+          <WidgetRenderer
+            instance={item}
+            mode={mode === "preview" ? "preview" : "design"}
+            className="h-full"
+          />
         </div>
       </Card>
     )

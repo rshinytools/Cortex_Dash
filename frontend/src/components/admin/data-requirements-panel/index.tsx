@@ -70,9 +70,16 @@ export function DataRequirementsPanel({ requirements }: DataRequirementsPanelPro
       {requirements.length === 0 && (
         <Alert>
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>No Data Requirements</AlertTitle>
-          <AlertDescription>
-            Add widgets to your dashboards to see their data requirements.
+          <AlertTitle>Flexible Data Configuration</AlertTitle>
+          <AlertDescription className="space-y-2">
+            <p>
+              The widgets in this template use flexible data configuration that will be set up 
+              when applying the template to a specific study.
+            </p>
+            <p>
+              Each widget can be configured to use any available dataset and fields from your 
+              study data, making the template highly adaptable to different data structures.
+            </p>
           </AlertDescription>
         </Alert>
       )}
@@ -131,16 +138,17 @@ export function DataRequirementsPanel({ requirements }: DataRequirementsPanelPro
       {/* Instructions */}
       <Alert>
         <FileText className="h-4 w-4" />
-        <AlertTitle>Data Mapping Instructions</AlertTitle>
+        <AlertTitle>How Data Configuration Works</AlertTitle>
         <AlertDescription className="mt-2 space-y-2">
           <p>
-            When applying this template to a study, you'll need to map these fields to your
-            actual data sources.
+            This template uses a flexible data mapping approach. When applying the template to a study:
           </p>
-          <p>
-            Required fields must be mapped for the dashboards to function properly. Optional
-            fields can enhance the visualizations but are not mandatory.
-          </p>
+          <ul className="ml-4 list-disc space-y-1">
+            <li>Each widget can be configured to use any dataset from your study</li>
+            <li>You'll select which fields to aggregate, filter, or display</li>
+            <li>The same template can work with different data structures</li>
+            <li>No predefined field requirements - adapts to your data</li>
+          </ul>
         </AlertDescription>
       </Alert>
     </div>

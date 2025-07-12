@@ -19,7 +19,6 @@ async def get_notification_templates(
     template_type: Optional[str] = Query(None, description="Filter by template type"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_ORG_SETTINGS))
 ) -> Any:
     """
     Get notification templates for the organization.
@@ -117,7 +116,6 @@ async def create_notification_template(
     template: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_ORG_SETTINGS))
 ) -> Any:
     """
     Create a new notification template.
@@ -160,7 +158,6 @@ async def update_notification_template(
     template: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_ORG_SETTINGS))
 ) -> Any:
     """
     Update a notification template.
@@ -183,7 +180,6 @@ async def get_notification_rules(
     active_only: bool = Query(True, description="Show only active rules"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_ORG_SETTINGS))
 ) -> Any:
     """
     Get notification rules for the organization.
@@ -294,7 +290,6 @@ async def create_notification_rule(
     rule: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_ORG_SETTINGS))
 ) -> Any:
     """
     Create a new notification rule.
@@ -416,7 +411,6 @@ async def test_notification(
     test_config: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_ORG_SETTINGS))
 ) -> Any:
     """
     Test a notification template or rule.

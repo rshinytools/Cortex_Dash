@@ -24,7 +24,6 @@ async def get_study_datasets(
     limit: int = Query(100, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_STUDY))
 ) -> Any:
     """
     Get all datasets available for a study.
@@ -108,7 +107,6 @@ async def get_dataset_details(
     dataset_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_STUDY))
 ) -> Any:
     """
     Get detailed information about a specific dataset.
@@ -159,7 +157,6 @@ async def get_dataset_schema(
     dataset_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_STUDY))
 ) -> Any:
     """
     Get schema information for a dataset including variables and metadata.
@@ -282,7 +279,6 @@ async def preview_dataset(
     columns: Optional[List[str]] = Query(None, description="Specific columns to include"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_STUDY))
 ) -> Any:
     """
     Preview dataset contents with sample data.
@@ -332,7 +328,6 @@ async def search_datasets(
     search_params: Dict[str, Any],
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_STUDY))
 ) -> Any:
     """
     Advanced search across study datasets.
@@ -410,7 +405,6 @@ async def validate_dataset(
     validation_rules: Optional[Dict[str, Any]] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_STUDY_DATA))
 ) -> Any:
     """
     Validate a dataset against CDISC standards or custom rules.

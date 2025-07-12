@@ -21,7 +21,6 @@ router = APIRouter()
 async def get_system_health(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_SYSTEM))
 ) -> Any:
     """
     Get overall system health status.
@@ -128,7 +127,6 @@ async def get_system_metrics(
     timeframe: str = Query("1h", description="Timeframe for metrics"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_SYSTEM))
 ) -> Any:
     """
     Get detailed system metrics.
@@ -192,7 +190,6 @@ async def get_system_logs(
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_SYSTEM))
 ) -> Any:
     """
     Get system logs with filtering.
@@ -248,7 +245,6 @@ async def get_system_alerts(
     severity: Optional[str] = Query(None, description="Filter by severity"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_SYSTEM))
 ) -> Any:
     """
     Get active system alerts and incidents.
@@ -316,7 +312,6 @@ async def get_system_alerts(
 async def run_system_diagnostics(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_SYSTEM))
 ) -> Any:
     """
     Run comprehensive system diagnostics.

@@ -285,12 +285,14 @@ async def sync_data_source_data(
 async def get_pipeline_status_detailed(
     pipeline_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_PIPELINE_LOGS))
+    current_user: User = Depends(get_current_user)
 ) -> Any:
     """
     Get detailed status of a pipeline execution.
     """
+    # Check permission
+    await require_permission(current_user, Permission.VIEW_PIPELINE_LOGS, db)
+    
     task_result = AsyncResult(pipeline_id, app=celery_app)
     
     if not task_result:
@@ -326,12 +328,14 @@ async def get_pipeline_logs(
     offset: int = Query(0, description="Number of log entries to skip"),
     level: Optional[str] = Query(None, description="Filter by log level (DEBUG, INFO, WARNING, ERROR)"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_PIPELINE_LOGS))
+    current_user: User = Depends(get_current_user)
 ) -> Any:
     """
     Get execution logs for a pipeline.
     """
+    # Check permission
+    await require_permission(current_user, Permission.VIEW_PIPELINE_LOGS, db)
+    
     # In a real implementation, this would query a logging database or service
     # For now, return mock data
     logs = [
@@ -367,12 +371,14 @@ async def get_pipeline_logs(
 async def cancel_pipeline_execution(
     pipeline_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.EXECUTE_PIPELINE))
+    current_user: User = Depends(get_current_user)
 ) -> Any:
     """
     Cancel a running pipeline execution.
     """
+    # Check permission
+    await require_permission(current_user, Permission.EXECUTE_PIPELINE, db)
+    
     task_result = AsyncResult(pipeline_id, app=celery_app)
     
     if not task_result:
@@ -401,12 +407,14 @@ async def cancel_pipeline_execution(
 async def retry_pipeline_execution(
     pipeline_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.EXECUTE_PIPELINE))
+    current_user: User = Depends(get_current_user)
 ) -> Any:
     """
     Retry a failed pipeline execution.
     """
+    # Check permission
+    await require_permission(current_user, Permission.EXECUTE_PIPELINE, db)
+    
     task_result = AsyncResult(pipeline_id, app=celery_app)
     
     if not task_result:
@@ -437,12 +445,14 @@ async def list_pipeline_executions(
     limit: int = Query(100, description="Maximum number of executions to return"),
     offset: int = Query(0, description="Number of executions to skip"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_PIPELINE_LOGS))
+    current_user: User = Depends(get_current_user)
 ) -> Any:
     """
     List pipeline executions with filtering and pagination.
     """
+    # Check permission
+    await require_permission(current_user, Permission.VIEW_PIPELINE_LOGS, db)
+    
     # In a real implementation, this would query a pipeline execution history table
     # For now, return mock data
     executions = [
@@ -465,12 +475,14 @@ async def list_pipeline_executions(
 async def get_pipeline_execution_details(
     execution_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_PIPELINE_LOGS))
+    current_user: User = Depends(get_current_user)
 ) -> Any:
     """
     Get detailed information about a specific pipeline execution.
     """
+    # Check permission
+    await require_permission(current_user, Permission.VIEW_PIPELINE_LOGS, db)
+    
     # In a real implementation, this would query execution details from database
     # For now, return mock data
     return {

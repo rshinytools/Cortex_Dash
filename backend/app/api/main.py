@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.routes import items, login, private, users, utils
-from app.api.v1.endpoints import organizations, studies, pipelines, data_sources, transformations, data_catalog
+from app.api.v1.endpoints import organizations, studies, pipelines, data_sources, transformations, data_catalog, data_uploads, pipeline_config, data_mapping
 # Temporarily disabled endpoints
 # from app.api.v1.endpoints import data_versions, data_quality, data_archival, refresh_schedules
 # from app.api.v1.endpoints import dashboards, widgets, visualizations, advanced_visualizations
@@ -27,6 +27,9 @@ api_router.include_router(pipelines.router, prefix="/pipelines", tags=["pipeline
 api_router.include_router(data_sources.router, prefix="/data-sources", tags=["data-sources"])
 api_router.include_router(transformations.router, prefix="/transformations", tags=["transformations"])
 api_router.include_router(data_catalog.router, prefix="/data-catalog", tags=["data-catalog"])
+api_router.include_router(data_uploads.router, prefix="/data-uploads", tags=["data-uploads"])
+api_router.include_router(pipeline_config.router, prefix="/pipeline-config", tags=["pipeline-config"])
+api_router.include_router(data_mapping.router, prefix="/data-mapping", tags=["data-mapping"])
 
 # Phase 4: Data Management & Storage APIs - temporarily disabled
 # api_router.include_router(data_versions.router, prefix="/data-versions", tags=["data-versions"])
@@ -37,7 +40,8 @@ api_router.include_router(data_catalog.router, prefix="/data-catalog", tags=["da
 # Phase 5: Dashboard & Visualization APIs
 # api_router.include_router(dashboards.router, prefix="/dashboards", tags=["dashboards"])
 api_router.include_router(dashboard_templates.router, prefix="/dashboard-templates", tags=["dashboard-templates"])
-# api_router.include_router(widgets.router, prefix="/widgets", tags=["widgets"])
+from app.api.v1.endpoints import widgets
+api_router.include_router(widgets.router, prefix="/widgets", tags=["widgets"])
 # api_router.include_router(visualizations.router, prefix="/visualizations", tags=["visualizations"])
 # api_router.include_router(advanced_visualizations.router, prefix="/advanced-visualizations", tags=["advanced-visualizations"])
 

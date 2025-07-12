@@ -5,10 +5,10 @@
  * Menu item type enumeration
  */
 export enum MenuItemType {
-  LINK = "link",
-  DROPDOWN = "dropdown",
-  DIVIDER = "divider",
-  HEADER = "header"
+  DASHBOARD_PAGE = "dashboard_page",  // Has its own canvas in the dashboard
+  GROUP = "group",                     // Placeholder for submenus
+  DIVIDER = "divider",                 // Visual separator
+  EXTERNAL = "external"                // External link
 }
 
 /**
@@ -40,11 +40,11 @@ export interface MenuItem {
   label: string;
   /** Menu item type */
   type: MenuItemType;
-  /** Navigation URL */
+  /** Navigation URL (for external links) */
   url?: string;
   /** Icon name or path */
   icon?: string;
-  /** Target for links */
+  /** Target for external links */
   target?: MenuItemTarget;
   /** Display order */
   order: number;
@@ -52,8 +52,19 @@ export interface MenuItem {
   isVisible: boolean;
   /** Whether item is enabled */
   isEnabled: boolean;
-  /** Child menu items */
+  /** Child menu items (for GROUP type) */
   children?: MenuItem[];
+  /** Dashboard configuration (for DASHBOARD_PAGE type) */
+  dashboardConfig?: {
+    /** Unique dashboard view ID */
+    viewId: string;
+    /** Canvas layout configuration */
+    layout?: {
+      type: string;
+      columns?: number;
+      rows?: number;
+    };
+  };
   /** Required permissions to view */
   permissions?: string[];
   /** Badge configuration */

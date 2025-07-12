@@ -104,14 +104,20 @@ export function DashboardDesigner({
 
   // Handle widget drop from palette
   const handleWidgetDrop = (widgetType: string, position: { x: number; y: number }) => {
+    // Try to get widget data from temporary storage
+    const widgetData = (window as any).__tempWidgetData
+    delete (window as any).__tempWidgetData
+    
     const newWidget = {
       i: `widget-${Date.now()}`,
       x: position.x,
       y: position.y,
-      w: getDefaultWidth(widgetType),
-      h: getDefaultHeight(widgetType),
+      w: getDefaultWidth(widgetData),
+      h: getDefaultHeight(widgetData),
       type: widgetType,
-      config: getDefaultConfig(widgetType)
+      widgetDefinitionId: widgetData?.id,
+      config: getDefaultConfig(widgetData),
+      widgetData: widgetData // Store full widget data for reference
     }
     
     updateLayout([...layout, newWidget])
@@ -119,7 +125,7 @@ export function DashboardDesigner({
     
     toast({
       title: "Widget added",
-      description: `${widgetType} widget added to the dashboard`
+      description: `${widgetData?.name || widgetType} added to the dashboard`
     })
   }
 
@@ -280,72 +286,60 @@ export function DashboardDesigner({
   )
 }
 
-// Helper functions
-function getDefaultWidth(widgetType: string): number {
+// Helper functions - now use widget data from backend
+function getDefaultWidth(widgetData: any): number {
+  if (widgetData?.size_constraints?.defaultWidth) {
+    return widgetData.size_constraints.defaultWidth
+  }
+  // Fallback widths based on widget codes
   const widths: Record<string, number> = {
-    "metric-card": 3,
-    "line-chart": 6,
-    "bar-chart": 6,
-    "pie-chart": 4,
-    "table": 6,
-    "heatmap": 8,
-    "scatter-plot": 6,
-    "geo-map": 8,
-    "progress": 3,
-    "text": 4
+    "total_screened": 3,
+    "screen_failures": 3,
+    "total_aes": 3,
+    "saes": 3,
+    "enrollment_trend": 6,
+    "ae_timeline": 8,
+    "site_summary_table": 8,
+    "subject_listing": 12,
+    "site_enrollment_map": 8,
+    "subject_flow_diagram": 12
   }
-  return widths[widgetType] || 4
+  return widths[widgetData?.code] || 4
 }
 
-function getDefaultHeight(widgetType: string): number {
+function getDefaultHeight(widgetData: any): number {
+  if (widgetData?.size_constraints?.defaultHeight) {
+    return widgetData.size_constraints.defaultHeight
+  }
+  // Fallback heights based on widget codes
   const heights: Record<string, number> = {
-    "metric-card": 2,
-    "line-chart": 4,
-    "bar-chart": 4,
-    "pie-chart": 4,
-    "table": 6,
-    "heatmap": 5,
-    "scatter-plot": 4,
-    "geo-map": 6,
-    "progress": 2,
-    "text": 2
+    "total_screened": 2,
+    "screen_failures": 2,
+    "total_aes": 2,
+    "saes": 2,
+    "enrollment_trend": 4,
+    "ae_timeline": 4,
+    "site_summary_table": 4,
+    "subject_listing": 6,
+    "site_enrollment_map": 6,
+    "subject_flow_diagram": 6
   }
-  return heights[widgetType] || 4
+  return heights[widgetData?.code] || 4
 }
 
-function getDefaultConfig(widgetType: string): any {
-  const configs: Record<string, any> = {
-    "metric-card": {
-      title: "New Metric",
-      value: "0",
-      unit: "",
-      trend: "neutral"
-    },
-    "line-chart": {
-      title: "Line Chart",
-      xAxis: "Date",
-      yAxis: "Value",
-      lines: []
-    },
-    "bar-chart": {
-      title: "Bar Chart",
-      xAxis: "Category",
-      yAxis: "Value",
-      bars: []
-    },
-    "pie-chart": {
-      title: "Pie Chart",
-      slices: []
-    },
-    "table": {
-      title: "Data Table",
-      columns: [],
-      pageSize: 10
-    },
-    "text": {
-      title: "Text Widget",
-      content: "Enter your text here..."
-    }
+function getDefaultConfig(widgetData: any): any {
+  if (widgetData?.config_schema?.properties) {
+    // Build default config from schema
+    const defaultConfig: any = {}
+    Object.entries(widgetData.config_schema.properties).forEach(([key, prop]: [string, any]) => {
+      if (prop.default !== undefined) {
+        defaultConfig[key] = prop.default
+      }
+    })
+    return defaultConfig
   }
-  return configs[widgetType] || {}
+  // Fallback configs
+  return {
+    title: widgetData?.name || "New Widget"
+  }
 }

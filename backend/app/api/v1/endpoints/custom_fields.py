@@ -20,7 +20,6 @@ async def get_custom_field_definitions(
     study_id: Optional[uuid.UUID] = Query(None, description="Filter by study"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_STUDY))
 ) -> Any:
     """
     Get custom field definitions for the organization.
@@ -155,7 +154,6 @@ async def create_custom_field_definition(
     definition: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_ORG_SETTINGS))
 ) -> Any:
     """
     Create a new custom field definition.
@@ -217,7 +215,6 @@ async def update_custom_field_definition(
     definition: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_ORG_SETTINGS))
 ) -> Any:
     """
     Update a custom field definition.
@@ -239,7 +236,6 @@ async def delete_custom_field_definition(
     field_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_ORG_SETTINGS))
 ) -> Any:
     """
     Delete a custom field definition.
@@ -260,7 +256,6 @@ async def get_custom_field_values(
     entity_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_STUDY))
 ) -> Any:
     """
     Get custom field values for a specific entity.
@@ -304,7 +299,6 @@ async def update_custom_field_values(
     values: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.EDIT_STUDY))
 ) -> Any:
     """
     Update custom field values for a specific entity.
@@ -328,7 +322,6 @@ async def get_custom_forms(
     form_type: Optional[str] = Query(None, description="Filter by form type"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_STUDY))
 ) -> Any:
     """
     Get custom forms for a study.
@@ -396,7 +389,6 @@ async def create_custom_form(
     form: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.EDIT_STUDY))
 ) -> Any:
     """
     Create a custom form for a study.

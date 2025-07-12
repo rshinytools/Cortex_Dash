@@ -57,6 +57,8 @@ tenacity==9.0.0
 psutil==6.1.0
 croniter==5.0.1
 pyotp==2.9.0
+fuzzywuzzy==0.18.0
+python-Levenshtein==0.26.1
 
 # Reporting
 Pillow==10.4.0

@@ -3,7 +3,8 @@
 
 import { useState, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { dashboardTemplatesApi } from "@/lib/api/dashboard-templates"
+import { dashboardTemplatesApi, CreateUnifiedDashboardTemplateDto } from "@/lib/api/dashboard-templates"
+import { MenuPosition } from "@/types/menu"
 
 interface Dashboard {
   id: string
@@ -224,11 +225,18 @@ export function useDashboards() {
         }
         
         // Transform our data format to API format
-        const updateData = {
-          name: data.name,
-          description: data.description,
-          category: data.category,
-          template_structure
+        const updateData: CreateUnifiedDashboardTemplateDto = {
+          name: data.name || '',
+          description: data.description || '',
+          category: data.category || 'custom',
+          menuTemplate: {
+            name: `${data.name || 'Dashboard'} Menu`,
+            position: MenuPosition.SIDEBAR,
+            items: [],
+            version: "1.0.0",
+            isActive: true,
+          },
+          dashboardTemplates: []
         }
         
         console.log('Updating dashboard with data:', {

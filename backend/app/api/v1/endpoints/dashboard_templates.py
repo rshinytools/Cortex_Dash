@@ -120,29 +120,24 @@ async def read_dashboard_template(
     # Count dashboards and widgets in the template
     template_structure = template.template_structure or {}
     
-    dashboard_count = 0
+    # A template always represents ONE dashboard
+    dashboard_count = 1
     widget_count = 0
     
-    # Handle both old format (menu.items) and new format (menu_structure + dashboards)
-    if "menu_structure" in template_structure and "dashboards" in template_structure:
-        # New format: A template represents ONE dashboard with multiple views
-        # Each view can have widgets
-        dashboard_count = 1  # One dashboard per template
-        
-        # Count total widgets across all views
-        dashboards_array = template_structure.get("dashboards", [])
-        for dashboard_view in dashboards_array:
-            widgets = dashboard_view.get("widgets", [])
-            widget_count += len(widgets)
-    else:
-        # Old format: look for menu.items
-        menu_items = template_structure.get("menu", {}).get("items", [])
-        
-        for item in menu_items:
-            if item.get("type") == "dashboard" and "dashboard" in item:
-                dashboard_count += 1
+    # Count widgets from menu items
+    def count_widgets_in_items(items):
+        count = 0
+        for item in items:
+            if "dashboard" in item and isinstance(item["dashboard"], dict):
                 widgets = item["dashboard"].get("widgets", [])
-                widget_count += len(widgets)
+                count += len(widgets)
+            # Check for children items
+            if "children" in item and isinstance(item["children"], list):
+                count += count_widgets_in_items(item["children"])
+        return count
+    
+    menu_items = template_structure.get("menu", {}).get("items", [])
+    widget_count = count_widgets_in_items(menu_items)
     
     # Create public template with all required fields
     template_dict = template.model_dump()
@@ -256,29 +251,24 @@ async def create_dashboard_template(
     # Count dashboards and widgets in the template
     template_structure = template.template_structure or {}
     
-    dashboard_count = 0
+    # A template always represents ONE dashboard
+    dashboard_count = 1
     widget_count = 0
     
-    # Handle both old format (menu.items) and new format (menu_structure + dashboards)
-    if "menu_structure" in template_structure and "dashboards" in template_structure:
-        # New format: A template represents ONE dashboard with multiple views
-        # Each view can have widgets
-        dashboard_count = 1  # One dashboard per template
-        
-        # Count total widgets across all views
-        dashboards_array = template_structure.get("dashboards", [])
-        for dashboard_view in dashboards_array:
-            widgets = dashboard_view.get("widgets", [])
-            widget_count += len(widgets)
-    else:
-        # Old format: look for menu.items
-        menu_items = template_structure.get("menu", {}).get("items", [])
-        
-        for item in menu_items:
-            if item.get("type") == "dashboard" and "dashboard" in item:
-                dashboard_count += 1
+    # Count widgets from menu items
+    def count_widgets_in_items(items):
+        count = 0
+        for item in items:
+            if "dashboard" in item and isinstance(item["dashboard"], dict):
                 widgets = item["dashboard"].get("widgets", [])
-                widget_count += len(widgets)
+                count += len(widgets)
+            # Check for children items
+            if "children" in item and isinstance(item["children"], list):
+                count += count_widgets_in_items(item["children"])
+        return count
+    
+    menu_items = template_structure.get("menu", {}).get("items", [])
+    widget_count = count_widgets_in_items(menu_items)
     
     # Create public template with all required fields
     template_dict = template.model_dump()
@@ -322,29 +312,24 @@ async def update_dashboard_template(
     # Count dashboards and widgets in the template
     template_structure = template.template_structure or {}
     
-    dashboard_count = 0
+    # A template always represents ONE dashboard
+    dashboard_count = 1
     widget_count = 0
     
-    # Handle both old format (menu.items) and new format (menu_structure + dashboards)
-    if "menu_structure" in template_structure and "dashboards" in template_structure:
-        # New format: A template represents ONE dashboard with multiple views
-        # Each view can have widgets
-        dashboard_count = 1  # One dashboard per template
-        
-        # Count total widgets across all views
-        dashboards_array = template_structure.get("dashboards", [])
-        for dashboard_view in dashboards_array:
-            widgets = dashboard_view.get("widgets", [])
-            widget_count += len(widgets)
-    else:
-        # Old format: look for menu.items
-        menu_items = template_structure.get("menu", {}).get("items", [])
-        
-        for item in menu_items:
-            if item.get("type") == "dashboard" and "dashboard" in item:
-                dashboard_count += 1
+    # Count widgets from menu items
+    def count_widgets_in_items(items):
+        count = 0
+        for item in items:
+            if "dashboard" in item and isinstance(item["dashboard"], dict):
                 widgets = item["dashboard"].get("widgets", [])
-                widget_count += len(widgets)
+                count += len(widgets)
+            # Check for children items
+            if "children" in item and isinstance(item["children"], list):
+                count += count_widgets_in_items(item["children"])
+        return count
+    
+    menu_items = template_structure.get("menu", {}).get("items", [])
+    widget_count = count_widgets_in_items(menu_items)
     
     # Create public template with all required fields
     template_dict = template.model_dump()

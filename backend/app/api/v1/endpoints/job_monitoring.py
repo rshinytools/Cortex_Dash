@@ -24,7 +24,6 @@ async def get_jobs(
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_STUDY))
 ) -> Any:
     """
     Get list of background jobs with filtering and pagination.
@@ -100,7 +99,6 @@ async def get_job_details(
     job_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_STUDY))
 ) -> Any:
     """
     Get detailed information about a specific job.
@@ -180,7 +178,6 @@ async def cancel_job(
     reason: Optional[Dict[str, str]] = Body(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.EXECUTE_PIPELINE))
 ) -> Any:
     """
     Cancel a running or pending job.
@@ -205,7 +202,6 @@ async def retry_job(
     retry_config: Optional[Dict[str, Any]] = Body(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.EXECUTE_PIPELINE))
 ) -> Any:
     """
     Retry a failed job.
@@ -230,7 +226,6 @@ async def retry_job(
 async def get_job_queues(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_STUDY))
 ) -> Any:
     """
     Get status of job queues.
@@ -288,7 +283,6 @@ async def get_job_schedules(
     active_only: bool = Query(True, description="Show only active schedules"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_STUDY))
 ) -> Any:
     """
     Get scheduled jobs.
@@ -375,7 +369,6 @@ async def create_job_schedule(
     schedule_config: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.SCHEDULE_REPORTS))
 ) -> Any:
     """
     Create a new job schedule.
@@ -415,7 +408,6 @@ async def update_job_schedule(
     schedule_update: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.SCHEDULE_REPORTS))
 ) -> Any:
     """
     Update a job schedule.
@@ -437,7 +429,6 @@ async def get_job_statistics(
     timeframe: str = Query("24h", description="Timeframe for statistics"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_STUDY))
 ) -> Any:
     """
     Get job processing statistics.

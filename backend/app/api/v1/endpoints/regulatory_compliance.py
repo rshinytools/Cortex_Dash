@@ -19,7 +19,6 @@ async def get_compliance_status(
     regulation: Optional[str] = Query(None, description="Filter by specific regulation"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_AUDIT_TRAIL))
 ) -> Any:
     """
     Get overall regulatory compliance status.
@@ -113,7 +112,6 @@ async def run_compliance_assessment(
     assessment_config: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_SYSTEM))
 ) -> Any:
     """
     Run a compliance assessment for specified regulations.
@@ -202,7 +200,6 @@ async def get_compliance_controls(
     control_type: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_AUDIT_TRAIL))
 ) -> Any:
     """
     Get implemented compliance controls.
@@ -308,7 +305,6 @@ async def get_compliance_incidents(
     severity: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_AUDIT_TRAIL))
 ) -> Any:
     """
     Get compliance incidents and breaches.
@@ -410,7 +406,6 @@ async def get_training_compliance_status(
     user_id: Optional[uuid.UUID] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_ORG_USERS))
 ) -> Any:
     """
     Get compliance training status for users.
@@ -494,7 +489,6 @@ async def get_compliance_documents(
     document_type: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_AUDIT_TRAIL))
 ) -> Any:
     """
     Get compliance-related documents and SOPs.

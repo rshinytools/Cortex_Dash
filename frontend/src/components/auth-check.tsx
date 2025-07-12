@@ -21,9 +21,15 @@ export function AuthCheck({ children, requireAuth = true }: AuthCheckProps) {
   useEffect(() => {
     // If auth is required and user is not authenticated, redirect to login
     if (requireAuth && status === 'unauthenticated') {
-      router.push('/auth/login');
+      router.push(`/auth/login?callbackUrl=${encodeURIComponent(pathname)}`);
     }
-  }, [requireAuth, status, router]);
+    
+    // If session exists but no access token, it's invalid
+    if (requireAuth && status === 'authenticated' && !session?.accessToken) {
+      console.warn('Session exists but no access token, redirecting to login');
+      router.push(`/auth/login?callbackUrl=${encodeURIComponent(pathname)}`);
+    }
+  }, [requireAuth, status, session, router, pathname]);
 
   // Show loading state while checking authentication
   if (status === 'loading') {
@@ -45,6 +51,18 @@ export function AuthCheck({ children, requireAuth = true }: AuthCheckProps) {
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
           <p className="text-muted-foreground">Redirecting to login...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // If session exists but no access token, show loading while redirecting
+  if (requireAuth && status === 'authenticated' && !session?.accessToken) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+          <p className="text-muted-foreground">Session expired. Redirecting to login...</p>
         </div>
       </div>
     );

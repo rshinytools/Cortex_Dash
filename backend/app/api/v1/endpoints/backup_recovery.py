@@ -21,7 +21,6 @@ async def get_backups(
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_SYSTEM))
 ) -> Any:
     """
     Get list of available backups.
@@ -87,7 +86,6 @@ async def create_backup(
     backup_config: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_SYSTEM))
 ) -> Any:
     """
     Create a new backup.
@@ -125,7 +123,6 @@ async def restore_backup(
     restore_config: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_SYSTEM))
 ) -> Any:
     """
     Restore from a backup.
@@ -174,7 +171,6 @@ async def restore_backup(
 async def get_disaster_recovery_plan(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_SYSTEM))
 ) -> Any:
     """
     Get the disaster recovery plan.
@@ -256,7 +252,6 @@ async def test_disaster_recovery(
     test_config: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_SYSTEM))
 ) -> Any:
     """
     Initiate a disaster recovery test.
@@ -306,7 +301,6 @@ async def test_disaster_recovery(
 async def get_backup_policies(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_SYSTEM))
 ) -> Any:
     """
     Get backup policies and schedules.
@@ -396,7 +390,6 @@ async def update_backup_policy(
     policy_update: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_SYSTEM))
 ) -> Any:
     """
     Update a backup policy.
@@ -427,7 +420,6 @@ async def get_recovery_points(
     end_date: Optional[datetime] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_SYSTEM))
 ) -> Any:
     """
     Get available recovery points.

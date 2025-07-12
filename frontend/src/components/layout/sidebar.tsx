@@ -73,19 +73,19 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    title: 'Dashboards',
-    href: '/admin/dashboards',
+    title: 'Dashboard Templates',
+    href: '/admin/dashboard-templates',
     icon: LayoutDashboard,
     roles: [UserRole.SYSTEM_ADMIN], // System admin feature
     children: [
       {
-        title: 'All Dashboards',
-        href: '/admin/dashboards',
+        title: 'All Templates',
+        href: '/admin/dashboard-templates',
         icon: LayoutDashboard,
       },
       {
-        title: 'Create Dashboard',
-        href: '/admin/dashboards/new',
+        title: 'Create Template',
+        href: '/admin/dashboard-templates/new',
         icon: Plus,
       },
     ],
@@ -94,12 +94,6 @@ const navItems: NavItem[] = [
     title: 'Widget Library',
     href: '/admin/widgets',
     icon: Package,
-    roles: [UserRole.SYSTEM_ADMIN], // System admin feature
-  },
-  {
-    title: 'Menu Templates',
-    href: '/admin/menus',
-    icon: Menu,
     roles: [UserRole.SYSTEM_ADMIN], // System admin feature
   },
   {

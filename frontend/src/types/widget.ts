@@ -2,16 +2,14 @@
 // ABOUTME: Defines interfaces and enums for widget system components
 
 /**
- * Widget category enumeration
+ * Widget category enumeration - matches backend categories
  */
 export enum WidgetCategory {
-  SAFETY = "safety",
-  EFFICACY = "efficacy",
-  ENROLLMENT = "enrollment",
-  OPERATIONS = "operations",
-  QUALITY = "quality",
-  FINANCE = "finance",
-  CUSTOM = "custom"
+  METRICS = "metrics",
+  CHARTS = "charts", 
+  TABLES = "tables",
+  MAPS = "maps",
+  SPECIALIZED = "specialized"
 }
 
 /**
@@ -218,40 +216,51 @@ export interface WidgetConfig {
 export interface WidgetDefinition {
   /** Unique identifier */
   id: string;
+  /** Widget code (unique identifier) */
+  code: string;
   /** Widget name */
   name: string;
   /** Widget description */
   description?: string;
   /** Widget category */
   category: WidgetCategory;
-  /** Widget type */
-  type: WidgetType;
   /** Widget version */
   version: string;
-  /** Component path for rendering */
-  componentPath: string;
-  /** Default configuration */
-  defaultConfig: WidgetConfig;
-  /** Configuration schema for validation */
-  configSchema?: any;
   /** Size constraints */
-  size: WidgetSize;
+  size_constraints: {
+    minWidth: number;
+    minHeight: number;
+    maxWidth?: number;
+    maxHeight?: number;
+    defaultWidth: number;
+    defaultHeight: number;
+  };
+  /** Configuration schema for validation */
+  config_schema?: any;
+  /** Default configuration */
+  default_config?: any;
   /** Data requirements */
-  dataRequirements?: WidgetDataRequirement;
+  data_requirements?: any;
   /** Data contract defining field requirements and mappings */
-  dataContract?: DataContract;
-  /** Preview image URL */
-  previewImageUrl?: string;
-  /** Tags for categorization */
-  tags?: string[];
+  data_contract?: any;
   /** Whether widget is active */
-  isActive: boolean;
-  /** Custom properties */
-  customProperties?: Record<string, any>;
+  is_active: boolean;
   /** Creation timestamp */
-  createdAt: string;
+  created_at?: string;
   /** Last update timestamp */
-  updatedAt: string;
+  updated_at?: string;
+  
+  // Frontend compatibility fields (for gradual migration)
+  type?: WidgetType;
+  componentPath?: string;
+  defaultConfig?: WidgetConfig;
+  size?: WidgetSize;
+  dataRequirements?: WidgetDataRequirement;
+  dataContract?: DataContract;
+  tags?: string[];
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 /**

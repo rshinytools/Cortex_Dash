@@ -69,7 +69,7 @@ export function WidgetForm({ widget, onSubmit, isLoading }: WidgetFormProps) {
     widget?.defaultConfig ? JSON.stringify(widget.defaultConfig, null, 2) : '{}'
   )
   const [configSchema, setConfigSchema] = useState<string>(
-    widget?.configSchema ? JSON.stringify(widget.configSchema, null, 2) : '{}'
+    widget?.config_schema ? JSON.stringify(widget.config_schema, null, 2) : '{}'
   )
 
   const form = useForm<WidgetFormValues>({
@@ -77,7 +77,7 @@ export function WidgetForm({ widget, onSubmit, isLoading }: WidgetFormProps) {
     defaultValues: {
       name: widget?.name || '',
       description: widget?.description || '',
-      category: widget?.category || WidgetCategory.CUSTOM,
+      category: widget?.category || WidgetCategory.METRICS,
       type: widget?.type || WidgetType.METRIC,
       componentPath: widget?.componentPath || '',
       tags: widget?.tags?.join(', ') || '',
@@ -513,8 +513,12 @@ export function WidgetForm({ widget, onSubmit, isLoading }: WidgetFormProps) {
         {widget && (
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span>Version: <Badge variant="secondary">{widget.version}</Badge></span>
-            <span>Created: {new Date(widget.createdAt).toLocaleDateString()}</span>
-            <span>Updated: {new Date(widget.updatedAt).toLocaleDateString()}</span>
+            <span>Created: {widget.created_at || widget.createdAt ? 
+              new Date(widget.created_at || widget.createdAt || '').toLocaleDateString() : 
+              'N/A'}</span>
+            <span>Updated: {widget.updated_at || widget.updatedAt ? 
+              new Date(widget.updated_at || widget.updatedAt || '').toLocaleDateString() : 
+              'N/A'}</span>
           </div>
         )}
       </form>

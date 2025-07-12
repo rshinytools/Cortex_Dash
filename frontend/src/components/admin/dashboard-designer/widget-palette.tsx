@@ -3,10 +3,11 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Button } from "@/components/ui/button"
 import { 
   Search,
   BarChart3,
@@ -19,107 +20,78 @@ import {
   TrendingUp,
   Map,
   Grid3x3,
-  Loader2
+  Loader2,
+  Plus,
+  RefreshCw,
+  AlertCircle
 } from "lucide-react"
+import { widgetsApi } from "@/lib/api/widgets"
+import { useToast } from "@/hooks/use-toast"
 
 interface Widget {
   id: string
+  code: string
   name: string
-  icon: React.ComponentType<{ className?: string }>
-  category: string
   description: string
+  category: {
+    id: number
+    name: string
+    display_name: string
+  }
+  size_constraints: {
+    minWidth: number
+    minHeight: number
+    defaultWidth: number
+    defaultHeight: number
+  }
 }
 
-const widgets: Widget[] = [
-  // Metrics
-  {
-    id: "metric-card",
-    name: "Metric Card",
-    icon: Hash,
-    category: "metrics",
-    description: "Display a single metric with trend"
-  },
-  {
-    id: "progress",
-    name: "Progress Bar",
-    icon: Loader2,
-    category: "metrics",
-    description: "Show progress towards a goal"
-  },
-  
-  // Charts
-  {
-    id: "line-chart",
-    name: "Line Chart",
-    icon: LineChart,
-    category: "charts",
-    description: "Time series and trend visualization"
-  },
-  {
-    id: "bar-chart",
-    name: "Bar Chart",
-    icon: BarChart3,
-    category: "charts",
-    description: "Compare values across categories"
-  },
-  {
-    id: "pie-chart",
-    name: "Pie Chart",
-    icon: PieChart,
-    category: "charts",
-    description: "Show proportions and percentages"
-  },
-  {
-    id: "scatter-plot",
-    name: "Scatter Plot",
-    icon: Activity,
-    category: "charts",
-    description: "Visualize correlations between variables"
-  },
-  {
-    id: "heatmap",
-    name: "Heatmap",
-    icon: Grid3x3,
-    category: "charts",
-    description: "Display data density and patterns"
-  },
-  
-  // Data
-  {
-    id: "table",
-    name: "Data Table",
-    icon: Table2,
-    category: "data",
-    description: "Display tabular data with sorting"
-  },
-  
-  // Geographic
-  {
-    id: "geo-map",
-    name: "Geographic Map",
-    icon: Map,
-    category: "geographic",
-    description: "Visualize data on a map"
-  },
-  
-  // Text
-  {
-    id: "text",
-    name: "Text Widget",
-    icon: Type,
-    category: "text",
-    description: "Add custom text and descriptions"
-  }
-]
+interface WidgetCategory {
+  id: number
+  name: string
+  display_name: string
+  widget_count: number
+}
 
-const categories = [
-  { id: "all", name: "All Widgets", count: widgets.length },
-  { id: "metrics", name: "Metrics", count: widgets.filter(w => w.category === "metrics").length },
-  { id: "charts", name: "Charts", count: widgets.filter(w => w.category === "charts").length },
-  { id: "data", name: "Data", count: widgets.filter(w => w.category === "data").length },
-  { id: "geographic", name: "Geographic", count: widgets.filter(w => w.category === "geographic").length },
-  { id: "text", name: "Text", count: widgets.filter(w => w.category === "text").length }
-]
+// Icon mapping for widget categories
+const categoryIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+  METRICS: Hash,
+  CHARTS: LineChart,
+  TABLES: Table2,
+  MAPS: Map,
+  SPECIALIZED: Activity
+}
+
+// Icon mapping for widget codes
+const widgetIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+  // Flexible metrics card
+  metrics_card_flexible: TrendingUp,
+  // Metrics
+  metric_card: Hash,
+  total_screened: Hash,
+  screen_failures: TrendingUp,
+  total_aes: AlertCircle,
+  saes: AlertCircle,
+  total_subjects_with_aes: Activity,
+  average_age: Type,
+  total_sum: BarChart3,
+  // Charts
+  enrollment_trend: LineChart,
+  ae_timeline: Activity,
+  // Tables
+  site_summary_table: Table2,
+  subject_listing: Table2,
+  // Maps
+  site_enrollment_map: Map,
+  // Specialized
+  subject_flow_diagram: Activity
+}
+
+// Get icon for widget
+function getWidgetIcon(widget: Widget): React.ComponentType<{ className?: string }> {
+  return widgetIcons[widget.code] || categoryIcons[widget.category.name] || Grid3x3
+}
+
 
 interface WidgetPaletteProps {
   onDragStart: (widgetType: string) => void
@@ -128,20 +100,75 @@ interface WidgetPaletteProps {
 export function WidgetPalette({ onDragStart }: WidgetPaletteProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
+  const [widgets, setWidgets] = useState<Widget[]>([])
+  const [categories, setCategories] = useState<WidgetCategory[]>([])
+  const [loading, setLoading] = useState(true)
+  const { toast } = useToast()
+
+  // Load categories and widgets on mount
+  useEffect(() => {
+    loadCategories()
+    loadWidgets()
+  }, [])
+
+  // Reload widgets when category changes
+  useEffect(() => {
+    loadWidgets()
+  }, [selectedCategory])
+
+  const loadCategories = async () => {
+    try {
+      const data = await widgetsApi.getCategories()
+      setCategories(data)
+    } catch (error) {
+      console.error('Failed to load categories:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to load widget categories',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const loadWidgets = async () => {
+    setLoading(true)
+    try {
+      const params = selectedCategory !== 'all' && selectedCategory !== '0'
+        ? { category_id: parseInt(selectedCategory) }
+        : undefined
+      
+      const data = await widgetsApi.getLibrary(params)
+      setWidgets(data)
+    } catch (error) {
+      console.error('Failed to load widgets:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to load widgets',
+        variant: 'destructive',
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const filteredWidgets = widgets.filter(widget => {
     const matchesSearch = widget.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         widget.description.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesCategory = selectedCategory === "all" || widget.category === selectedCategory
-    
-    return matchesSearch && matchesCategory
+                         (widget.description?.toLowerCase() || '').includes(searchQuery.toLowerCase())
+    return matchesSearch
   })
 
-  const handleDragStart = (e: React.DragEvent, widgetId: string) => {
-    e.dataTransfer.setData("widgetType", widgetId)
+  const handleDragStart = (e: React.DragEvent, widget: Widget) => {
+    e.dataTransfer.setData("widgetType", widget.code)
+    e.dataTransfer.setData("widgetData", JSON.stringify(widget))
     e.dataTransfer.effectAllowed = "copy"
-    onDragStart(widgetId)
+    onDragStart(widget.code)
   }
+
+  // Build categories list with counts
+  const allCategories = [
+    { id: 0, name: "all", display_name: "All Widgets", widget_count: widgets.length },
+    ...categories
+  ]
 
   return (
     <div className="h-full flex flex-col">
@@ -160,19 +187,19 @@ export function WidgetPalette({ onDragStart }: WidgetPaletteProps) {
 
       <div className="border-b">
         <div className="p-2">
-          {categories.map(category => (
+          {allCategories.map(category => (
             <button
               key={category.id}
-              onClick={() => setSelectedCategory(category.id)}
+              onClick={() => setSelectedCategory(category.id.toString())}
               className={cn(
                 "w-full text-left px-3 py-2 rounded-md text-sm transition-colors",
                 "hover:bg-accent hover:text-accent-foreground",
-                selectedCategory === category.id && "bg-accent text-accent-foreground"
+                selectedCategory === category.id.toString() && "bg-accent text-accent-foreground"
               )}
             >
               <div className="flex items-center justify-between">
-                <span>{category.name}</span>
-                <span className="text-xs text-muted-foreground">{category.count}</span>
+                <span>{category.display_name}</span>
+                <span className="text-xs text-muted-foreground">{category.widget_count}</span>
               </div>
             </button>
           ))}
@@ -181,18 +208,22 @@ export function WidgetPalette({ onDragStart }: WidgetPaletteProps) {
 
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-2">
-          {filteredWidgets.length === 0 ? (
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : filteredWidgets.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">
               No widgets found matching your search
             </p>
           ) : (
             filteredWidgets.map(widget => {
-              const Icon = widget.icon
+              const Icon = getWidgetIcon(widget)
               return (
                 <div
                   key={widget.id}
                   draggable
-                  onDragStart={(e) => handleDragStart(e, widget.id)}
+                  onDragStart={(e) => handleDragStart(e, widget)}
                   className={cn(
                     "p-3 rounded-lg border bg-card cursor-move",
                     "hover:bg-accent hover:border-accent-foreground/20",
@@ -210,6 +241,15 @@ export function WidgetPalette({ onDragStart }: WidgetPaletteProps) {
                       <p className="text-xs text-muted-foreground mt-1">
                         {widget.description}
                       </p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="text-xs text-muted-foreground">
+                          {widget.size_constraints.defaultWidth}x{widget.size_constraints.defaultHeight}
+                        </span>
+                        <span className="text-xs text-muted-foreground">•</span>
+                        <span className="text-xs text-muted-foreground">
+                          {widget.category.display_name}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -220,9 +260,19 @@ export function WidgetPalette({ onDragStart }: WidgetPaletteProps) {
       </ScrollArea>
 
       <div className="p-4 border-t bg-muted/50">
-        <p className="text-xs text-muted-foreground text-center">
-          Drag widgets to the canvas to add them
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">
+            {widgets.length} widgets available
+          </p>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => loadWidgets()}
+            disabled={loading}
+          >
+            <RefreshCw className={cn("h-3 w-3", loading && "animate-spin")} />
+          </Button>
+        </div>
       </div>
     </div>
   )

@@ -6,6 +6,9 @@
 # Default target
 .DEFAULT_GOAL := help
 
+# Include production commands if they exist
+-include Makefile.production
+
 # Colors
 GREEN  := \033[0;32m
 YELLOW := \033[0;33m

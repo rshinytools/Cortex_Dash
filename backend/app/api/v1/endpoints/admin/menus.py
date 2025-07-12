@@ -1,5 +1,5 @@
 # ABOUTME: DEPRECATED - Menu management is now part of unified dashboard templates
-# ABOUTME: These endpoints redirect to the new dashboard template endpoints for compatibility
+# ABOUTME: These endpoints are kept for backward compatibility but will be removed in v2.0
 
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
@@ -15,6 +15,11 @@ from app.core.permissions import Permission, has_permission
 
 
 router = APIRouter()
+
+# WARNING: All endpoints in this router are DEPRECATED.
+# Menu functionality has been integrated into dashboard templates.
+# Use /api/v1/dashboard-templates endpoints instead.
+# These endpoints will be removed in version 2.0
 
 
 # Enums
@@ -119,7 +124,7 @@ def validate_menu_structure(menu_items: List[MenuItem]) -> List[str]:
     return errors
 
 
-@router.get("", response_model=List[MenuTemplateResponse])
+@router.get("", response_model=List[MenuTemplateResponse], deprecated=True)
 async def list_menu_templates(
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     search: Optional[str] = Query(None, description="Search in name or description"),
@@ -293,7 +298,7 @@ async def list_menu_templates(
     return menus
 
 
-@router.post("", response_model=MenuTemplateResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=MenuTemplateResponse, status_code=status.HTTP_201_CREATED, deprecated=True)
 async def create_menu_template(
     menu_data: MenuTemplate,
     db: Session = Depends(get_db),
@@ -331,7 +336,7 @@ async def create_menu_template(
     return new_menu
 
 
-@router.get("/{menu_id}", response_model=MenuTemplateResponse)
+@router.get("/{menu_id}", response_model=MenuTemplateResponse, deprecated=True)
 async def get_menu_template(
     menu_id: UUID,
     db: Session = Depends(get_db),
@@ -389,7 +394,7 @@ async def get_menu_template(
     return menu
 
 
-@router.put("/{menu_id}", response_model=MenuTemplateResponse)
+@router.put("/{menu_id}", response_model=MenuTemplateResponse, deprecated=True)
 async def update_menu_template(
     menu_id: UUID,
     menu_update: MenuTemplate,
@@ -430,7 +435,7 @@ async def update_menu_template(
     return updated_menu
 
 
-@router.delete("/{menu_id}", response_model=Message)
+@router.delete("/{menu_id}", response_model=Message, deprecated=True)
 async def delete_menu_template(
     menu_id: UUID,
     force: bool = Query(False, description="Force delete even if menu is in use"),
@@ -452,7 +457,7 @@ async def delete_menu_template(
     return Message(message=f"Menu template {menu_id} deleted successfully")
 
 
-@router.post("/{menu_id}/validate", response_model=MenuValidationResult)
+@router.post("/{menu_id}/validate", response_model=MenuValidationResult, deprecated=True)
 async def validate_menu_template(
     menu_id: UUID,
     test_permissions: Optional[List[str]] = Body(None, description="Test with specific permissions"),
@@ -568,7 +573,7 @@ async def validate_menu_template(
     )
 
 
-@router.post("/{menu_id}/clone", response_model=MenuTemplateResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/{menu_id}/clone", response_model=MenuTemplateResponse, status_code=status.HTTP_201_CREATED, deprecated=True)
 async def clone_menu_template(
     menu_id: UUID,
     clone_data: MenuCloneRequest,

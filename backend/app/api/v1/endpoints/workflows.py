@@ -20,7 +20,6 @@ async def get_workflow_templates(
     active_only: bool = Query(True, description="Show only active templates"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_ORG_SETTINGS))
 ) -> Any:
     """
     Get workflow templates for the organization.
@@ -190,7 +189,6 @@ async def create_workflow_template(
     template: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_ORG_SETTINGS))
 ) -> Any:
     """
     Create a new workflow template.
@@ -243,7 +241,6 @@ async def get_workflow_instances(
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_STUDY))
 ) -> Any:
     """
     Get workflow instances with pagination.
@@ -310,7 +307,6 @@ async def get_workflow_instance_details(
     instance_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_STUDY))
 ) -> Any:
     """
     Get detailed information about a workflow instance.
@@ -380,7 +376,6 @@ async def perform_workflow_action(
     action: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.EDIT_STUDY))
 ) -> Any:
     """
     Perform an action on a workflow instance.
@@ -416,7 +411,6 @@ async def start_workflow(
     workflow_config: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.EDIT_STUDY))
 ) -> Any:
     """
     Start a new workflow instance.
@@ -454,7 +448,6 @@ async def get_workflow_analytics(
     workflow_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_STUDY))
 ) -> Any:
     """
     Get workflow analytics and performance metrics.

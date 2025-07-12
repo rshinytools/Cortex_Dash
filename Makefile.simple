@@ -1,0 +1,87 @@
+# ABOUTME: Simplified Makefile commands for production management
+# ABOUTME: Focus on essential commands only to reduce confusion
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SIMPLIFIED PRODUCTION COMMANDS - Just the essentials!
+# ═══════════════════════════════════════════════════════════════════════════════
+
+## Main Commands (Use these 90% of the time)
+
+update: ## Update everything with zero downtime (Use this for most updates)
+	@echo "$(BLUE)🚀 Updating system...$(NC)"
+	@$(DOCKER_COMPOSE) -f docker-compose.prod.yml build
+	@$(DOCKER_COMPOSE) -f docker-compose.prod.yml up -d
+	@docker exec $$(docker ps -qf "name=backend" | head -1) alembic upgrade head || true
+	@docker exec $$(docker ps -qf "name=backend" | head -1) python -m app.db.seed_metrics_card_widget || true
+	@echo "$(GREEN)✅ Update complete!$(NC)"
+
+backup: ## Create full backup (Run before major changes)
+	@echo "$(YELLOW)💾 Creating backup...$(NC)"
+	@mkdir -p backups/db backups/files
+	@docker exec $$(docker ps -qf "name=db") pg_dump -U postgres app > backups/db/backup_$$(date +%Y%m%d_%H%M%S).sql
+	@docker run --rm -v $$(docker volume ls -qf "name=app_data"):/data -v $$(pwd)/backups/files:/backup alpine \
+		tar czf /backup/files_backup_$$(date +%Y%m%d_%H%M%S).tar.gz -C /data .
+	@echo "$(GREEN)✅ Backup complete!$(NC)"
+
+health: ## Check if everything is working
+	@echo "$(YELLOW)🏥 Health Check:$(NC)"
+	@echo "Backend: $$(curl -s http://localhost/api/health | grep -o '"status":"[^"]*"' || echo "❌ DOWN")"
+	@echo "Frontend: $$(curl -s http://localhost:3000/api/health | grep -o '"status":"[^"]*"' || echo "❌ DOWN")"
+	@echo "Database: $$(docker exec $$(docker ps -qf "name=db") pg_isready -U postgres || echo "❌ DOWN")"
+
+logs: ## View system logs
+	@$(DOCKER_COMPOSE) -f docker-compose.prod.yml logs -f --tail=100
+
+## Emergency Commands (When things go wrong)
+
+restart: ## Full restart (causes ~1 minute downtime)
+	@echo "$(RED)🔄 Full restart...$(NC)"
+	@$(DOCKER_COMPOSE) -f docker-compose.prod.yml restart
+	@echo "$(GREEN)✅ Restart complete!$(NC)"
+
+stop: ## Stop everything
+	@echo "$(RED)🛑 Stopping all services...$(NC)"
+	@$(DOCKER_COMPOSE) -f docker-compose.prod.yml stop
+
+start: ## Start everything
+	@echo "$(GREEN)▶️ Starting all services...$(NC)"
+	@$(DOCKER_COMPOSE) -f docker-compose.prod.yml up -d
+
+## Maintenance Commands (Use occasionally)
+
+cleanup: ## Clean up disk space
+	@echo "$(YELLOW)🧹 Cleaning up...$(NC)"
+	@docker system prune -f
+	@find backups -type f -mtime +30 -delete
+	@echo "$(GREEN)✅ Cleanup complete!$(NC)"
+
+restore-db: ## Restore database from backup (usage: make restore-db FILE=backup.sql)
+	@echo "$(RED)⚠️  WARNING: This will overwrite the database!$(NC)"
+	@sleep 5
+	@echo "$(YELLOW)📥 Restoring database...$(NC)"
+	@docker exec -i $$(docker ps -qf "name=db") psql -U postgres app < $(FILE)
+	@echo "$(GREEN)✅ Database restored$(NC)"
+
+stats: ## Show resource usage
+	@docker stats --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# THAT'S IT! Just 9 commands to remember:
+# 
+# Daily use:
+#   make update  - Update everything
+#   make health  - Check health
+#   make logs    - View logs
+#
+# Before big changes:
+#   make backup  - Create backup
+#
+# If something goes wrong:
+#   make restart - Full restart
+#   make stop    - Emergency stop
+#   make start   - Start again
+#
+# Maintenance:
+#   make cleanup - Free disk space
+#   make stats   - Check resources
+# ═══════════════════════════════════════════════════════════════════════════════

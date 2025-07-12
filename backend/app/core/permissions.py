@@ -41,6 +41,8 @@ class Permission(str, Enum):
     DELETE_STUDY = "delete_study"
     MANAGE_STUDY_DATA = "manage_study_data"
     EXPORT_STUDY_DATA = "export_study_data"
+    STUDY_UPLOAD = "study_upload"
+    STUDY_DELETE = "study_delete"
     
     # Data pipeline permissions
     CONFIGURE_PIPELINE = "configure_pipeline"
@@ -82,6 +84,8 @@ ROLE_PERMISSIONS: Dict[Role, Set[Permission]] = {
         Permission.EDIT_STUDY,
         Permission.MANAGE_STUDY_DATA,
         Permission.EXPORT_STUDY_DATA,
+        Permission.STUDY_UPLOAD,
+        Permission.STUDY_DELETE,
         Permission.CONFIGURE_PIPELINE,
         Permission.EXECUTE_PIPELINE,
         Permission.VIEW_PIPELINE_LOGS,
@@ -99,6 +103,7 @@ ROLE_PERMISSIONS: Dict[Role, Set[Permission]] = {
         Permission.VIEW_STUDY,
         Permission.MANAGE_STUDY_DATA,
         Permission.EXPORT_STUDY_DATA,
+        Permission.STUDY_UPLOAD,
         Permission.EXECUTE_PIPELINE,
         Permission.VIEW_PIPELINE_LOGS,
         Permission.VIEW_DASHBOARD,
@@ -145,28 +150,13 @@ def has_all_permissions(user: User, permissions: List[Permission]) -> bool:
     return all(has_permission(user, perm) for perm in permissions)
 
 
-def require_permission(permission: Permission):
-    """Decorator to require a specific permission for an endpoint"""
-    def decorator(func):
-        @wraps(func)
-        async def wrapper(*args, **kwargs):
-            # Get current user from dependencies
-            current_user = kwargs.get('current_user')
-            if not current_user:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Not authenticated"
-                )
-            
-            if not has_permission(current_user, permission):
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"Permission denied. Required: {permission}"
-                )
-            
-            return await func(*args, **kwargs)
-        return wrapper
-    return decorator
+async def require_permission(user: User, permission: Permission, db: Session):
+    """Check if user has a specific permission"""
+    if not has_permission(user, permission):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Permission denied. Required: {permission}"
+        )
 
 
 def require_any_permission(permissions: List[Permission]):

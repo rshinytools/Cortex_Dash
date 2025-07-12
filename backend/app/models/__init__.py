@@ -7,6 +7,7 @@ from .organization import Organization, OrganizationCreate, OrganizationUpdate, 
 from .study import Study, StudyCreate, StudyUpdate, StudyPublic, StudyStatus, StudyPhase
 from .activity_log import ActivityLog, ActivityLogCreate, ActivityLogPublic
 from .data_source import DataSource, DataSourceCreate, DataSourceUpdate, DataSourceConfig, DataSourceType
+from .data_source_upload import DataSourceUpload, DataSourceUploadCreate, DataSourceUploadUpdate, DataSourceUploadPublic, DataSourceUploadsPublic, UploadStatus, FileFormat, ParquetFileInfo
 from .item import Item, ItemBase, ItemCreate, ItemUpdate, ItemPublic, ItemsPublic, Message
 from .token import Token, TokenPayload, NewPassword
 from .widget import WidgetDefinition, WidgetDefinitionCreate, WidgetDefinitionUpdate, WidgetDefinitionPublic, WidgetDefinitionsPublic, WidgetCategory
@@ -16,6 +17,8 @@ from .dashboard import (
     DashboardCategory, MenuItemType, DashboardTemplateDataRequirements
 )
 from .dashboard_audit import DashboardConfigAudit, OrgAdminPermission, OrgAdminPermissionBase, EntityType, AuditAction
+from .data_mapping import WidgetDataMapping, StudyDataConfiguration, FieldMappingTemplate
+from .pipeline import PipelineConfig, PipelineExecution, PipelineExecutionStep, TransformationScript
 # Refresh schedule models disabled temporarily
 # from .refresh_schedule import (
 #     RefreshSchedule, RefreshScheduleCreate, RefreshScheduleUpdate, RefreshScheduleResponse,
@@ -38,6 +41,8 @@ __all__ = [
     "ActivityLog", "ActivityLogCreate", "ActivityLogPublic",
     # Data sources
     "DataSource", "DataSourceCreate", "DataSourceUpdate", "DataSourceConfig", "DataSourceType",
+    # Data source uploads
+    "DataSourceUpload", "DataSourceUploadCreate", "DataSourceUploadUpdate", "DataSourceUploadPublic", "DataSourceUploadsPublic", "UploadStatus", "FileFormat", "ParquetFileInfo",
     # Items (from template)
     "Item", "ItemBase", "ItemCreate", "ItemUpdate", "ItemPublic", "ItemsPublic", "Message",
     # Auth tokens
@@ -50,6 +55,10 @@ __all__ = [
     "DashboardCategory", "MenuItemType", "DashboardTemplateDataRequirements",
     # Dashboard audit models
     "DashboardConfigAudit", "OrgAdminPermission", "OrgAdminPermissionBase", "EntityType", "AuditAction",
+    # Data mapping models
+    "WidgetDataMapping", "StudyDataConfiguration", "FieldMappingTemplate",
+    # Pipeline models
+    "PipelineConfig", "PipelineExecution", "PipelineExecutionStep", "TransformationScript",
     # Refresh schedule models - disabled temporarily
     # "RefreshSchedule", "RefreshScheduleCreate", "RefreshScheduleUpdate", "RefreshScheduleResponse",
     # "RefreshExecution", "RefreshExecutionCreate", "RefreshExecutionUpdate", "RefreshExecutionResponse",

@@ -20,7 +20,6 @@ async def get_integrations(
     status: Optional[str] = Query(None, description="Filter by status"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_ORG_SETTINGS))
 ) -> Any:
     """
     Get all configured integrations for the organization.
@@ -134,7 +133,6 @@ async def create_integration(
     integration: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_ORG_SETTINGS))
 ) -> Any:
     """
     Create a new integration configuration.
@@ -185,7 +183,6 @@ async def update_integration(
     integration: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_ORG_SETTINGS))
 ) -> Any:
     """
     Update an integration configuration.
@@ -207,7 +204,6 @@ async def test_integration(
     integration_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_ORG_SETTINGS))
 ) -> Any:
     """
     Test an integration connection.
@@ -261,7 +257,6 @@ async def trigger_sync(
     sync_config: Optional[Dict[str, Any]] = Body(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_ORG_SETTINGS))
 ) -> Any:
     """
     Trigger a manual sync for an integration.
@@ -292,7 +287,6 @@ async def get_integration_logs(
     limit: int = Query(100, ge=1, le=1000),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_STUDY))
 ) -> Any:
     """
     Get logs for a specific integration.

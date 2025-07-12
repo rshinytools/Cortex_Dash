@@ -10,12 +10,13 @@ export default withAuth(
     const token = req.nextauth.token;
     const pathname = req.nextUrl.pathname;
     
-    // If no token or expired, redirect to login
+    // Allow access to auth pages without authentication
+    if (pathname.startsWith('/auth/')) {
+      return NextResponse.next();
+    }
+    
+    // If no token, no access token, or expired, redirect to login
     if (!token || !token.accessToken) {
-      // Allow access to auth pages
-      if (pathname.startsWith('/auth/')) {
-        return NextResponse.next();
-      }
       return NextResponse.redirect(new URL('/auth/login', req.url));
     }
     

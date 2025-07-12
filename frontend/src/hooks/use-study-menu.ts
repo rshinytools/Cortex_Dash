@@ -1,5 +1,5 @@
-// ABOUTME: Hook for loading and managing study menu configurations
-// ABOUTME: Handles menu fetching, caching, and permission filtering
+// ABOUTME: Hook for loading and managing study menu configurations from dashboard templates
+// ABOUTME: Extracts menu structure from unified dashboard templates with permission filtering
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
@@ -75,33 +75,36 @@ export function useStudyMenu(studyId: string): UseStudyMenuResult {
 
       const study = await studyResponse.json()
       
-      if (!study.menu_template_id) {
-        // No menu template assigned, use default or empty menu
+      if (!study.dashboard_template_id) {
+        // No dashboard template assigned, use default or empty menu
         setMenuItems([])
         setLoading(false)
         return
       }
 
-      // Fetch the menu template
-      const menuResponse = await fetch(`/api/v1/menu-templates/${study.menu_template_id}`, {
+      // Fetch the dashboard template which includes the menu structure
+      const templateResponse = await fetch(`/api/v1/dashboard-templates/${study.dashboard_template_id}`, {
         credentials: 'include',
       })
 
-      if (!menuResponse.ok) {
-        throw new Error('Failed to fetch menu template')
+      if (!templateResponse.ok) {
+        throw new Error('Failed to fetch dashboard template')
       }
 
-      const menuTemplate = await menuResponse.json()
+      const dashboardTemplate = await templateResponse.json()
+      
+      // Extract menu items from the template structure
+      const menuItems = dashboardTemplate.template_structure?.menu?.items || []
       
       // Cache the raw menu items
       menuCache.set(studyId, {
-        items: menuTemplate.items,
+        items: menuItems,
         timestamp: Date.now(),
       })
 
       // Filter by user permissions
       const userPermissions = (session.user as any).permissions || []
-      const filteredItems = filterMenuItemsByPermissions(menuTemplate.items, userPermissions)
+      const filteredItems = filterMenuItemsByPermissions(menuItems, userPermissions)
       
       setMenuItems(filteredItems)
     } catch (err) {

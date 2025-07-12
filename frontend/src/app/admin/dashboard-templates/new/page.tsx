@@ -8,140 +8,13 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { UnifiedDashboardDesigner } from "@/components/admin/unified-dashboard-designer";
 import { useToast } from "@/components/ui/use-toast";
 import { dashboardTemplatesApi, CreateUnifiedDashboardTemplateDto } from "@/lib/api/dashboard-templates";
 import type { WidgetDefinition } from "@/types/widget";
 import { WidgetCategory, WidgetType } from "@/types/widget";
-
-// Mock widget definitions - in production these would come from the API
-const mockWidgetDefinitions: WidgetDefinition[] = [
-  {
-    id: "1",
-    name: "Enrollment Metric",
-    description: "Shows current enrollment numbers",
-    category: WidgetCategory.ENROLLMENT,
-    type: WidgetType.METRIC,
-    version: "1.0.0",
-    componentPath: "widgets/EnrollmentMetric",
-    defaultConfig: {
-      metricConfig: {
-        format: {
-          type: "number",
-          suffix: " subjects",
-        },
-        comparison: {
-          enabled: true,
-          type: "target",
-        },
-      },
-    },
-    size: {
-      minWidth: 2,
-      minHeight: 2,
-      defaultWidth: 3,
-      defaultHeight: 2,
-    },
-    dataRequirements: {
-      sourceType: "dataset",
-      requiredFields: ["subject_id", "enrollment_date"],
-    },
-    tags: ["enrollment", "metric"],
-    isActive: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "2",
-    name: "Safety Events Chart",
-    description: "Displays safety events over time",
-    category: WidgetCategory.SAFETY,
-    type: WidgetType.CHART,
-    version: "1.0.0",
-    componentPath: "widgets/SafetyEventsChart",
-    defaultConfig: {
-      chartConfig: {
-        type: "line",
-      },
-    },
-    size: {
-      minWidth: 4,
-      minHeight: 3,
-      defaultWidth: 6,
-      defaultHeight: 4,
-    },
-    dataRequirements: {
-      sourceType: "dataset",
-      requiredFields: ["event_date", "event_type", "severity"],
-      optionalFields: ["subject_id", "site_id"],
-    },
-    tags: ["safety", "chart", "timeline"],
-    isActive: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "3",
-    name: "Site Performance Table",
-    description: "Shows performance metrics by site",
-    category: WidgetCategory.OPERATIONS,
-    type: WidgetType.TABLE,
-    version: "1.0.0",
-    componentPath: "widgets/SitePerformanceTable",
-    defaultConfig: {
-      tableConfig: {
-        pagination: true,
-        sortable: true,
-        filterable: true,
-      },
-    },
-    size: {
-      minWidth: 6,
-      minHeight: 4,
-      defaultWidth: 8,
-      defaultHeight: 6,
-    },
-    dataRequirements: {
-      sourceType: "dataset",
-      requiredFields: ["site_id", "site_name", "enrollment_count", "query_count"],
-    },
-    tags: ["operations", "table", "sites"],
-    isActive: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "4",
-    name: "Study Progress",
-    description: "Overall study completion percentage",
-    category: WidgetCategory.OPERATIONS,
-    type: WidgetType.METRIC,
-    version: "1.0.0",
-    componentPath: "widgets/StudyProgress",
-    defaultConfig: {
-      metricConfig: {
-        format: {
-          type: "percentage",
-          decimals: 1,
-        },
-      },
-    },
-    size: {
-      minWidth: 2,
-      minHeight: 2,
-      defaultWidth: 3,
-      defaultHeight: 2,
-    },
-    dataRequirements: {
-      sourceType: "dataset",
-      requiredFields: ["completed_visits", "total_visits"],
-    },
-    tags: ["operations", "metric", "progress"],
-    isActive: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
+import { widgetsApi } from "@/lib/api/widgets";
 
 export default function NewDashboardTemplatePage() {
   const router = useRouter();
@@ -150,49 +23,46 @@ export default function NewDashboardTemplatePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // In production, fetch widget definitions from API
-    // For now, use mock data
-    setWidgetDefinitions(mockWidgetDefinitions);
-    setLoading(false);
-  }, []);
+    // Fetch widget definitions from API
+    const loadWidgets = async () => {
+      try {
+        const widgets = await widgetsApi.getLibrary({ is_active: true });
+        setWidgetDefinitions(widgets);
+      } catch (error) {
+        console.error('Failed to load widget definitions:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load widget definitions",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadWidgets();
+  }, [toast]);
 
   const handleSave = async (template: CreateUnifiedDashboardTemplateDto) => {
     try {
+      console.log("Creating template:", template);
       await dashboardTemplatesApi.create(template);
       toast({
         title: "Success",
         description: "Dashboard template created successfully",
       });
       router.push("/admin/dashboard-templates");
-    } catch {
+    } catch (error) {
+      console.error("Failed to create template:", error);
       toast({
         title: "Error",
-        description: "Failed to create dashboard template",
+        description: error instanceof Error ? error.message : "Failed to create dashboard template",
         variant: "destructive",
       });
+      throw error; // Re-throw to let the UnifiedDashboardDesigner handle it
     }
   };
 
-  const handlePreview = () => {
-    toast({
-      title: "Preview",
-      description: "Preview functionality coming soon",
-    });
-  };
-
-  const handleExport = () => {
-    toast({
-      title: "Export",
-      description: "Export functionality coming soon",
-    });
-  };
-
-  const handleImport = (file: File) => {
-    toast({
-      title: "Import",
-      description: `Importing ${file.name}...`,
-    });
-  };
 
   if (loading) {
     return (
@@ -203,34 +73,54 @@ export default function NewDashboardTemplatePage() {
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="container mx-auto py-6">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+        <Button
+          variant="link"
+          className="p-0 h-auto font-normal"
+          onClick={() => router.push('/admin')}
+        >
+          Admin
+        </Button>
+        <span>/</span>
+        <Button
+          variant="link"
+          className="p-0 h-auto font-normal"
+          onClick={() => router.push('/admin/dashboard-templates')}
+        >
+          Dashboard Templates
+        </Button>
+        <span>/</span>
+        <span className="text-foreground">Create</span>
+      </div>
+
       {/* Header */}
-      <div className="border-b px-6 py-4">
-        <div className="flex items-center gap-4">
-          <Link href="/admin/dashboard-templates">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold">Create Dashboard Template</h1>
-            <p className="text-muted-foreground">
-              Design a complete dashboard template with integrated menu structure
-            </p>
-          </div>
+      <div className="flex items-center mb-6">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push('/admin/dashboard-templates')}
+          className="mr-4"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Templates
+        </Button>
+        <div className="flex-1">
+          <h1 className="text-2xl font-bold">Create Dashboard Template</h1>
+          <p className="text-muted-foreground mt-1">
+            Design a complete dashboard template with integrated menu structure
+          </p>
         </div>
       </div>
 
-      {/* Designer */}
-      <div className="flex-1 overflow-hidden">
+      {/* Designer in Card */}
+      <Card className="h-[calc(100vh-16rem)]">
         <UnifiedDashboardDesigner
           widgetDefinitions={widgetDefinitions}
           onSave={handleSave}
-          onPreview={handlePreview}
-          onExport={handleExport}
-          onImport={handleImport}
         />
-      </div>
+      </Card>
     </div>
   );
 }

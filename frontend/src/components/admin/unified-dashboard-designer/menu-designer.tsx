@@ -4,7 +4,16 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronRight, ChevronDown, Grip, Edit2, Trash2, Plus } from "lucide-react";
+import { 
+  ChevronRight, ChevronDown, Grip, Edit2, Trash2, Plus, Layout, 
+  FolderOpen, Minus, ExternalLink, Home, BarChart3, Users, 
+  FileText, Settings, Shield, Activity, Calendar, Package,
+  Database, Globe, Heart, TrendingUp, AlertCircle, CheckCircle,
+  Info, HelpCircle, Mail, Phone, Search, Filter, Download,
+  Upload, RefreshCw, Save, Copy, Printer, Share2, Lock,
+  Unlock, Eye, EyeOff, Star, Bookmark, Flag, Tag,
+  Clock, MapPin, Navigation, Zap, Coffee, Moon, Sun
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,6 +34,45 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import type { MenuItem, MenuItemType } from "@/types/menu";
+
+// Available icons for menu items
+const MENU_ICONS = [
+  { value: "Home", label: "Home", icon: Home },
+  { value: "BarChart3", label: "Bar Chart", icon: BarChart3 },
+  { value: "Users", label: "Users", icon: Users },
+  { value: "FileText", label: "File Text", icon: FileText },
+  { value: "Settings", label: "Settings", icon: Settings },
+  { value: "Shield", label: "Shield", icon: Shield },
+  { value: "Activity", label: "Activity", icon: Activity },
+  { value: "Calendar", label: "Calendar", icon: Calendar },
+  { value: "Package", label: "Package", icon: Package },
+  { value: "Database", label: "Database", icon: Database },
+  { value: "Globe", label: "Globe", icon: Globe },
+  { value: "Heart", label: "Heart", icon: Heart },
+  { value: "TrendingUp", label: "Trending Up", icon: TrendingUp },
+  { value: "AlertCircle", label: "Alert Circle", icon: AlertCircle },
+  { value: "CheckCircle", label: "Check Circle", icon: CheckCircle },
+  { value: "Info", label: "Info", icon: Info },
+  { value: "HelpCircle", label: "Help Circle", icon: HelpCircle },
+  { value: "Layout", label: "Layout", icon: Layout },
+  { value: "FolderOpen", label: "Folder Open", icon: FolderOpen },
+  { value: "ExternalLink", label: "External Link", icon: ExternalLink },
+  { value: "Download", label: "Download", icon: Download },
+  { value: "Upload", label: "Upload", icon: Upload },
+  { value: "RefreshCw", label: "Refresh", icon: RefreshCw },
+  { value: "Save", label: "Save", icon: Save },
+  { value: "Copy", label: "Copy", icon: Copy },
+  { value: "Share2", label: "Share", icon: Share2 },
+  { value: "Lock", label: "Lock", icon: Lock },
+  { value: "Eye", label: "Eye", icon: Eye },
+  { value: "Star", label: "Star", icon: Star },
+  { value: "Bookmark", label: "Bookmark", icon: Bookmark },
+  { value: "Flag", label: "Flag", icon: Flag },
+  { value: "Tag", label: "Tag", icon: Tag },
+  { value: "Clock", label: "Clock", icon: Clock },
+  { value: "MapPin", label: "Map Pin", icon: MapPin },
+  { value: "Zap", label: "Zap", icon: Zap },
+];
 
 interface MenuDesignerProps {
   items: MenuItem[];
@@ -109,6 +157,29 @@ function MenuItemComponent({
 
         {/* Drag handle */}
         <Grip className="h-4 w-4 cursor-move text-muted-foreground" />
+
+        {/* Icon - show custom icon if set, otherwise show type icon */}
+        {(() => {
+          if (item.icon && item.icon !== "none") {
+            const iconData = MENU_ICONS.find(i => i.value === item.icon);
+            const IconComponent = iconData?.icon || Layout;
+            return <IconComponent className="h-4 w-4 text-primary" />;
+          }
+          
+          // Default type icons
+          switch (item.type) {
+            case "dashboard_page":
+              return <Layout className="h-4 w-4 text-primary" />;
+            case "group":
+              return <FolderOpen className="h-4 w-4 text-muted-foreground" />;
+            case "divider":
+              return <Minus className="h-4 w-4 text-muted-foreground" />;
+            case "external":
+              return <ExternalLink className="h-4 w-4 text-muted-foreground" />;
+            default:
+              return <Layout className="h-4 w-4 text-muted-foreground" />;
+          }
+        })()}
 
         {/* Label */}
         {editing ? (
@@ -286,34 +357,81 @@ export function MenuDesigner({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="link">Link</SelectItem>
-                <SelectItem value="dropdown">Dropdown</SelectItem>
+                <SelectItem value="dashboard_page">Dashboard Page</SelectItem>
+                <SelectItem value="group">Group (has submenus)</SelectItem>
                 <SelectItem value="divider">Divider</SelectItem>
-                <SelectItem value="header">Header</SelectItem>
+                <SelectItem value="external">External</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {selectedItem.type === "link" && (
+          {selectedItem.type === "external" && (
             <div className="space-y-2">
-              <Label htmlFor="item-url">URL</Label>
+              <Label htmlFor="item-url">External URL</Label>
               <Input
                 id="item-url"
                 value={selectedItem.url || ""}
                 onChange={(e) => onUpdateItem(selectedItem.id, { url: e.target.value })}
-                placeholder="#"
+                placeholder="https://example.com"
               />
+            </div>
+          )}
+
+          {selectedItem.type === "dashboard_page" && (
+            <div className="p-3 bg-muted rounded-md">
+              <p className="text-sm text-muted-foreground">
+                This menu item will have its own canvas in the dashboard designer where you can add widgets.
+              </p>
+            </div>
+          )}
+
+          {selectedItem.type === "group" && (
+            <div className="p-3 bg-muted rounded-md">
+              <p className="text-sm text-muted-foreground">
+                This is a placeholder for submenus. Add Dashboard Page items as children to create navigable pages.
+              </p>
             </div>
           )}
 
           <div className="space-y-2">
             <Label htmlFor="item-icon">Icon</Label>
-            <Input
-              id="item-icon"
-              value={selectedItem.icon || ""}
-              onChange={(e) => onUpdateItem(selectedItem.id, { icon: e.target.value })}
-              placeholder="e.g., Home, BarChart, Settings"
-            />
+            <Select
+              value={selectedItem.icon || "none"}
+              onValueChange={(value) => onUpdateItem(selectedItem.id, { icon: value === "none" ? undefined : value })}
+            >
+              <SelectTrigger id="item-icon">
+                <SelectValue placeholder="Select an icon">
+                  {selectedItem.icon && selectedItem.icon !== "none" && (
+                    <div className="flex items-center gap-2">
+                      {(() => {
+                        const iconData = MENU_ICONS.find(i => i.value === selectedItem.icon);
+                        const IconComponent = iconData?.icon || Layout;
+                        return (
+                          <>
+                            <IconComponent className="h-4 w-4" />
+                            <span>{iconData?.label || selectedItem.icon}</span>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No icon</SelectItem>
+                {MENU_ICONS.map((iconOption) => {
+                  const IconComponent = iconOption.icon;
+                  return (
+                    <SelectItem key={iconOption.value} value={iconOption.value}>
+                      <div className="flex items-center gap-2">
+                        <IconComponent className="h-4 w-4" />
+                        <span>{iconOption.label}</span>
+                      </div>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex items-center gap-4">

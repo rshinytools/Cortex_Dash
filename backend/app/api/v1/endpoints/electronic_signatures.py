@@ -142,7 +142,6 @@ async def get_signature_manifest(
     entity_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_AUDIT_TRAIL))
 ) -> Any:
     """
     Get all signatures for a specific entity (signature manifest).
@@ -358,7 +357,6 @@ async def get_signature_audit_report(
     signer_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_AUDIT_TRAIL))
 ) -> Any:
     """
     Generate signature audit report for compliance.

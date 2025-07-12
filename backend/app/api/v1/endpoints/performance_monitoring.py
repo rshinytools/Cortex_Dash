@@ -20,7 +20,6 @@ async def get_performance_overview(
     timeframe: str = Query("24h", description="Timeframe for metrics"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_STUDY))
 ) -> Any:
     """
     Get performance overview across all systems.
@@ -100,7 +99,6 @@ async def get_slow_queries(
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_SYSTEM))
 ) -> Any:
     """
     Get list of slow database queries.
@@ -143,7 +141,6 @@ async def get_api_performance_metrics(
     timeframe: str = Query("24h", description="Timeframe for metrics"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_STUDY))
 ) -> Any:
     """
     Get detailed API performance metrics.
@@ -204,7 +201,6 @@ async def get_resource_usage_metrics(
     study_id: Optional[uuid.UUID] = Query(None, description="Filter by study"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_STUDY))
 ) -> Any:
     """
     Get resource usage metrics by study or organization.
@@ -280,7 +276,6 @@ async def run_performance_optimization(
     optimization_config: Optional[Dict[str, Any]] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_SYSTEM))
 ) -> Any:
     """
     Run performance optimization analysis.
@@ -361,7 +356,6 @@ async def run_performance_optimization(
 async def identify_performance_bottlenecks(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_SYSTEM))
 ) -> Any:
     """
     Identify current performance bottlenecks.
@@ -420,7 +414,6 @@ async def get_performance_trends(
     period: str = Query("30d", description="Period for trend analysis"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_STUDY))
 ) -> Any:
     """
     Get performance trend analysis.

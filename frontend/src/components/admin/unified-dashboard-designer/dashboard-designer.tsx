@@ -97,9 +97,21 @@ export function DashboardDesigner({
       <div
         ref={drop as any}
         className={cn(
-          "h-full rounded-lg border-2 border-dashed bg-muted/20 p-4",
+          "h-full w-full rounded-lg border-2 border-dashed p-6 relative",
+          "bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950",
           isOver && "border-primary bg-primary/5"
         )}
+        style={{
+          minHeight: '800px',
+          backgroundImage: `
+            linear-gradient(rgba(156, 163, 175, 0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(156, 163, 175, 0.1) 1px, transparent 1px),
+            linear-gradient(rgba(156, 163, 175, 0.05) 2px, transparent 2px),
+            linear-gradient(90deg, rgba(156, 163, 175, 0.05) 2px, transparent 2px)
+          `,
+          backgroundSize: '20px 20px, 20px 20px, 100px 100px, 100px 100px',
+          backgroundPosition: '0 0, 0 0, 0 0, 0 0'
+        }}
       >
         {widgets.length === 0 ? (
           <div className="flex h-full items-center justify-center">

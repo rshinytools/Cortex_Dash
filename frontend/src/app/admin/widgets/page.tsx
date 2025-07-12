@@ -135,13 +135,11 @@ export default function WidgetsPage() {
   // Category badge color
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {
-      [WidgetCategory.SAFETY]: 'destructive',
-      [WidgetCategory.EFFICACY]: 'default',
-      [WidgetCategory.ENROLLMENT]: 'secondary',
-      [WidgetCategory.OPERATIONS]: 'outline',
-      [WidgetCategory.QUALITY]: 'default',
-      [WidgetCategory.FINANCE]: 'secondary',
-      [WidgetCategory.CUSTOM]: 'outline',
+      [WidgetCategory.METRICS]: 'default',
+      [WidgetCategory.CHARTS]: 'secondary',
+      [WidgetCategory.TABLES]: 'outline',
+      [WidgetCategory.MAPS]: 'destructive',
+      [WidgetCategory.SPECIALIZED]: 'default',
     }
     return colors[category] || 'default'
   }
@@ -287,25 +285,27 @@ export default function WidgetsPage() {
                     </TableCell>
                     <TableCell>
                       <Badge variant={getCategoryColor(widget.category) as any}>
-                        {widget.category.replace('_', ' ')}
+                        {widget.category ? widget.category.replace('_', ' ') : 'Unknown'}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        {getTypeIcon(widget.type)}
-                        <span className="capitalize">{widget.type.replace('_', ' ')}</span>
+                        {getTypeIcon(widget.type || '')}
+                        <span className="capitalize">{widget.type ? widget.type.replace('_', ' ') : 'Unknown'}</span>
                       </div>
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">{widget.version}</Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={widget.isActive ? 'default' : 'secondary'}>
-                        {widget.isActive ? 'Active' : 'Inactive'}
+                      <Badge variant={(widget.is_active ?? widget.isActive) ? 'default' : 'secondary'}>
+                        {(widget.is_active ?? widget.isActive) ? 'Active' : 'Inactive'}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {new Date(widget.updatedAt).toLocaleDateString()}
+                      {widget.updated_at || widget.updatedAt ? 
+                        new Date(widget.updated_at || widget.updatedAt || '').toLocaleDateString() : 
+                        'N/A'}
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
@@ -334,7 +334,7 @@ export default function WidgetsPage() {
                           </DropdownMenuItem>
                           <ToggleStatusMenuItem
                             widgetId={widget.id}
-                            isActive={widget.isActive}
+                            isActive={(widget.is_active ?? widget.isActive) || false}
                           />
                           <DropdownMenuSeparator />
                           <DropdownMenuItem

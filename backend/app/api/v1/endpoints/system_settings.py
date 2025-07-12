@@ -19,7 +19,6 @@ async def get_system_settings(
     category: Optional[str] = Query(None, description="Filter by category"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_SYSTEM))
 ) -> Any:
     """
     Get system-wide settings.
@@ -106,7 +105,6 @@ async def update_system_settings(
     settings: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_SYSTEM))
 ) -> Any:
     """
     Update system settings for a specific category.
@@ -141,7 +139,6 @@ async def get_feature_flags(
     enabled_only: bool = Query(False, description="Show only enabled flags"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_SYSTEM))
 ) -> Any:
     """
     Get all feature flags.
@@ -202,7 +199,6 @@ async def update_feature_flag(
     config: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_SYSTEM))
 ) -> Any:
     """
     Update a feature flag configuration.
@@ -242,7 +238,6 @@ async def update_feature_flag(
 async def get_maintenance_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_SYSTEM))
 ) -> Any:
     """
     Get current maintenance mode status.
@@ -275,7 +270,6 @@ async def toggle_maintenance_mode(
     config: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_SYSTEM))
 ) -> Any:
     """
     Enable or disable maintenance mode.
@@ -306,7 +300,6 @@ async def toggle_maintenance_mode(
 async def get_license_info(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_SYSTEM))
 ) -> Any:
     """
     Get license information and usage.

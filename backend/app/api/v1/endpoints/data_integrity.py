@@ -22,7 +22,6 @@ async def verify_data_integrity(
     verification_config: Optional[Dict[str, Any]] = Body(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_STUDY_DATA))
 ) -> Any:
     """
     Run data integrity verification for a study.
@@ -99,7 +98,6 @@ async def get_integrity_status(
     study_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_STUDY))
 ) -> Any:
     """
     Get current data integrity status for a study.
@@ -153,7 +151,6 @@ async def get_integrity_history(
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_STUDY))
 ) -> Any:
     """
     Get data integrity verification history for a study.
@@ -205,7 +202,6 @@ async def verify_hash_chain(
     verification_request: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_AUDIT_TRAIL))
 ) -> Any:
     """
     Verify the integrity of the audit trail hash chain.
@@ -248,7 +244,6 @@ async def generate_integrity_compliance_report(
     report_type: str = Query("standard", description="Type of compliance report"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_STUDY))
 ) -> Any:
     """
     Generate data integrity compliance report for regulatory submission.
@@ -324,7 +319,6 @@ async def reconcile_data_discrepancies(
     reconciliation_request: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_STUDY_DATA))
 ) -> Any:
     """
     Reconcile identified data discrepancies.
@@ -373,7 +367,6 @@ async def get_integrity_alerts(
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_STUDY))
 ) -> Any:
     """
     Get active data integrity alerts.

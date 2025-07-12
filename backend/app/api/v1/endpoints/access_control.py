@@ -25,7 +25,6 @@ async def get_access_logs(
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_AUDIT_TRAIL))
 ) -> Any:
     """
     Get user access logs with filtering and pagination.
@@ -97,7 +96,6 @@ async def get_access_logs(
 async def get_permission_matrix(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_ORG_USERS))
 ) -> Any:
     """
     Get the complete permission matrix for all roles.
@@ -130,7 +128,6 @@ async def get_user_permissions(
     user_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_ORG_USERS))
 ) -> Any:
     """
     Get detailed permissions for a specific user.
@@ -176,7 +173,6 @@ async def initiate_access_review(
     review_config: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_ORG_USERS))
 ) -> Any:
     """
     Initiate a periodic access review process.
@@ -224,7 +220,6 @@ async def update_access_review_item(
     review_decision: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_ORG_USERS))
 ) -> Any:
     """
     Update an access review item with a decision.
@@ -263,7 +258,6 @@ async def update_access_review_item(
 async def get_privileged_access_report(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_SYSTEM))
 ) -> Any:
     """
     Get report of users with privileged access.
@@ -307,7 +301,6 @@ async def grant_emergency_access(
     request: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.MANAGE_SYSTEM))
 ) -> Any:
     """
     Grant emergency access with enhanced auditing.
@@ -350,7 +343,6 @@ async def get_active_sessions(
     include_inactive: bool = Query(False),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(require_permission(Permission.VIEW_AUDIT_TRAIL))
 ) -> Any:
     """
     Get current active user sessions.

@@ -1,25 +1,27 @@
 // ABOUTME: Widget registration index that registers all available widgets
 // ABOUTME: Import and register new widgets here
 
-import { WidgetRegistry } from './widget-registry';
-import { MetricCard } from './metric-card';
-import { LineChart } from './line-chart';
-import { BarChart } from './bar-chart';
-import { PieChart } from './pie-chart';
-import { DataTable } from './data-table';
-import { EnrollmentMap } from './enrollment-map';
-import { SafetyMetrics } from './safety-metrics';
-import { QueryMetrics } from './query-metrics';
-import { ScatterPlot } from './scatter-plot';
-import { Heatmap } from './heatmap';
-import { KpiComparison } from './kpi-comparison';
-import { PatientTimeline } from './patient-timeline';
-import { DataQualityIndicator } from './data-quality-indicator';
-import { ComplianceStatus } from './compliance-status';
-import { AlertNotification } from './alert-notification';
-import { StatisticalSummary } from './statistical-summary';
+// TODO: Re-enable these imports as we implement the widgets
+// import { WidgetRegistry } from './widget-registry';
+// import { MetricCard } from './metric-card';
+// import { LineChart } from './line-chart';
+// import { BarChart } from './bar-chart';
+// import { PieChart } from './pie-chart';
+// import { DataTable } from './data-table';
+// import { EnrollmentMap } from './enrollment-map';
+// import { SafetyMetrics } from './safety-metrics';
+// import { QueryMetrics } from './query-metrics';
+// import { ScatterPlot } from './scatter-plot';
+// import { Heatmap } from './heatmap';
+// import { KpiComparison } from './kpi-comparison';
+// import { PatientTimeline } from './patient-timeline';
+// import { DataQualityIndicator } from './data-quality-indicator';
+// import { ComplianceStatus } from './compliance-status';
+// import { AlertNotification } from './alert-notification';
+// import { StatisticalSummary } from './statistical-summary';
 
-// Register all widgets
+// TODO: Re-enable widget registration when widgets are implemented
+/*
 export function registerAllWidgets() {
   // Basic widgets
   WidgetRegistry.register({
@@ -298,17 +300,22 @@ export function registerAllWidgets() {
     },
   });
 }
+*/
 
 // Export all widgets and related types
-export { WidgetRegistry } from './widget-registry';
-export { DashboardRenderer } from './dashboard-renderer';
-export { WidgetRenderer } from './widget-renderer';
-export { WidgetContainer } from './widget-container';
-export { DashboardViewer } from './dashboard-viewer';
-export { DashboardToolbar } from './dashboard-toolbar';
-export { DashboardEditMode } from './dashboard-edit-mode';
-export { WidgetConfigDialog } from './widget-config-dialog';
-export { WidgetPalette } from './widget-palette';
+// export { WidgetRegistry } from './widget-registry';
+// export { DashboardRenderer } from './dashboard-renderer';
+// export { WidgetRenderer } from './widget-renderer';
+// export { WidgetContainer } from './widget-container';
+// export { DashboardViewer } from './dashboard-viewer';
+// export { DashboardToolbar } from './dashboard-toolbar';
+// export { DashboardEditMode } from './dashboard-edit-mode';
+// export { WidgetConfigDialog } from './widget-config-dialog';
+// export { WidgetPalette } from './widget-palette';
+export { MetricWidget } from './MetricWidget';
+export { MetricsCard } from './MetricsCard';
+export { MetricsCardConfig } from './MetricsCardConfig';
+export { WidgetRenderer } from './WidgetRenderer';
 export type { 
   BaseWidgetProps, 
   WidgetComponent, 
@@ -318,4 +325,4 @@ export type {
 export type { Dashboard } from './dashboard-viewer';
 
 // Initialize widgets on import
-registerAllWidgets();
+// registerAllWidgets();

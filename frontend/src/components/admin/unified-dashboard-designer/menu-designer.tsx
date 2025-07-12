@@ -4,6 +4,28 @@
 "use client";
 
 import { useState } from "react";
+import {
+  DndContext,
+  DragOverlay,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragStartEvent,
+  DragEndEvent,
+  DragOverEvent,
+  UniqueIdentifier,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import {
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { 
   ChevronRight, ChevronDown, Grip, Edit2, Trash2, Plus, Layout, 
   FolderOpen, Minus, ExternalLink, Home, BarChart3, Users, 
@@ -33,7 +55,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import type { MenuItem, MenuItemType } from "@/types/menu";
+import type { MenuItem } from "@/types/menu";
+import { MenuItemType } from "@/types/menu";
 
 // Available icons for menu items
 const MENU_ICONS = [
@@ -81,6 +104,7 @@ interface MenuDesignerProps {
   onUpdateItem: (itemId: string, updates: Partial<MenuItem>) => void;
   onDeleteItem: (itemId: string) => void;
   onAddItem: (parentId?: string) => void;
+  onReorderItems: (items: MenuItem[]) => void;
 }
 
 interface MenuItemProps {
@@ -117,6 +141,22 @@ function MenuItemComponent({
   const [editing, setEditing] = useState(false);
   const [editLabel, setEditLabel] = useState(item.label);
 
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+    isOver,
+  } = useSortable({ id: item.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
   const handleSaveLabel = () => {
     if (editLabel.trim()) {
       onUpdate({ label: editLabel.trim() });
@@ -127,11 +167,13 @@ function MenuItemComponent({
   const hasChildren = item.children && item.children.length > 0;
 
   return (
-    <div>
+    <div ref={setNodeRef} style={style} role="treeitem" aria-selected={selected}>
       <div
         className={cn(
-          "group flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted/50",
-          selected && "bg-primary/10 text-primary"
+          "group flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted/50 transition-all relative",
+          selected && "bg-primary/10 text-primary",
+          isDragging && "cursor-grabbing opacity-50",
+          isOver && item.type === MenuItemType.GROUP && "bg-primary/10"
         )}
         style={{ paddingLeft: `${level * 20 + 8}px` }}
         onClick={onSelect}
@@ -156,7 +198,14 @@ function MenuItemComponent({
         </button>
 
         {/* Drag handle */}
-        <Grip className="h-4 w-4 cursor-move text-muted-foreground" />
+        <div
+          {...attributes}
+          {...listeners}
+          className="touch-none"
+          data-testid="drag-handle"
+        >
+          <Grip className="h-4 w-4 cursor-move text-muted-foreground hover:text-foreground transition-colors" />
+        </div>
 
         {/* Icon - show custom icon if set, otherwise show type icon */}
         {(() => {
@@ -240,22 +289,34 @@ function MenuItemComponent({
         </div>
       </div>
 
+      {/* Drop indicator for groups */}
+      {item.type === MenuItemType.GROUP && isOver && (
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="h-full w-full rounded-md bg-primary/10 ring-2 ring-primary ring-inset" />
+        </div>
+      )}
+
       {/* Children */}
       {hasChildren && expanded && (
-        <div>
-          {item.children!.map((child) => (
-            <ConnectedMenuItem
-              key={child.id}
-              item={child}
-              level={level + 1}
-              selectedItemId={selectedItemId}
-              onSelectItem={onSelectItem}
-              onUpdateItem={onUpdateItem}
-              onDeleteItem={onDeleteItem}
-              onAddItem={onAddItem}
-            />
-          ))}
-        </div>
+        <SortableContext
+          items={item.children!.map(child => child.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="ml-2 border-l-2 border-muted">
+            {item.children!.map((child) => (
+              <ConnectedMenuItem
+                key={child.id}
+                item={child}
+                level={level + 1}
+                selectedItemId={selectedItemId}
+                onSelectItem={onSelectItem}
+                onUpdateItem={onUpdateItem}
+                onDeleteItem={onDeleteItem}
+                onAddItem={onAddItem}
+              />
+            ))}
+          </div>
+        </SortableContext>
       )}
     </div>
   );
@@ -304,11 +365,29 @@ export function MenuDesigner({
   onUpdateItem,
   onDeleteItem,
   onAddItem,
+  onReorderItems,
 }: MenuDesignerProps) {
   const [showItemSettings, setShowItemSettings] = useState(false);
+  const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
+  const [overId, setOverId] = useState<UniqueIdentifier | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const selectedItem = selectedItemId
     ? findMenuItem(items, selectedItemId)
+    : null;
+
+  const activeItem = activeId
+    ? findMenuItem(items, activeId as string)
     : null;
 
   function findMenuItem(items: MenuItem[], id: string): MenuItem | null {
@@ -322,23 +401,136 @@ export function MenuDesigner({
     return null;
   }
 
+  function findParent(items: MenuItem[], childId: string, parent: MenuItem | null = null): MenuItem | null {
+    for (const item of items) {
+      if (item.children) {
+        if (item.children.some(child => child.id === childId)) {
+          return item;
+        }
+        const found = findParent(item.children, childId, item);
+        if (found) return found;
+      }
+    }
+    return parent;
+  }
+
+  function removeItem(items: MenuItem[], id: string): MenuItem[] {
+    return items.reduce((acc, item) => {
+      if (item.id === id) {
+        return acc;
+      }
+      if (item.children) {
+        return [...acc, { ...item, children: removeItem(item.children, id) }];
+      }
+      return [...acc, item];
+    }, [] as MenuItem[]);
+  }
+
+  function insertItem(items: MenuItem[], item: MenuItem, parentId: string | null, targetIndex: number): MenuItem[] {
+    if (!parentId) {
+      // Insert at root level
+      const newItems = [...items];
+      newItems.splice(targetIndex, 0, item);
+      return newItems.map((item, index) => ({ ...item, order: index }));
+    }
+
+    // Insert as child of parent
+    return items.map(parent => {
+      if (parent.id === parentId) {
+        const children = parent.children || [];
+        const newChildren = [...children];
+        newChildren.splice(targetIndex, 0, item);
+        return {
+          ...parent,
+          children: newChildren.map((child, index) => ({ ...child, order: index }))
+        };
+      }
+      if (parent.children) {
+        return {
+          ...parent,
+          children: insertItem(parent.children, item, parentId, targetIndex)
+        };
+      }
+      return parent;
+    });
+  }
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id);
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    setOverId(event.over?.id || null);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+    setOverId(null);
+
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    const activeItem = findMenuItem(items, active.id as string);
+    const overItem = findMenuItem(items, over.id as string);
+
+    if (!activeItem) return;
+
+    let newItems = removeItem(items, active.id as string);
+
+    if (overItem) {
+      const overParent = findParent(items, over.id as string);
+      const activeParent = findParent(items, active.id as string);
+
+      if (overItem.type === 'group' && overItem.id !== activeParent?.id) {
+        // Drop into a group
+        const childCount = overItem.children?.length || 0;
+        newItems = insertItem(newItems, activeItem, overItem.id, childCount);
+      } else {
+        // Drop beside an item
+        const parentId = overParent?.id || null;
+        const siblings = parentId && overParent ? overParent.children || [] : items;
+        const overIndex = siblings.findIndex(item => item.id === over.id);
+        newItems = insertItem(newItems, activeItem, parentId, overIndex);
+      }
+    } else {
+      // Drop at root level
+      newItems = insertItem(newItems, activeItem, null, items.length);
+    }
+
+    onReorderItems(newItems);
+  };
+
   return (
-    <div className="space-y-4">
-      {/* Menu tree */}
-      <div className="space-y-1">
-        {items.map((item) => (
-          <ConnectedMenuItem
-            key={item.id}
-            item={item}
-            level={0}
-            selectedItemId={selectedItemId}
-            onSelectItem={onSelectItem}
-            onUpdateItem={onUpdateItem}
-            onDeleteItem={onDeleteItem}
-            onAddItem={onAddItem}
-          />
-        ))}
-      </div>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="space-y-4">
+        {/* Menu tree */}
+        <SortableContext
+          items={items.map(item => item.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="space-y-1">
+            {items.map((item) => (
+              <ConnectedMenuItem
+                key={item.id}
+                item={item}
+                level={0}
+                selectedItemId={selectedItemId}
+                onSelectItem={onSelectItem}
+                onUpdateItem={onUpdateItem}
+                onDeleteItem={onDeleteItem}
+                onAddItem={onAddItem}
+              />
+            ))}
+          </div>
+        </SortableContext>
 
       {/* Item settings */}
       {selectedItem && (
@@ -458,6 +650,43 @@ export function MenuDesigner({
           </div>
         </div>
       )}
-    </div>
+      </div>
+
+      {/* Drag overlay */}
+      <DragOverlay>
+        {activeItem ? (
+          <div className="opacity-80">
+            <div
+              className="group flex items-center gap-2 rounded-md px-2 py-1.5 bg-background border-2 border-primary shadow-2xl"
+              style={{ paddingLeft: "8px", minWidth: "200px" }}
+            >
+              {/* Icon */}
+              {(() => {
+                if (activeItem.icon && activeItem.icon !== "none") {
+                  const iconData = MENU_ICONS.find(i => i.value === activeItem.icon);
+                  const IconComponent = iconData?.icon || Layout;
+                  return <IconComponent className="h-4 w-4 text-primary" />;
+                }
+                
+                // Default type icons
+                switch (activeItem.type) {
+                  case "dashboard_page":
+                    return <Layout className="h-4 w-4 text-primary" />;
+                  case "group":
+                    return <FolderOpen className="h-4 w-4 text-muted-foreground" />;
+                  case "divider":
+                    return <Minus className="h-4 w-4 text-muted-foreground" />;
+                  case "external":
+                    return <ExternalLink className="h-4 w-4 text-muted-foreground" />;
+                  default:
+                    return <Layout className="h-4 w-4 text-muted-foreground" />;
+                }
+              })()}
+              <span className="text-sm">{activeItem.label}</span>
+            </div>
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
   );
 }

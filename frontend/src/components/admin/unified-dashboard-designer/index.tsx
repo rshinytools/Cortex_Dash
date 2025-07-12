@@ -3,11 +3,11 @@
 
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { v4 as uuidv4 } from "uuid";
-import { Plus, Save, Eye, Download, Upload } from "lucide-react";
+import { Plus, Save, Eye, Download, Upload, Settings, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
@@ -37,6 +37,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 
 export interface UnifiedDashboardDesignerProps {
   initialTemplate?: UnifiedDashboardTemplate;
@@ -74,6 +81,13 @@ export function UnifiedDashboardDesigner({
     initialTemplate?.menuTemplate?.items || []
   );
   const [selectedMenuItemId, setSelectedMenuItemId] = useState<string | null>(null);
+  
+  // TODO: Add autosave tracking
+  // Track changes for autosave
+  const trackChange = useCallback(() => {
+    // setHasUnsavedChanges(true);
+    // lastChangeRef.current = new Date();
+  }, []);
 
   // Dashboard states (keyed by menu item ID)
   const [dashboards, setDashboards] = useState<Record<string, DashboardTemplateWithMenu>>(() => {
@@ -183,6 +197,7 @@ export function UnifiedDashboardDesigner({
       });
 
     setMenuItems(updateItems(menuItems));
+    trackChange();
 
     const oldCanHaveDashboard = canHaveDashboard(currentItem);
     const newCanHaveDashboard = newType === MenuItemType.DASHBOARD_PAGE;
@@ -224,7 +239,7 @@ export function UnifiedDashboardDesigner({
         [itemId]: newDashboard,
       }));
     }
-  }, [menuItems, selectedMenuItemId]);
+  }, [menuItems, selectedMenuItemId, trackChange]);
 
   // Add menu item
   const handleAddMenuItem = useCallback((parentId?: string) => {
@@ -268,6 +283,8 @@ export function UnifiedDashboardDesigner({
       // Add to root
       setMenuItems([...menuItems, newItem]);
     }
+    
+    trackChange();
 
     // Only create corresponding dashboard if it's a dashboard page
     if (canHaveDashboard(newItem)) {
@@ -299,7 +316,7 @@ export function UnifiedDashboardDesigner({
 
     // Select the new item
     setSelectedMenuItemId(newItem.id);
-  }, [menuItems]);
+  }, [menuItems, trackChange]);
 
   // Update menu item
   const handleUpdateMenuItem = useCallback((itemId: string, updates: Partial<MenuItem>) => {
@@ -349,6 +366,7 @@ export function UnifiedDashboardDesigner({
       });
 
     setMenuItems(updateItems(menuItems));
+    trackChange();
 
     // Update corresponding dashboard name if label changed
     if (updates.label && dashboards[itemId]) {
@@ -360,7 +378,7 @@ export function UnifiedDashboardDesigner({
         },
       }));
     }
-  }, [menuItems, dashboards, selectedMenuItemId, handleTypeChange]);
+  }, [menuItems, dashboards, selectedMenuItemId, handleTypeChange, trackChange]);
 
   // Delete menu item
   const handleDeleteMenuItem = useCallback((itemId: string) => {
@@ -373,6 +391,7 @@ export function UnifiedDashboardDesigner({
         }));
 
     setMenuItems(deleteItem(menuItems));
+    trackChange();
 
     // Delete corresponding dashboard
     setDashboards((prev) => {
@@ -384,7 +403,7 @@ export function UnifiedDashboardDesigner({
     if (selectedMenuItemId === itemId) {
       setSelectedMenuItemId(null);
     }
-  }, [menuItems, selectedMenuItemId]);
+  }, [menuItems, selectedMenuItemId, trackChange]);
 
   // Add widget to current dashboard
   const handleAddWidget = useCallback((widgetDefId: string) => {
@@ -488,6 +507,8 @@ export function UnifiedDashboardDesigner({
       description,
       tags,
       category,
+      // TODO: Add theme support
+      // theme,
       menuTemplate: {
         name: `${name} Menu`,
         position: MenuPosition.SIDEBAR,
@@ -531,12 +552,37 @@ export function UnifiedDashboardDesigner({
       console.log("Template being sent to API:", JSON.stringify(template, null, 2));
       
       await onSave(template);
+      
+      // TODO: Add save state tracking
+      // setIsSaving(false);
+      // setHasUnsavedChanges(false);
+      // setLastSaved(new Date());
+      
+      // if (!isAutosave) {
+      //   setNotificationProps({
+      //     type: "success",
+      //     message: "Template saved successfully",
+      //     detail: `Your dashboard template "${name}" has been saved.`,
+      //   });
+      //   setShowNotification(true);
+      // }
+      
       toast({
         title: "Success",
         description: "Dashboard template saved successfully",
       });
     } catch (error) {
       console.error("Failed to save template:", error);
+      // setIsSaving(false);
+      
+      // const errorMessage = error instanceof Error ? error.message : "Failed to save dashboard template";
+      // setNotificationProps({
+      //   type: "error",
+      //   message: isAutosave ? "Autosave failed" : "Save failed",
+      //   detail: errorMessage,
+      // });
+      // setShowNotification(true);
+      
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to save dashboard template",
@@ -551,6 +597,8 @@ export function UnifiedDashboardDesigner({
       description,
       tags,
       category,
+      // TODO: Add theme support
+      // theme,
       menuTemplate: {
         name: `${name} Menu`,
         position: MenuPosition.SIDEBAR,
@@ -596,6 +644,8 @@ export function UnifiedDashboardDesigner({
       setDescription(imported.description || "");
       setTags(imported.tags || []);
       setCategory(imported.category || "custom");
+      // TODO: Add theme support
+      // setTheme(imported.theme || defaultThemes[0]);
       setMenuItems(imported.menuTemplate.items || []);
       
       // Convert dashboards array to object keyed by menuItemId
@@ -604,6 +654,8 @@ export function UnifiedDashboardDesigner({
         dashboardsObj[dashboard.menuItemId] = dashboard;
       });
       setDashboards(dashboardsObj);
+      
+      trackChange();
 
       toast({
         title: "Success",
@@ -617,24 +669,100 @@ export function UnifiedDashboardDesigner({
       });
     }
   };
+  
+  // TODO: Add autosave functionality
+  // Autosave effect
+  // useEffect(() => {
+  //   if (autosaveEnabled && hasUnsavedChanges) {
+  //     const timer = setTimeout(() => {
+  //       handleSave(true);
+  //     }, 30000); // 30 seconds
+      
+  //     return () => clearTimeout(timer);
+  //   }
+  // }, [hasUnsavedChanges, autosaveEnabled, name, menuItems, dashboards, tags, description, category, theme]);
+  
+  // Cleanup autosave timer on unmount
+  // useEffect(() => {
+  //   return () => {
+  //     if (autosaveTimerRef.current) {
+  //       clearTimeout(autosaveTimerRef.current);
+  //     }
+  //   };
+  // }, []);
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="flex h-[calc(100vh-4rem)] flex-col">
+      <div className="flex h-full flex-col">
         {/* Header */}
         <div className="flex-shrink-0 border-b p-4">
           <div className="flex items-center justify-between">
-            <TemplateMetadataForm
+            <div className="flex items-center gap-4">
+              <TemplateMetadataForm
               name={name}
               description={description}
               tags={tags}
               category={category}
-              onNameChange={setName}
-              onDescriptionChange={setDescription}
-              onTagsChange={setTags}
-              onCategoryChange={setCategory}
+              onNameChange={(value) => {
+                setName(value);
+                trackChange();
+              }}
+              onDescriptionChange={(value) => {
+                setDescription(value);
+                trackChange();
+              }}
+              onTagsChange={(value) => {
+                setTags(value);
+                trackChange();
+              }}
+              onCategoryChange={(value) => {
+                setCategory(value);
+                trackChange();
+              }}
             />
+            {/* TODO: Add AutosaveIndicator component */}
+            {/* <AutosaveIndicator
+                lastSaved={lastSaved}
+                isUnsaved={hasUnsavedChanges}
+                isSaving={isSaving}
+              /> */}
+            </div>
             <div className="flex items-center gap-2">
+              {/* TODO: Add ThemeEditor component */}
+              {/* <ThemeEditor
+                theme={theme}
+                onChange={(newTheme) => {
+                  setTheme(newTheme);
+                  trackChange();
+                }}
+              /> */}
+              {/* TODO: Add Settings popover */}
+              {/* <Popover open={showSettings} onOpenChange={setShowSettings}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64" align="end">
+                  <div className="space-y-4">
+                    <h3 className="font-semibold">Settings</h3>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="autosave" className="text-sm">
+                        Autosave
+                        <HelpIcon
+                          content="Automatically save changes every 30 seconds"
+                          side="right"
+                        />
+                      </Label>
+                      <Switch
+                        id="autosave"
+                        checked={autosaveEnabled}
+                        onCheckedChange={setAutosaveEnabled}
+                      />
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover> */}
               <Button variant="outline" size="sm" onClick={() => setShowPreview(true)}>
                 <Eye className="mr-2 h-4 w-4" />
                 Preview
@@ -673,7 +801,13 @@ export function UnifiedDashboardDesigner({
             <div className="flex h-full flex-col">
               <div className="border-b p-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">Menu Structure</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold">Menu Structure</h3>
+                    {/* TODO: Add HelpIcon component */}
+                    {/* <HelpIcon
+                      content="Design the navigation menu for your dashboard. Add pages, groups, and links."
+                    /> */}
+                  </div>
                   <Button
                     variant="outline"
                     size="sm"
@@ -742,6 +876,7 @@ export function UnifiedDashboardDesigner({
                   onUpdateItem={handleUpdateMenuItem}
                   onDeleteItem={handleDeleteMenuItem}
                   onAddItem={handleAddMenuItem}
+                  onReorderItems={setMenuItems}
                 />
               </div>
             </div>
@@ -758,18 +893,16 @@ export function UnifiedDashboardDesigner({
                     <TabsTrigger value="data">Data Requirements</TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="design" className="flex-1 overflow-hidden">
+                  <TabsContent value="design" className="flex-1 overflow-hidden p-0">
                     <div className="flex h-full">
                       {/* Dashboard canvas */}
-                      <div className="flex-1 flex flex-col overflow-hidden">
-                        <div className="flex-1 overflow-auto p-4">
-                          <DashboardDesigner
-                            dashboard={selectedDashboard}
-                            widgets={selectedDashboard.widgets}
-                            onUpdateWidget={handleUpdateWidget}
-                            onDeleteWidget={handleDeleteWidget}
-                          />
-                        </div>
+                      <div className="flex-1 flex flex-col overflow-hidden p-4">
+                        <DashboardDesigner
+                          dashboard={selectedDashboard}
+                          widgets={selectedDashboard.widgets}
+                          onUpdateWidget={handleUpdateWidget}
+                          onDeleteWidget={handleDeleteWidget}
+                        />
                       </div>
 
                       {/* Widget palette */}
@@ -822,6 +955,18 @@ export function UnifiedDashboardDesigner({
         menuItems={menuItems}
         dashboards={dashboards}
       />
+      
+      {/* TODO: Add Notification component */}
+      {/* <Notification
+        show={showNotification}
+        type={notificationProps.type}
+        message={notificationProps.message}
+        detail={notificationProps.detail}
+        onClose={() => setShowNotification(false)}
+      /> */}
+      
+      {/* TODO: Add HelpPanel component */}
+      {/* <HelpPanel sections={helpSections} /> */}
       
       {/* Type change warning dialog */}
       <AlertDialog

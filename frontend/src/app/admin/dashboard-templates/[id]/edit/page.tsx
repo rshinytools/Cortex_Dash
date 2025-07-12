@@ -91,13 +91,14 @@ export default function EditDashboardTemplatePage() {
       await dashboardTemplatesApi.update(templateId, updatedTemplate);
       toast({
         title: "Success",
-        description: "Dashboard template updated successfully",
+        description: "Dashboard template saved successfully",
       });
-      router.push("/admin/dashboard-templates");
-    } catch {
+      // Stay on the same page - don't redirect
+      // router.push("/admin/dashboard-templates");
+    } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to update dashboard template",
+        description: error instanceof Error ? error.message : "Failed to update dashboard template",
         variant: "destructive",
       });
     }
@@ -120,55 +121,56 @@ export default function EditDashboardTemplatePage() {
   }
 
   return (
-    <div className="container mx-auto py-6">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-        <Button
-          variant="link"
-          className="p-0 h-auto font-normal"
-          onClick={() => router.push('/admin')}
-        >
-          Admin
-        </Button>
-        <span>/</span>
-        <Button
-          variant="link"
-          className="p-0 h-auto font-normal"
-          onClick={() => router.push('/admin/dashboard-templates')}
-        >
-          Dashboard Templates
-        </Button>
-        <span>/</span>
-        <span className="text-foreground">Edit</span>
-      </div>
-
-      {/* Header */}
-      <div className="flex items-center mb-6">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push('/admin/dashboard-templates')}
-          className="mr-4"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Templates
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold">Edit Dashboard Template</h1>
-          <p className="text-muted-foreground mt-1">
-            Modify the dashboard template and menu structure
-          </p>
+    <div className="flex h-screen flex-col">
+      {/* Header with breadcrumb */}
+      <div className="border-b px-8 py-4">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+          <Button
+            variant="link"
+            className="p-0 h-auto font-normal"
+            onClick={() => router.push('/admin')}
+          >
+            Admin
+          </Button>
+          <span>/</span>
+          <Button
+            variant="link"
+            className="p-0 h-auto font-normal"
+            onClick={() => router.push('/admin/dashboard-templates')}
+          >
+            Dashboard Templates
+          </Button>
+          <span>/</span>
+          <span className="text-foreground">Edit</span>
+        </div>
+        
+        <div className="flex items-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push('/admin/dashboard-templates')}
+            className="mr-4"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold">Edit Dashboard Template</h1>
+            <p className="text-muted-foreground">
+              Modify the dashboard template and menu structure
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Designer in Card */}
-      <Card className="h-[calc(100vh-16rem)]">
+      {/* Designer - fills remaining space */}
+      <div className="flex-1 overflow-hidden">
         <UnifiedDashboardDesigner
           initialTemplate={template}
           widgetDefinitions={widgetDefinitions}
           onSave={handleSave}
         />
-      </Card>
+      </div>
     </div>
   );
 }

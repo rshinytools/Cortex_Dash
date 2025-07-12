@@ -46,12 +46,15 @@ export default function NewDashboardTemplatePage() {
   const handleSave = async (template: CreateUnifiedDashboardTemplateDto) => {
     try {
       console.log("Creating template:", template);
-      await dashboardTemplatesApi.create(template);
+      const createdTemplate = await dashboardTemplatesApi.create(template);
       toast({
         title: "Success",
         description: "Dashboard template created successfully",
       });
-      router.push("/admin/dashboard-templates");
+      // After creating, navigate to the edit page for the new template
+      if (createdTemplate?.id) {
+        router.push(`/admin/dashboard-templates/${createdTemplate.id}/edit`);
+      }
     } catch (error) {
       console.error("Failed to create template:", error);
       toast({
@@ -73,54 +76,55 @@ export default function NewDashboardTemplatePage() {
   }
 
   return (
-    <div className="container mx-auto py-6">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-        <Button
-          variant="link"
-          className="p-0 h-auto font-normal"
-          onClick={() => router.push('/admin')}
-        >
-          Admin
-        </Button>
-        <span>/</span>
-        <Button
-          variant="link"
-          className="p-0 h-auto font-normal"
-          onClick={() => router.push('/admin/dashboard-templates')}
-        >
-          Dashboard Templates
-        </Button>
-        <span>/</span>
-        <span className="text-foreground">Create</span>
-      </div>
-
-      {/* Header */}
-      <div className="flex items-center mb-6">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push('/admin/dashboard-templates')}
-          className="mr-4"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Templates
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold">Create Dashboard Template</h1>
-          <p className="text-muted-foreground mt-1">
-            Design a complete dashboard template with integrated menu structure
-          </p>
+    <div className="flex h-screen flex-col">
+      {/* Header with breadcrumb */}
+      <div className="border-b px-8 py-4">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+          <Button
+            variant="link"
+            className="p-0 h-auto font-normal"
+            onClick={() => router.push('/admin')}
+          >
+            Admin
+          </Button>
+          <span>/</span>
+          <Button
+            variant="link"
+            className="p-0 h-auto font-normal"
+            onClick={() => router.push('/admin/dashboard-templates')}
+          >
+            Dashboard Templates
+          </Button>
+          <span>/</span>
+          <span className="text-foreground">Create</span>
+        </div>
+        
+        <div className="flex items-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push('/admin/dashboard-templates')}
+            className="mr-4"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold">Create Dashboard Template</h1>
+            <p className="text-muted-foreground">
+              Design a complete dashboard template with integrated menu structure
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Designer in Card */}
-      <Card className="h-[calc(100vh-16rem)]">
+      {/* Designer - fills remaining space */}
+      <div className="flex-1 overflow-hidden">
         <UnifiedDashboardDesigner
           widgetDefinitions={widgetDefinitions}
           onSave={handleSave}
         />
-      </Card>
+      </div>
     </div>
   );
 }

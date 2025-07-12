@@ -1,8 +1,15 @@
 // ABOUTME: Template publishing page for uploading and publishing templates to the marketplace
-// ABOUTME: Handles template upload, metadata entry, screenshot upload, and publishing workflow
+// ABOUTME: Currently disabled - redirects to disabled page
 
 'use client';
 
+import MarketplaceDisabled from '../disabled';
+
+export default function PublishTemplatePage() {
+  return <MarketplaceDisabled />;
+}
+
+/* Original implementation preserved below for future use
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Upload, X, Plus, AlertCircle, CheckCircle, FileText, Image, Tag, Globe } from 'lucide-react';
@@ -823,3 +830,4 @@ export default function PublishTemplatePage() {
     </div>
   );
 }
+*/

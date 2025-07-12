@@ -1,8 +1,15 @@
 // ABOUTME: Individual template details page for viewing template information, reviews, and downloading
-// ABOUTME: Provides detailed view with screenshots, version history, reviews, and related templates
+// ABOUTME: Currently disabled - redirects to disabled page
 
 'use client';
 
+import MarketplaceDisabled from '../disabled';
+
+export default function TemplateDetailPage() {
+  return <MarketplaceDisabled />;
+}
+
+/* Original implementation preserved below for future use
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Download, Star, Calendar, User, Shield, Tag, Github, ExternalLink, AlertCircle } from 'lucide-react';
@@ -608,3 +615,4 @@ export default function TemplateDetailsPage() {
     </div>
   );
 }
+*/

@@ -2,7 +2,11 @@
 
 ## Table of Contents
 
-1. [Study Management](#study-management)
+1. [Authentication](#authentication)
+   - [Login](#login)
+   - [Password Recovery](#password-recovery)
+   - [Resetting Your Password](#resetting-your-password)
+2. [Study Management](#study-management)
    - [Creating a Study](#creating-a-study)
    - [Study Initialization](#study-initialization)
    - [Study Configuration](#study-configuration)
@@ -21,6 +25,44 @@
    - [Dashboard Theming](#dashboard-theming)
    - [Save Options and Autosave](#save-options-and-autosave)
    - [Help System](#help-system)
+
+## Authentication
+
+### Login
+
+To access the Clinical Dashboard Platform, you need to authenticate with your credentials.
+
+1. Navigate to the login page at `/auth/login`
+2. Enter your email address and password
+3. Click **Sign In**
+4. You'll be redirected to the dashboard upon successful authentication
+
+### Password Recovery
+
+If you've forgotten your password, you can request a password reset:
+
+1. On the login page, click **Forgot password?**
+2. Enter your registered email address
+3. Click **Send reset instructions**
+4. Check your email for password reset instructions
+5. The email will contain a link valid for 24 hours
+
+**Note**: If you don't receive the email within a few minutes, check your spam folder.
+
+### Resetting Your Password
+
+After receiving the password reset email:
+
+1. Click the reset link in the email
+2. You'll be redirected to the password reset page
+3. Enter your new password (minimum 8 characters)
+4. Confirm your new password
+5. Click **Reset password**
+6. You'll be redirected to the login page after successful reset
+
+**Password Requirements**:
+- At least 8 characters long
+- Recommended: Include a mix of letters, numbers, and symbols for better security
 
 ## Study Management
 

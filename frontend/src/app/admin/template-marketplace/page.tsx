@@ -1,8 +1,15 @@
 // ABOUTME: Template marketplace main page for browsing, searching, and filtering dashboard templates
-// ABOUTME: Provides marketplace functionality with categories, ratings, and template previews
+// ABOUTME: Currently disabled - redirects to disabled page
 
 'use client';
 
+import MarketplaceDisabled from './disabled';
+
+export default function TemplateMarketplacePage() {
+  return <MarketplaceDisabled />;
+}
+
+/* Original implementation preserved below for future use
 import { useState, useEffect } from 'react';
 import { Search, Filter, Star, Download, Eye, Grid, List, ArrowUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -621,3 +628,4 @@ export default function TemplateMarketplacePage() {
     </div>
   );
 }
+*/

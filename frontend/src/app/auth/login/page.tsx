@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -104,7 +105,15 @@ export default function LoginPage() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <div className="flex items-center justify-between">
+                      <FormLabel>Password</FormLabel>
+                      <Link
+                        href="/auth/forgot-password"
+                        className="text-sm text-primary hover:underline"
+                      >
+                        Forgot password?
+                      </Link>
+                    </div>
                     <FormControl>
                       <Input
                         type="password"

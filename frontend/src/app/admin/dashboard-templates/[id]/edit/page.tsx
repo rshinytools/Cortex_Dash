@@ -41,6 +41,7 @@ export default function EditDashboardTemplatePage() {
           description: templateData.description,
           tags: templateData.tags || [],
           category: templateData.category,
+          version: templateData.version || "1.0.0",
           menuTemplate: {
             items: templateData.template_structure?.menu?.items || []
           },
@@ -166,6 +167,7 @@ export default function EditDashboardTemplatePage() {
       {/* Designer - fills remaining space */}
       <div className="flex-1 overflow-hidden">
         <UnifiedDashboardDesigner
+          templateId={templateId}
           initialTemplate={template}
           widgetDefinitions={widgetDefinitions}
           onSave={handleSave}

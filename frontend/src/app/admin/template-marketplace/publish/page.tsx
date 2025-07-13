@@ -548,7 +548,7 @@ export default function PublishTemplatePage() {
                 </div>
               </div>
 
-              {/* Compatibility */}
+              // Compatibility
               <div className="space-y-2">
                 <Label>Compatibility</Label>
                 <div className="flex gap-2">
@@ -580,7 +580,7 @@ export default function PublishTemplatePage() {
                 </div>
               </div>
 
-              {/* Requirements */}
+              // Requirements
               <div className="space-y-2">
                 <Label>Requirements</Label>
                 <div className="flex gap-2">
@@ -767,7 +767,7 @@ export default function PublishTemplatePage() {
         </p>
       </div>
 
-      {/* Progress Steps */}
+      // Progress Steps
       <div className="mb-8">
         <div className="flex items-center justify-between">
           {steps.map((step, index) => (
@@ -802,12 +802,12 @@ export default function PublishTemplatePage() {
         </div>
       </div>
 
-      {/* Step Content */}
+      // Step Content
       <div className="mb-8">
         {renderStepContent()}
       </div>
 
-      {/* Navigation */}
+      // Navigation
       <div className="flex justify-between">
         <Button
           variant="outline"

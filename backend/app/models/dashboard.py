@@ -173,6 +173,9 @@ class DashboardTemplate(DashboardTemplateBase, table=True):
     # Version history
     template_versions: List["TemplateVersion"] = Relationship(back_populates="template")
     
+    # Drafts
+    drafts: List["TemplateDraft"] = Relationship(back_populates="template")
+    
     # Ratings and reviews
     template_reviews: List["TemplateReview"] = Relationship(back_populates="template")
     
@@ -240,7 +243,7 @@ class StudyDashboard(StudyDashboardBase, table=True):
 class DashboardTemplatePublic(DashboardTemplateBase):
     """Properties to return to client"""
     id: uuid.UUID
-    version: int
+    version: str  # Changed to string for semantic versioning (e.g., "1.0.0")
     created_at: datetime
     updated_at: datetime
     dashboard_count: Optional[int] = None
@@ -289,6 +292,13 @@ class TemplateVersion(TemplateVersionBase, table=True):
     
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     
+    # New versioning fields
+    version_type: Optional[str] = Field(default=None, max_length=10)  # major, minor, patch
+    auto_created: bool = Field(default=False)
+    change_summary: List[Dict[str, Any]] = Field(default_factory=list, sa_column=Column(JSON))
+    created_by_name: Optional[str] = Field(default=None, max_length=255)
+    comparison_hash: Optional[str] = Field(default=None, max_length=64)
+    
     # Audit fields
     created_by: uuid.UUID = Field(foreign_key="user.id")
     created_at: datetime = Field(
@@ -305,6 +315,77 @@ class TemplateVersion(TemplateVersionBase, table=True):
     def version_string(self) -> str:
         """Return semantic version string"""
         return f"{self.major_version}.{self.minor_version}.{self.patch_version}"
+
+
+# Template Drafts for version control
+class TemplateDraftBase(SQLModel):
+    """Base properties for template drafts"""
+    template_id: uuid.UUID = Field(foreign_key="dashboard_templates.id")
+    base_version_id: Optional[uuid.UUID] = Field(default=None, foreign_key="template_versions.id")
+    draft_content: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    changes_summary: List[Dict[str, Any]] = Field(default_factory=list, sa_column=Column(JSON))
+    conflict_status: Optional[str] = Field(default=None, max_length=50)
+    is_active: bool = Field(default=True)
+
+
+class TemplateDraftCreate(TemplateDraftBase):
+    """Properties to receive on draft creation"""
+    pass
+
+
+class TemplateDraftUpdate(SQLModel):
+    """Properties to receive on draft update"""
+    draft_content: Optional[Dict[str, Any]] = None
+    changes_summary: Optional[List[Dict[str, Any]]] = None
+    conflict_status: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class TemplateDraft(TemplateDraftBase, table=True):
+    """Template draft database model"""
+    __tablename__ = "template_drafts"
+    
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    created_by: uuid.UUID = Field(foreign_key="user.id")
+    auto_save_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"onupdate": datetime.utcnow})
+    
+    # Relationships
+    template: "DashboardTemplate" = Relationship(back_populates="drafts")
+    base_version: Optional["TemplateVersion"] = Relationship()
+    # creator: "User" = Relationship()  # Commented out due to foreign key issues
+    change_logs: List["TemplateChangeLog"] = Relationship(back_populates="draft")
+
+
+# Template Change Logs for tracking changes
+class TemplateChangeLogBase(SQLModel):
+    """Base properties for template change logs"""
+    template_id: uuid.UUID = Field(foreign_key="dashboard_templates.id")
+    draft_id: Optional[uuid.UUID] = Field(default=None, foreign_key="template_drafts.id")
+    change_type: str = Field(max_length=50)  # major, minor, patch
+    change_category: str = Field(max_length=100)
+    change_description: Optional[str] = Field(default=None, sa_column=Column(Text))
+    change_data: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSON))
+
+
+class TemplateChangeLogCreate(TemplateChangeLogBase):
+    """Properties to receive on change log creation"""
+    pass
+
+
+class TemplateChangeLog(TemplateChangeLogBase, table=True):
+    """Template change log database model"""
+    __tablename__ = "template_change_logs"
+    
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    created_by: uuid.UUID = Field(foreign_key="user.id")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    # Relationships
+    template: "DashboardTemplate" = Relationship()
+    draft: Optional["TemplateDraft"] = Relationship(back_populates="change_logs")
+    # creator: "User" = Relationship()  # Commented out due to foreign key issues
 
 
 class TemplateReviewBase(SQLModel):

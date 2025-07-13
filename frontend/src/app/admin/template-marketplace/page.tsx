@@ -407,7 +407,7 @@ export default function TemplateMarketplacePage() {
         </p>
       </div>
 
-      {/* Filters */}
+      // Filters
       <div className="mb-8 space-y-4">
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="flex-1">
@@ -492,14 +492,14 @@ export default function TemplateMarketplacePage() {
         </div>
       </div>
 
-      {/* Results */}
+      // Results
       <div className="mb-4 flex items-center justify-between">
         <span className="text-sm text-gray-600">
           {filteredTemplates.length} template{filteredTemplates.length !== 1 ? 's' : ''} found
         </span>
       </div>
 
-      {/* Templates Grid/List */}
+      // Templates Grid/List
       {viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredTemplates.map(renderTemplateCard)}
@@ -516,7 +516,7 @@ export default function TemplateMarketplacePage() {
         </div>
       )}
 
-      {/* Template Preview Dialog */}
+      // Template Preview Dialog
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           {selectedTemplate && (
@@ -536,7 +536,7 @@ export default function TemplateMarketplacePage() {
               </DialogHeader>
               
               <div className="space-y-6">
-                {/* Screenshots */}
+                // Screenshots
                 {selectedTemplate.screenshot_urls.length > 0 && (
                   <div>
                     <h3 className="font-semibold mb-3">Preview Images</h3>
@@ -553,7 +553,7 @@ export default function TemplateMarketplacePage() {
                   </div>
                 )}
 
-                {/* Details */}
+                // Details
                 <div className="grid grid-cols-2 gap-6">
                   <div>
                     <h3 className="font-semibold mb-3">Details</h3>
@@ -595,7 +595,7 @@ export default function TemplateMarketplacePage() {
                   </div>
                 </div>
 
-                {/* Tags */}
+                // Tags
                 <div>
                   <h3 className="font-semibold mb-3">Tags</h3>
                   <div className="flex flex-wrap gap-2">
@@ -607,7 +607,7 @@ export default function TemplateMarketplacePage() {
                   </div>
                 </div>
 
-                {/* Actions */}
+                // Actions
                 <div className="flex gap-3 pt-4 border-t">
                   <Button
                     onClick={() => handleDownloadTemplate(selectedTemplate)}

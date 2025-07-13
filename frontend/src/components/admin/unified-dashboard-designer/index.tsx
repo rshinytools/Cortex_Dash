@@ -7,7 +7,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { v4 as uuidv4 } from "uuid";
-import { Plus, Save, Eye, Download, Upload, Settings, HelpCircle } from "lucide-react";
+import { Plus, Save, Eye, Download, Upload, Settings, HelpCircle, GitBranch, History, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
@@ -44,8 +44,15 @@ import {
 } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { VersionStatusIndicator } from "@/components/admin/version-status-indicator";
+import { VersionHistoryPanel } from "@/components/admin/version-history-panel";
+import { VersionDialog } from "@/components/admin/version-dialog";
+import { VersionComparison } from "@/components/admin/version-comparison";
+import { useAutoSave } from "@/hooks/useAutoSave";
+import { TemplateVersionStatus } from "@/types/template-version";
 
 export interface UnifiedDashboardDesignerProps {
+  templateId?: string;
   initialTemplate?: UnifiedDashboardTemplate;
   widgetDefinitions: WidgetDefinition[];
   onSave: (template: CreateUnifiedDashboardTemplateDto) => Promise<void>;
@@ -55,6 +62,7 @@ export interface UnifiedDashboardDesignerProps {
 }
 
 export function UnifiedDashboardDesigner({
+  templateId,
   initialTemplate,
   widgetDefinitions,
   onSave,
@@ -81,6 +89,12 @@ export function UnifiedDashboardDesigner({
     initialTemplate?.menuTemplate?.items || []
   );
   const [selectedMenuItemId, setSelectedMenuItemId] = useState<string | null>(null);
+  
+  // Version-related state
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [showVersionDialog, setShowVersionDialog] = useState(false);
+  const [versionStatus, setVersionStatus] = useState<TemplateVersionStatus | undefined>(undefined);
+  const [compareVersions, setCompareVersions] = useState<{ version1: string; version2: string } | null>(null);
   
   // TODO: Add autosave tracking
   // Track changes for autosave
@@ -139,6 +153,52 @@ export function UnifiedDashboardDesigner({
 
   // Currently selected dashboard
   const selectedDashboard = selectedMenuItemId ? dashboards[selectedMenuItemId] : null;
+
+  // Prepare content for auto-save
+  const draftContent = useMemo(() => ({
+    name,
+    description,
+    tags,
+    category,
+    menu_structure: { items: menuItems },
+    dashboardTemplates: Object.values(dashboards),
+    theme: {},
+    settings: {}
+  }), [name, description, tags, category, menuItems, dashboards]);
+
+  // Auto-save hook
+  const {
+    isSaving,
+    lastSaved,
+    hasChanges: hasAutoSaveChanges,
+    draft,
+    error: autoSaveError,
+    saveNow,
+    discardChanges,
+    getSaveStatus
+  } = useAutoSave({
+    templateId: templateId || '',
+    content: draftContent,
+    enabled: !!templateId,
+    interval: 30000, // 30 seconds
+    onChange: (content) => {
+      // Update state from draft if needed
+      if (content) {
+        setName(content.name || '');
+        setDescription(content.description || '');
+        setTags(content.tags || []);
+        setCategory(content.category || 'custom');
+        setMenuItems(content.menu_structure?.items || []);
+        if (content.dashboardTemplates) {
+          const dashboardsObj: Record<string, DashboardTemplateWithMenu> = {};
+          content.dashboardTemplates.forEach((dashboard: DashboardTemplateWithMenu) => {
+            dashboardsObj[dashboard.menuItemId] = dashboard;
+          });
+          setDashboards(dashboardsObj);
+        }
+      }
+    }
+  });
 
   // Calculate data requirements from all dashboards
   const dataRequirements = useMemo(() => {
@@ -482,8 +542,13 @@ export function UnifiedDashboardDesigner({
     }));
   }, [selectedMenuItemId, selectedDashboard]);
 
-  // Save template
+  // Save template (now opens version dialog if template exists)
   const handleSave = async () => {
+    // If we have a templateId, show version dialog instead of direct save
+    if (templateId) {
+      setShowVersionDialog(true);
+      return;
+    }
     if (!name.trim()) {
       toast({
         title: "Error",
@@ -720,14 +785,31 @@ export function UnifiedDashboardDesigner({
                 trackChange();
               }}
             />
-            {/* TODO: Add AutosaveIndicator component */}
-            {/* <AutosaveIndicator
-                lastSaved={lastSaved}
-                isUnsaved={hasUnsavedChanges}
+            {/* Version Status Indicator */}
+            {templateId && (
+              <VersionStatusIndicator
+                templateId={templateId}
+                currentVersion={initialTemplate?.version}
+                saveStatus={getSaveStatus()}
                 isSaving={isSaving}
-              /> */}
+                hasChanges={hasAutoSaveChanges}
+                onSaveNow={saveNow}
+                onViewHistory={() => setShowVersionHistory(true)}
+              />
+            )}
             </div>
             <div className="flex items-center gap-2">
+              {/* Version History Button */}
+              {templateId && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowVersionHistory(true)}
+                >
+                  <History className="mr-2 h-4 w-4" />
+                  History
+                </Button>
+              )}
               {/* TODO: Add ThemeEditor component */}
               {/* <ThemeEditor
                 theme={theme}
@@ -1005,6 +1087,75 @@ export function UnifiedDashboardDesigner({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Version History Panel */}
+      {templateId && showVersionHistory && (
+        <div className="fixed inset-y-0 right-0 z-50 w-96 bg-background shadow-lg border-l">
+          <div className="relative h-full">
+            {/* Close button with better positioning and styling */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-2 top-2 z-10 rounded-full hover:bg-destructive hover:text-destructive-foreground"
+              onClick={() => setShowVersionHistory(false)}
+              aria-label="Close version history"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+            <VersionHistoryPanel
+              templateId={templateId}
+              currentVersion={initialTemplate?.version}
+              onVersionRestore={() => {
+                setShowVersionHistory(false);
+                // Reload template data
+                window.location.reload();
+              }}
+              onCompare={(version1Id, version2Id) => {
+                setCompareVersions({ version1: version1Id, version2: version2Id });
+                setShowVersionHistory(false);
+              }}
+              className="h-full overflow-auto pt-12"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Version Comparison Dialog */}
+      {templateId && compareVersions && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <VersionComparison
+            templateId={templateId}
+            version1Id={compareVersions.version1}
+            version2Id={compareVersions.version2}
+            onClose={() => setCompareVersions(null)}
+            className="max-h-[90vh] overflow-auto"
+          />
+        </div>
+      )}
+
+      {/* Version Creation Dialog */}
+      {templateId && (
+        <VersionDialog
+          open={showVersionDialog}
+          onOpenChange={setShowVersionDialog}
+          templateId={templateId}
+          currentVersion={initialTemplate?.version}
+          versionStatus={versionStatus}
+          onVersionCreated={async (version) => {
+            // Save current draft content
+            await saveNow();
+            // Trigger the parent save handler
+            await handleSave();
+            // Close dialog
+            setShowVersionDialog(false);
+            // Show success message
+            toast({
+              title: "Version created",
+              description: `Version ${version} has been created successfully`,
+            });
+          }}
+        />
+      )}
     </DndProvider>
   );
   

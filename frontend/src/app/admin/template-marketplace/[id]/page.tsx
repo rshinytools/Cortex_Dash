@@ -278,7 +278,7 @@ export default function TemplateDetailsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Header */}
+      {/* Header *//*}
       <div className="mb-8">
         <Button 
           variant="ghost" 
@@ -290,7 +290,7 @@ export default function TemplateDetailsPage() {
         </Button>
 
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* Template Info */}
+          // Template Info
           <div className="flex-1">
             <div className="flex items-start gap-4 mb-6">
               <div className="flex-1">
@@ -344,7 +344,7 @@ export default function TemplateDetailsPage() {
               </div>
             </div>
 
-            {/* Action Buttons */}
+            // Action Buttons
             <div className="flex gap-3 mb-8">
               <Button onClick={handleDownload} size="lg" className="flex-1 lg:flex-none">
                 <Download className="w-4 h-4 mr-2" />
@@ -369,7 +369,7 @@ export default function TemplateDetailsPage() {
             </div>
           </div>
 
-          {/* Screenshots */}
+          // Screenshots
           <div className="lg:w-96">
             <Card>
               <CardHeader>
@@ -412,7 +412,7 @@ export default function TemplateDetailsPage() {
         </div>
       </div>
 
-      {/* Tabs */}
+      // Tabs
       <Tabs defaultValue="overview" className="space-y-6">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -423,7 +423,7 @@ export default function TemplateDetailsPage() {
 
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Requirements */}
+            // Requirements
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Requirements</CardTitle>
@@ -440,7 +440,7 @@ export default function TemplateDetailsPage() {
               </CardContent>
             </Card>
 
-            {/* Compatibility */}
+            // Compatibility
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Compatibility</CardTitle>
@@ -457,7 +457,7 @@ export default function TemplateDetailsPage() {
               </CardContent>
             </Card>
 
-            {/* Template Info */}
+            // Template Info
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Template Info</CardTitle>
@@ -482,7 +482,7 @@ export default function TemplateDetailsPage() {
 
         <TabsContent value="reviews" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Rating Summary */}
+            // Rating Summary
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Rating Breakdown</CardTitle>
@@ -512,7 +512,7 @@ export default function TemplateDetailsPage() {
               </CardContent>
             </Card>
 
-            {/* Reviews */}
+            // Reviews
             <div className="lg:col-span-2 space-y-4">
               {template.reviews.map((review) => (
                 <Card key={review.id}>

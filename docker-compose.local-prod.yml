@@ -44,7 +44,7 @@ services:
     command: bash scripts/prestart.sh
     environment:
       - PROJECT_NAME=Cortex Clinical Dashboard
-      - BACKEND_CORS_ORIGINS=["http://localhost:3000"]
+      - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS}
       - FRONTEND_HOST=http://localhost:3000
       - POSTGRES_SERVER=postgres
       - POSTGRES_USER=postgres
@@ -78,7 +78,7 @@ services:
         condition: service_completed_successfully
     environment:
       - PROJECT_NAME=Cortex Clinical Dashboard
-      - BACKEND_CORS_ORIGINS=["http://localhost:3000"]
+      - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS}
       - FRONTEND_HOST=http://localhost:3000
       - POSTGRES_SERVER=postgres
       - POSTGRES_USER=postgres

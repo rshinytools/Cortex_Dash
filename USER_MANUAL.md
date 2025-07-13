@@ -24,6 +24,7 @@
    - [Menu Design](#menu-design)
    - [Dashboard Theming](#dashboard-theming)
    - [Save Options and Autosave](#save-options-and-autosave)
+   - [Template Versioning](#template-versioning)
    - [Help System](#help-system)
 
 ## Authentication
@@ -613,6 +614,106 @@ Click the help button (floating button in bottom-left) to access:
 #### Keyboard Shortcuts
 
 The help panel includes a complete list of keyboard shortcuts for power users.
+
+### Template Versioning
+
+The platform includes a robust versioning system that automatically tracks changes to your dashboard templates:
+
+#### Automatic Draft Management
+
+When you edit an existing template, changes are automatically saved as drafts:
+
+1. **Auto-Save Drafts**
+   - Every 30 seconds, your changes are saved as a draft
+   - The version status indicator shows "Draft saved" when successful
+   - Multiple users can have separate drafts without conflicts
+
+2. **Draft Status Indicator**
+   - Shows current version number (e.g., v1.2.3)
+   - Displays save status: "All changes saved", "Saving...", or "Unsaved changes"
+   - Alerts when other users are editing the same template
+
+#### Creating New Versions
+
+When you're ready to publish your changes:
+
+1. **Save as Version**
+   - Click **Save Template** to open the version dialog
+   - Choose version type:
+     - **Patch** (e.g., 1.0.0 → 1.0.1): Bug fixes and minor improvements
+     - **Minor** (e.g., 1.0.0 → 1.1.0): New features, backward compatible
+     - **Major** (e.g., 1.0.0 → 2.0.0): Breaking changes
+
+2. **Version Information**
+   - Provide a description of changes
+   - Mark if there are breaking changes
+   - Add migration notes for major changes
+
+3. **Automatic Version Creation**
+   - System can auto-create versions based on:
+     - Time intervals (daily snapshots)
+     - Number of changes accumulated
+     - Before risky operations
+
+#### Version History
+
+Access the complete history of template changes:
+
+1. **View History**
+   - Click **History** button or version badge
+   - See timeline of all versions
+   - Filter by version type, user, or date
+
+2. **Version Details**
+   - Description of changes
+   - Who created the version
+   - When it was created
+   - Whether it contains breaking changes
+
+3. **Version Comparison**
+   - Select any two versions to compare
+   - See side-by-side differences
+   - Changes highlighted by category:
+     - Structure changes (menu items)
+     - Widget changes
+     - Data source modifications
+     - Style/theme updates
+
+#### Restoring Previous Versions
+
+If you need to revert to an earlier version:
+
+1. **Select Version**
+   - Click on any version in history
+   - Review what will change
+
+2. **Restore**
+   - Click **Restore** to create a new version with old content
+   - Original version history is preserved
+   - Adds note about restoration
+
+#### Change Detection
+
+The system intelligently categorizes changes:
+
+- **Major Changes**: Menu structure, required data fields removed
+- **Minor Changes**: New widgets, optional fields, styling
+- **Patch Changes**: Text updates, minor positioning
+
+#### Best Practices for Versioning
+
+1. **Regular Versions**
+   - Create versions for completed features
+   - Don't let too many changes accumulate
+
+2. **Clear Descriptions**
+   - Document what changed and why
+   - Include migration steps for breaking changes
+
+3. **Review Before Publishing**
+   - Check the change summary
+   - Test in preview mode
+   - Consider impact on existing studies
 
 ### Export and Import
 

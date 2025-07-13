@@ -3,6 +3,11 @@
 set -e
 set -x
 
+# Debug CORS settings
+echo "===== CORS DEBUG INFO ====="
+echo "BACKEND_CORS_ORIGINS=$BACKEND_CORS_ORIGINS"
+echo "=========================="
+
 # Let the DB start
 python app/backend_pre_start.py
 

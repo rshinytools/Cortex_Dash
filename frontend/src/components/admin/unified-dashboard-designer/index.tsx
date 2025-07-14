@@ -984,6 +984,7 @@ export function UnifiedDashboardDesigner({
                           widgets={selectedDashboard.widgets}
                           onUpdateWidget={handleUpdateWidget}
                           onDeleteWidget={handleDeleteWidget}
+                          onAddWidget={handleAddWidget}
                         />
                       </div>
 

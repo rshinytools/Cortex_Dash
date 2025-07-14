@@ -57,6 +57,7 @@ interface DashboardDesignerProps {
   widgets: DashboardWidget[];
   onUpdateWidget: (widgetId: string, updates: Partial<DashboardWidget>) => void;
   onDeleteWidget: (widgetId: string) => void;
+  onAddWidget?: (widgetDefId: string) => void;
 }
 
 interface HistoryEntry {
@@ -69,6 +70,7 @@ export function DashboardDesigner({
   widgets,
   onUpdateWidget,
   onDeleteWidget,
+  onAddWidget,
 }: DashboardDesignerProps) {
   const [selectedWidgetId, setSelectedWidgetId] = useState<string | null>(null);
   const [selectedWidgetIds, setSelectedWidgetIds] = useState<Set<string>>(new Set());
@@ -86,7 +88,10 @@ export function DashboardDesigner({
   const [{ isOver }, drop] = useDrop({
     accept: "widget",
     drop: (item: { widgetDefId: string }, monitor) => {
-      // Widget addition is handled by the parent component
+      // Call the parent's onAddWidget function
+      if (onAddWidget) {
+        onAddWidget(item.widgetDefId);
+      }
       return { dropped: true };
     },
     collect: (monitor) => ({

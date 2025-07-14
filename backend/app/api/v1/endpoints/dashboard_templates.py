@@ -75,26 +75,14 @@ async def read_dashboard_templates(
         dashboard_count = 0
         widget_count = 0
         
-        # Handle both old format (menu.items) and new format (menu_structure + dashboards)
-        if "menu_structure" in template_structure and "dashboards" in template_structure:
-            # New format: A template represents ONE dashboard with multiple views
-            # Each view can have widgets
-            dashboard_count = 1  # One dashboard per template
-            
-            # Count total widgets across all views
-            dashboards_array = template_structure.get("dashboards", [])
-            for dashboard_view in dashboards_array:
-                widgets = dashboard_view.get("widgets", [])
-                widget_count += len(widgets)
-        else:
-            # Old format: look for menu.items
-            menu_items = template_structure.get("menu", {}).get("items", [])
-            
-            for item in menu_items:
-                if item.get("type") == "dashboard" and "dashboard" in item:
-                    dashboard_count += 1
-                    widgets = item["dashboard"].get("widgets", [])
-                    widget_count += len(widgets)
+        # Count dashboards and widgets
+        dashboards_array = template_structure.get("dashboardTemplates", [])
+        dashboard_count = len(dashboards_array)
+        
+        # Count total widgets across all dashboards
+        for dashboard in dashboards_array:
+            widgets = dashboard.get("widgets", [])
+            widget_count += len(widgets)
         
         # Create public template with all required fields
         template_dict = template.model_dump()
@@ -132,20 +120,25 @@ async def read_dashboard_template(
     dashboard_count = 1
     widget_count = 0
     
-    # Count widgets from menu items
-    def count_widgets_in_items(items):
+    # Count widgets from dashboard templates
+    widget_count = 0
+    dashboards = template_structure.get("dashboardTemplates", [])
+    dashboard_count = len(dashboards)
+    for dashboard in dashboards:
+        widgets = dashboard.get("widgets", [])
+        widget_count += len(widgets)
+    
+    # Count menu items from menu_structure
+    menu_structure = template_structure.get("menu_structure", {})
+    def count_menu_items(items):
         count = 0
         for item in items:
-            if "dashboard" in item and isinstance(item["dashboard"], dict):
-                widgets = item["dashboard"].get("widgets", [])
-                count += len(widgets)
-            # Check for children items
+            count += 1
             if "children" in item and isinstance(item["children"], list):
-                count += count_widgets_in_items(item["children"])
+                count += count_menu_items(item["children"])
         return count
-    
-    menu_items = template_structure.get("menu", {}).get("items", [])
-    widget_count = count_widgets_in_items(menu_items)
+    menu_items = menu_structure.get("items", [])
+    menu_count = count_menu_items(menu_items)
     
     # Create public template with all required fields
     template_dict = template.model_dump()
@@ -185,35 +178,21 @@ async def get_template_data_requirements(
     # Extract widget-specific requirements
     widget_requirements = []
     
-    # Handle both old format (menu.items) and new format (menu_structure + dashboards)
-    if "menu_structure" in template_structure and "dashboards" in template_structure:
-        # New format: iterate through dashboards array
-        dashboards = template_structure.get("dashboards", [])
-        for dashboard in dashboards:
-            widgets = dashboard.get("widgets", [])
-            for widget in widgets:
-                if "data_requirements" in widget:
-                    widget_req = {
-                        "widget_code": widget.get("type"),  # In new format, it's 'type' not 'widget_code'
-                        "title": widget.get("config", {}).get("title"),  # In new format, it's 'config' not 'instance_config'
-                        "requirements": widget["data_requirements"]
-                    }
-                    widget_requirements.append(widget_req)
-    else:
-        # Old format: look for menu.items
-        menu_items = template_structure.get("menu", {}).get("items", [])
-        
-        for item in menu_items:
-            if item.get("type") == "dashboard" and "dashboard" in item:
-                widgets = item["dashboard"].get("widgets", [])
-                for widget in widgets:
-                    if "data_requirements" in widget:
-                        widget_req = {
-                            "widget_code": widget.get("widget_code"),
-                            "title": widget.get("instance_config", {}).get("title"),
-                            "requirements": widget["data_requirements"]
-                        }
-                        widget_requirements.append(widget_req)
+    # Iterate through dashboardTemplates array
+    dashboards = template_structure.get("dashboardTemplates", [])
+    for dashboard in dashboards:
+        widgets = dashboard.get("widgets", [])
+        for widget in widgets:
+            # Check if widget has instance data
+            widget_instance = widget.get("widgetInstance", {})
+            widget_def = widget_instance.get("widgetDefinition", {})
+            if widget_def.get("data_requirements"):
+                widget_req = {
+                    "widget_code": widget_def.get("code", widget_def.get("type")),
+                    "title": widget_instance.get("config", {}).get("title", widget_def.get("name")),
+                    "requirements": widget_def["data_requirements"]
+                }
+                widget_requirements.append(widget_req)
     
     return DashboardTemplateDataRequirements(
         template_id=template.id,
@@ -263,20 +242,25 @@ async def create_dashboard_template(
     dashboard_count = 1
     widget_count = 0
     
-    # Count widgets from menu items
-    def count_widgets_in_items(items):
+    # Count widgets from dashboard templates
+    widget_count = 0
+    dashboards = template_structure.get("dashboardTemplates", [])
+    dashboard_count = len(dashboards)
+    for dashboard in dashboards:
+        widgets = dashboard.get("widgets", [])
+        widget_count += len(widgets)
+    
+    # Count menu items from menu_structure
+    menu_structure = template_structure.get("menu_structure", {})
+    def count_menu_items(items):
         count = 0
         for item in items:
-            if "dashboard" in item and isinstance(item["dashboard"], dict):
-                widgets = item["dashboard"].get("widgets", [])
-                count += len(widgets)
-            # Check for children items
+            count += 1
             if "children" in item and isinstance(item["children"], list):
-                count += count_widgets_in_items(item["children"])
+                count += count_menu_items(item["children"])
         return count
-    
-    menu_items = template_structure.get("menu", {}).get("items", [])
-    widget_count = count_widgets_in_items(menu_items)
+    menu_items = menu_structure.get("items", [])
+    menu_count = count_menu_items(menu_items)
     
     # Create public template with all required fields
     template_dict = template.model_dump()
@@ -324,20 +308,25 @@ async def update_dashboard_template(
     dashboard_count = 1
     widget_count = 0
     
-    # Count widgets from menu items
-    def count_widgets_in_items(items):
+    # Count widgets from dashboard templates
+    widget_count = 0
+    dashboards = template_structure.get("dashboardTemplates", [])
+    dashboard_count = len(dashboards)
+    for dashboard in dashboards:
+        widgets = dashboard.get("widgets", [])
+        widget_count += len(widgets)
+    
+    # Count menu items from menu_structure
+    menu_structure = template_structure.get("menu_structure", {})
+    def count_menu_items(items):
         count = 0
         for item in items:
-            if "dashboard" in item and isinstance(item["dashboard"], dict):
-                widgets = item["dashboard"].get("widgets", [])
-                count += len(widgets)
-            # Check for children items
+            count += 1
             if "children" in item and isinstance(item["children"], list):
-                count += count_widgets_in_items(item["children"])
+                count += count_menu_items(item["children"])
         return count
-    
-    menu_items = template_structure.get("menu", {}).get("items", [])
-    widget_count = count_widgets_in_items(menu_items)
+    menu_items = menu_structure.get("items", [])
+    menu_count = count_menu_items(menu_items)
     
     # Create public template with all required fields
     template_dict = template.model_dump()
@@ -572,14 +561,19 @@ async def create_template_version(
     ).first()
     
     # Use draft content or current template content
-    template_content = draft.draft_content if draft else {
-        "name": template.name,
-        "description": template.description,
-        "menu_structure": template.menu_structure,
-        "dashboardTemplates": template.dashboard_templates,
-        "theme": template.theme,
-        "settings": template.settings
-    }
+    if draft:
+        template_content = draft.draft_content
+    else:
+        # Extract from template_structure
+        template_data = template.template_structure or {}
+        template_content = {
+            "name": template.name,
+            "description": template.description,
+            "menu_structure": template_data.get("menu_structure", {"items": []}),
+            "dashboardTemplates": template_data.get("dashboardTemplates", []),
+            "theme": template_data.get("theme", {}),
+            "settings": template_data.get("settings", {})
+        }
     
     # Determine version type
     version_type = ChangeType(version_data.get("version_type", "patch"))
@@ -628,15 +622,14 @@ async def create_template_version(
     template.name = template_content.get('name', template.name)
     template.description = template_content.get('description', template.description)
     
-    # Update template_structure JSON field
-    template_structure = template.template_structure or {}
-    template_structure.update({
-        'menu_structure': template_content.get('menu_structure', template_structure.get('menu_structure')),
-        'dashboardTemplates': template_content.get('dashboardTemplates', template_structure.get('dashboardTemplates')),
-        'theme': template_content.get('theme', template_structure.get('theme', {})),
-        'settings': template_content.get('settings', template_structure.get('settings', {}))
-    })
-    template.template_structure = template_structure
+    # Update template_structure JSON field with the complete content
+    template.template_structure = {
+        'menu_structure': template_content.get('menu_structure', {"items": []}),
+        'dashboardTemplates': template_content.get('dashboardTemplates', []),
+        'theme': template_content.get('theme', {}),
+        'settings': template_content.get('settings', {}),
+        'data_mappings': template_content.get('data_mappings', {})
+    }
     
     # Mark draft as inactive if exists
     if draft:
@@ -772,6 +765,69 @@ async def compare_template_versions(
         "changes": changes,
         "summary": change_detector.generate_change_summary(changes),
         "has_breaking_changes": change_detector.has_breaking_changes(changes)
+    }
+
+
+@router.post("/{template_id}/versions/{version_id}/restore")
+async def restore_template_version(
+    *,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    template_id: uuid.UUID,
+    version_id: uuid.UUID
+) -> Any:
+    """
+    Restore a template to a specific version.
+    """
+    template = db.get(DashboardTemplate, template_id)
+    if not template:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Template not found"
+        )
+    
+    version = db.get(TemplateVersion, version_id)
+    if not version or version.template_id != template_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Version not found"
+        )
+    
+    # Create a new version with the content from the selected version
+    new_patch = template.patch_version + 1
+    
+    # Create new version
+    new_version = TemplateVersion(
+        template_id=template_id,
+        major_version=template.major_version,
+        minor_version=template.minor_version,
+        patch_version=new_patch,
+        template_structure=version.template_structure,
+        change_description=f"Restored from version {version.version_string}",
+        version_type="patch",
+        auto_created=False,
+        created_by_name=current_user.full_name or current_user.email,
+        created_by=current_user.id
+    )
+    
+    db.add(new_version)
+    
+    # Update template with restored content
+    template.patch_version = new_patch
+    template.template_structure = version.template_structure
+    
+    # Extract name and description if available
+    if version.template_structure:
+        template.name = version.template_structure.get('name', template.name)
+        template.description = version.template_structure.get('description', template.description)
+    
+    db.commit()
+    db.refresh(new_version)
+    
+    return {
+        "id": new_version.id,
+        "version": new_version.version_string,
+        "message": f"Successfully restored template to version {version.version_string}"
     }
 
 

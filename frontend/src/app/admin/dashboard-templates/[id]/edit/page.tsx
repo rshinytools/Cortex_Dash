@@ -35,39 +35,27 @@ export default function EditDashboardTemplatePage() {
         ]);
         
         // Transform backend format to frontend format
+        const menuItems = templateData.template_structure?.menu_structure?.items || [];
+        const dashboardTemplates = templateData.template_structure?.dashboardTemplates || [];
+        
         const transformedTemplate: any = {
           id: templateData.id,
           name: templateData.name,
           description: templateData.description,
           tags: templateData.tags || [],
           category: templateData.category,
-          version: templateData.version || "1.0.0",
+          version: templateData.version || `${templateData.major_version}.${templateData.minor_version}.${templateData.patch_version}`,
           menuTemplate: {
-            items: templateData.template_structure?.menu?.items || []
+            items: menuItems
           },
-          dashboardTemplates: []
+          dashboardTemplates: dashboardTemplates
         };
         
-        // Extract dashboards from menu items recursively
-        const extractDashboards = (items: any[]): any[] => {
-          const dashboards: any[] = [];
-          items.forEach(item => {
-            if (item.dashboard) {
-              dashboards.push({
-                ...item.dashboard,
-                menuItemId: item.id
-              });
-            }
-            // Recursively extract from children
-            if (item.children && item.children.length > 0) {
-              dashboards.push(...extractDashboards(item.children));
-            }
-          });
-          return dashboards;
-        };
-        
-        const dashboards = extractDashboards(transformedTemplate.menuTemplate.items);
-        transformedTemplate.dashboardTemplates = dashboards;
+        // Debug logging
+        console.log('Template data from backend:', templateData);
+        console.log('Menu items:', menuItems);
+        console.log('Dashboard templates:', dashboardTemplates);
+        console.log('Transformed template:', transformedTemplate);
         
         setTemplate(transformedTemplate);
         setWidgetDefinitions(widgets);

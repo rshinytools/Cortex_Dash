@@ -209,37 +209,10 @@ export default function DashboardTemplatesPage() {
       // Transform backend format to frontend format
       const transformedTemplates = response.data.map((template: any) => {
         // Extract menu items and dashboards from template structure
-        const menuItems = template.template_structure?.menu?.items || [];
-        const dashboardTemplates: any[] = [];
+        const menuItems = template.template_structure?.menu_structure?.items || [];
+        const dashboardTemplates: any[] = template.template_structure?.dashboardTemplates || [];
         
-        // Extract dashboards from menu items
-        const extractDashboards = (items: any[]): void => {
-          items.forEach(item => {
-            if (item.dashboard) {
-              dashboardTemplates.push({
-                id: `dt-${item.id}`,
-                menuItemId: item.id,
-                name: item.label,
-                category: template.category,
-                version: "1.0.0",
-                layout: item.dashboard.layout || {
-                  type: "grid",
-                  columns: 12,
-                  rowHeight: 80,
-                },
-                widgets: item.dashboard.widgets || [],
-                isActive: true,
-                createdAt: template.created_at,
-                updatedAt: template.updated_at,
-              });
-            }
-            if (item.children) {
-              extractDashboards(item.children);
-            }
-          });
-        };
-        
-        extractDashboards(menuItems);
+        // No need to extract dashboards - they're already in dashboardTemplates
         
         return {
           id: template.id,
@@ -248,6 +221,10 @@ export default function DashboardTemplatesPage() {
           tags: template.tags || [],
           category: template.category,
           version: `${template.major_version}.${template.minor_version}.${template.patch_version}`,
+          // Add backend-calculated counts
+          widgetCount: template.widget_count || 0,
+          dashboardCount: template.dashboard_count || 0,
+          menuItemsCount: menuItems.length || 0,  // Count menu items from structure
           menuTemplate: {
             id: `mt-${template.id}`,
             name: `${template.name} Menu`,
@@ -472,8 +449,9 @@ export default function DashboardTemplatesPage() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredTemplates.map((template) => {
-            const menuItemsCount = countMenuItems(template.menuTemplate.items);
-            const totalWidgets = countTotalWidgets(template.menuTemplate.items);
+            // Use counts from backend
+            const menuItemsCount = template.menuItemsCount || 0;
+            const totalWidgets = template.widgetCount || 0;
 
             return (
               <Card key={template.id} className="flex flex-col">

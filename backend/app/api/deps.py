@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core import security
 from app.core.config import settings
 from app.core.db import engine, async_engine
-from app.models import TokenPayload, User
+from app.models import TokenPayload, User, Study
 
 reusable_oauth2 = OAuth2PasswordBearer(
     tokenUrl=f"{settings.API_V1_STR}/login/access-token"
@@ -49,6 +49,26 @@ def get_current_user(session: SessionDep, token: TokenDep) -> User:
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+async def get_current_user_ws(token: str, db: Session) -> Optional[User]:
+    """
+    Get current user from WebSocket token.
+    Used for WebSocket authentication where Depends() doesn't work.
+    """
+    try:
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[security.ALGORITHM]
+        )
+        token_data = TokenPayload(**payload)
+    except (InvalidTokenError, ValidationError):
+        return None
+    
+    user = db.get(User, token_data.sub)
+    if not user or not user.is_active:
+        return None
+    
+    return user
 
 
 def get_current_active_superuser(current_user: CurrentUser) -> User:

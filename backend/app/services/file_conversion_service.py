@@ -7,12 +7,13 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional, Tuple, Callable, Awaitable
 from datetime import datetime
 import logging
 from dataclasses import dataclass
 import aiofiles
 import asyncio
+import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -357,3 +358,76 @@ class FileConversionService:
             })
         
         return columns
+    
+    async def convert_study_files(
+        self,
+        study_id: uuid.UUID,
+        files: List[Dict[str, Any]],
+        progress_callback: Optional[Callable[[int, Optional[str]], Awaitable[None]]] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Convert multiple study files to parquet with progress tracking
+        
+        Args:
+            study_id: The study ID
+            files: List of file information dictionaries
+            progress_callback: Async callback for progress updates
+            
+        Returns:
+            List of converted file information
+        """
+        converted_files = []
+        total_files = len(files)
+        
+        for idx, file_info in enumerate(files):
+            try:
+                # Update progress
+                if progress_callback:
+                    current_file = file_info.get("name", "unknown")
+                    progress = int((idx / total_files) * 100)
+                    await progress_callback(progress, current_file)
+                
+                # Determine file format
+                file_path = Path(file_info["path"])
+                file_extension = file_path.suffix.lower()
+                
+                # Set up output path
+                output_dir = Path(f"/data/studies/{study_id}/parquet_data")
+                output_dir.mkdir(parents=True, exist_ok=True)
+                
+                # Convert based on file type
+                if file_info.get("type", "").lower() == "zip" or file_extension == ".zip":
+                    result = await self._process_zip_file(str(file_path), str(output_dir))
+                else:
+                    result = await self._process_single_file(
+                        str(file_path),
+                        str(output_dir),
+                        file_extension[1:] if file_extension else file_info.get("type", "unknown")
+                    )
+                
+                if result.success:
+                    # Add conversion metadata
+                    for extracted_file in result.files_extracted:
+                        converted_files.append({
+                            **extracted_file,
+                            "source_file": file_info["name"],
+                            "converted_at": datetime.utcnow().isoformat()
+                        })
+                else:
+                    logger.error(f"Failed to convert {file_info['name']}: {result.error_message}")
+                    if progress_callback:
+                        # Still update progress even on failure
+                        await progress_callback(
+                            int(((idx + 1) / total_files) * 100),
+                            f"Failed: {file_info['name']}"
+                        )
+                
+            except Exception as e:
+                logger.error(f"Error converting file {file_info.get('name', 'unknown')}: {str(e)}")
+                continue
+        
+        # Final progress update
+        if progress_callback:
+            await progress_callback(100, "Conversion complete")
+        
+        return converted_files

@@ -75,6 +75,15 @@ class StudyBase(SQLModel):
     # Status
     status: StudyStatus = Field(default=StudyStatus.SETUP)
     is_active: bool = Field(default=True)
+    
+    # Initialization tracking
+    initialization_status: Optional[str] = Field(default="not_started", max_length=50)  # not_started, in_progress, completed, failed
+    initialization_progress: Optional[int] = Field(default=0)  # 0-100
+    initialization_steps: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))  # Track each step status
+    template_applied_at: Optional[datetime] = Field(default=None, sa_column=Column(DateTime))
+    data_uploaded_at: Optional[datetime] = Field(default=None, sa_column=Column(DateTime))
+    mappings_configured_at: Optional[datetime] = Field(default=None, sa_column=Column(DateTime))
+    activated_at: Optional[datetime] = Field(default=None, sa_column=Column(DateTime))
 
 
 class StudyCreate(StudyBase):
@@ -102,6 +111,11 @@ class StudyUpdate(SQLModel):
     
     status: Optional[StudyStatus] = None
     is_active: Optional[bool] = None
+    
+    # Initialization tracking updates
+    initialization_status: Optional[str] = Field(default=None, max_length=50)
+    initialization_progress: Optional[int] = None
+    initialization_steps: Optional[Dict[str, Any]] = None
 
 
 class Study(StudyBase, table=True):
@@ -157,6 +171,13 @@ class StudyPublic(StudyBase):
     site_count: int
     last_data_update: Optional[datetime] = None
     folder_path: Optional[str] = None
+    # Initialization tracking
+    initialization_status: Optional[str] = None
+    initialization_progress: Optional[int] = None
+    template_applied_at: Optional[datetime] = None
+    data_uploaded_at: Optional[datetime] = None
+    mappings_configured_at: Optional[datetime] = None
+    activated_at: Optional[datetime] = None
 
 
 class StudiesPublic(SQLModel):

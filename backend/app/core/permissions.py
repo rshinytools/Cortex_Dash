@@ -8,7 +8,7 @@ from fastapi import HTTPException, Depends, status
 from sqlmodel import Session
 
 from app.core.db import engine
-from app.models import User
+from app.models import User, Study
 from app.api.deps import get_current_user
 
 
@@ -292,3 +292,17 @@ class MultiPermissionChecker:
                     detail=f"Permission denied. Required one of: {', '.join(self.permissions)}"
                 )
         return current_user
+
+
+async def has_permission_for_study(user: User, study: Study, db: Session) -> bool:
+    """Check if user has permission to access a study"""
+    # System admins have access to all studies
+    if user.is_superuser:
+        return True
+    
+    # Check if user belongs to the same organization as the study
+    if str(user.org_id) != str(study.org_id):
+        return False
+    
+    # Check if user has at least VIEW_STUDY permission
+    return has_permission(user, Permission.VIEW_STUDY)

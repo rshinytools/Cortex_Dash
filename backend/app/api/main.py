@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.routes import items, login, private, users, utils
-from app.api.v1.endpoints import organizations, studies, pipelines, data_sources, transformations, data_catalog, data_uploads, pipeline_config, data_mapping
+from app.api.v1.endpoints import organizations, studies, pipelines, data_sources, transformations, data_catalog, data_uploads, pipeline_config, data_mapping, study_initialization, websocket, study_wizard
 # Temporarily disabled endpoints
 # from app.api.v1.endpoints import data_versions, data_quality, data_archival, refresh_schedules
 # from app.api.v1.endpoints import dashboards, widgets, visualizations, advanced_visualizations
@@ -22,6 +22,9 @@ api_router.include_router(items.router)
 # Clinical dashboard endpoints
 api_router.include_router(organizations.router, prefix="/organizations", tags=["organizations"])
 api_router.include_router(studies.router, prefix="/studies", tags=["studies"])
+api_router.include_router(study_initialization.router, prefix="", tags=["study-initialization"])
+api_router.include_router(study_wizard.router, prefix="/studies", tags=["study-wizard"])
+api_router.include_router(websocket.router, prefix="", tags=["websocket"])
 api_router.include_router(users_v1.router, prefix="/v1/users", tags=["users-clinical"])
 api_router.include_router(pipelines.router, prefix="/pipelines", tags=["pipelines"])
 api_router.include_router(data_sources.router, prefix="/data-sources", tags=["data-sources"])

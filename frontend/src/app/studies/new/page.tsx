@@ -1,142 +1,109 @@
-// ABOUTME: Study creation page - first step in study setup workflow
-// ABOUTME: Allows system admins to create new clinical studies
+// ABOUTME: Study creation page with complete initialization wizard
+// ABOUTME: Guides users through the entire study setup process
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { ArrowLeft, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api/client';
-import { StudyPhase, StudyStatus, UserRole } from '@/types';
-import { format } from 'date-fns';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useSession } from 'next-auth/react';
 import { UserMenu } from '@/components/user-menu';
-
-interface StudyCreateData {
-  name: string;
-  code: string;
-  protocol_number: string;
-  description?: string;
-  phase: StudyPhase;
-  therapeutic_area?: string;
-  indication?: string;
-  planned_start_date?: string | null;
-  planned_end_date?: string | null;
-  status: StudyStatus;
-  org_id: string;
-}
+import { InitializationWizard } from '@/components/study/initialization-wizard';
+import { studiesApi } from '@/lib/api/studies';
+import { useToast } from '@/hooks/use-toast';
 
 export default function NewStudyPage() {
   const router = useRouter();
-  const { toast } = useToast();
   const { data: session } = useSession();
-  const queryClient = useQueryClient();
-  const [formData, setFormData] = useState<Partial<StudyCreateData>>({
-    status: StudyStatus.PLANNING,
-  });
-  const [selectedOrgId, setSelectedOrgId] = useState<string>('');
+  const { toast } = useToast();
+  const [draftStudy, setDraftStudy] = useState<any>(null);
+  const [checkingDraft, setCheckingDraft] = useState(true);
+  const [resumingDraft, setResumingDraft] = useState(false);
 
-  // Fetch organizations for system admins
-  const { data: organizations } = useQuery({
-    queryKey: ['organizations'],
-    queryFn: async () => {
-      const response = await apiClient.get('/organizations/');
-      return response.data;
-    },
-    enabled: session?.user?.role === UserRole.SYSTEM_ADMIN,
-  });
-
-  // Set default org for non-system admins
   useEffect(() => {
-    if (session && session.user.org_id && session.user.role !== UserRole.SYSTEM_ADMIN) {
-      setSelectedOrgId(session.user.org_id);
+    // Check for draft studies when component mounts
+    const checkDraft = async () => {
+      try {
+        const draft = await studiesApi.checkDraftStudy();
+        if (draft.has_draft) {
+          // Check if this draft was created very recently (within last 5 minutes)
+          const draftAge = new Date().getTime() - new Date(draft.created_at).getTime();
+          const fiveMinutes = 5 * 60 * 1000;
+          
+          // If draft is very recent and user is on step 2 or later, automatically resume
+          if (draftAge < fiveMinutes && draft.current_step && draft.current_step > 1) {
+            // Don't auto-resume, just show the draft message
+            // The initialization page is for progress tracking, not wizard continuation
+          }
+          
+          setDraftStudy(draft);
+        }
+      } catch (error) {
+        console.error('Failed to check for draft study:', error);
+      } finally {
+        setCheckingDraft(false);
+      }
+    };
+    
+    if (session) {
+      checkDraft();
     }
-  }, [session]);
+  }, [session, router]);
 
-  const createStudy = useMutation({
-    mutationFn: async (data: StudyCreateData) => {
-      const response = await apiClient.post('/studies/', data);
-      return response.data;
-    },
-    onSuccess: (data) => {
-      toast({
-        title: 'Study created successfully',
-        description: 'Redirecting to study initialization...',
-      });
-      // Invalidate the studies query to refresh the list
-      queryClient.invalidateQueries({ queryKey: ['studies'] });
-      // Redirect to study initialization wizard
-      router.push(`/studies/${data.id}/initialize`);
-    },
-    onError: (error: any) => {
-      console.error('Study creation error:', error);
-      if (error.code === 'ERR_NETWORK') {
+  const handleComplete = (studyId: string) => {
+    // Navigate to the initialization progress page
+    router.push(`/studies/${studyId}/initialization`);
+  };
+
+  const handleCancel = () => {
+    // Navigate back to studies list
+    router.push('/studies');
+  };
+
+  const handleResumeDraft = () => {
+    if (draftStudy && draftStudy.study_id) {
+      // Set resuming flag to show wizard with draft data
+      setResumingDraft(true);
+    }
+  };
+
+  const handleStartNew = async () => {
+    // Delete the draft and start fresh
+    if (draftStudy && draftStudy.study_id) {
+      try {
+        await studiesApi.cancelWizard(draftStudy.study_id);
+        setDraftStudy(null);
         toast({
-          title: 'Network Error',
-          description: 'Unable to connect to the server. Please check if the backend is running.',
-          variant: 'destructive',
+          title: "Starting fresh",
+          description: "Previous draft has been cleared. You can now create a new study.",
         });
-      } else {
-        const errorMessage = error.response?.data?.detail || error.message || 'An error occurred';
+      } catch (error) {
+        console.error('Failed to cancel draft:', error);
         toast({
-          title: 'Failed to create study',
-          description: errorMessage,
-          variant: 'destructive',
+          title: "Error",
+          description: "Failed to clear the draft. Please try again.",
+          variant: "destructive",
         });
       }
-    },
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.name || !formData.code || !formData.protocol_number || !formData.phase) {
-      toast({
-        title: 'Missing required fields',
-        description: 'Please fill in all required fields',
-        variant: 'destructive',
-      });
-      return;
     }
-
-    const orgId = session?.user?.role === UserRole.SYSTEM_ADMIN ? selectedOrgId : session?.user?.org_id;
-    
-    if (!orgId) {
-      toast({
-        title: 'No organization selected',
-        description: 'Please select an organization for this study',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // Add the organization ID and convert dates
-    const studyData = {
-      ...formData,
-      org_id: orgId,
-      // Convert date strings to ISO format with time
-      planned_start_date: formData.planned_start_date 
-        ? new Date(formData.planned_start_date).toISOString()
-        : null,
-      planned_end_date: formData.planned_end_date
-        ? new Date(formData.planned_end_date).toISOString()
-        : null,
-    } as StudyCreateData;
-
-    createStudy.mutate(studyData);
   };
+
+  if (checkingDraft) {
+    return (
+      <div className="container mx-auto py-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-6">
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
           <Button
@@ -171,190 +138,81 @@ export default function NewStudyPage() {
           <div className="flex-1">
             <h1 className="text-3xl font-bold">Create New Study</h1>
             <p className="text-muted-foreground mt-1">
-              Enter basic study information to get started
+              Complete the setup process to start using your study dashboard
             </p>
           </div>
           <UserMenu />
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <Card>
-            <CardHeader>
-              <CardTitle>Study Information</CardTitle>
-              <CardDescription>
-                Basic details about the clinical study
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Organization selector for system admins */}
-              {session?.user?.role === UserRole.SYSTEM_ADMIN && (
-                <div>
-                  <Label htmlFor="organization">Organization *</Label>
-                  <Select
-                    value={selectedOrgId}
-                    onValueChange={setSelectedOrgId}
-                  >
-                    <SelectTrigger id="organization">
-                      <SelectValue placeholder="Select organization" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {organizations && organizations.length > 0 ? (
-                        organizations.map((org: any) => (
-                          <SelectItem key={org.id} value={org.id}>
-                            {org.name}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <div className="p-2 text-center text-muted-foreground">
-                          No organizations found. Please create one first.
-                        </div>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Select the organization this study belongs to. 
-                    {(!organizations || organizations.length === 0) && (
-                      <>
-                        <span className="text-destructive"> You need to create an organization first.</span>
-                        <Button
-                          type="button"
-                          variant="link"
-                          size="sm"
-                          className="ml-2 h-auto p-0"
-                          onClick={() => router.push('/organizations/new')}
-                        >
-                          Create Organization
-                        </Button>
-                      </>
-                    )}
-                  </p>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="name">Study Name *</Label>
-                  <Input
-                    id="name"
-                    placeholder="e.g., COVID-19 Vaccine Phase 3"
-                    value={formData.name || ''}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="code">Study Code *</Label>
-                  <Input
-                    id="code"
-                    placeholder="e.g., COV-VAC-P3"
-                    value={formData.code || ''}
-                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                    required
-                  />
-                </div>
+        {/* Draft Study Alert - Only show when not resuming */}
+        {draftStudy && !resumingDraft && (
+          <Alert className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Draft Study Found</AlertTitle>
+            <AlertDescription className="mt-2">
+              <p>
+                You have an incomplete study "{draftStudy.study_name}" started {' '}
+                {(() => {
+                  const draftDate = new Date(draftStudy.created_at);
+                  const now = new Date();
+                  const diffMs = now.getTime() - draftDate.getTime();
+                  const diffMins = Math.floor(diffMs / (1000 * 60));
+                  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                  
+                  if (diffMins < 1) return 'just now';
+                  if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+                  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+                  return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+                })()}.
+              </p>
+              <div className="flex gap-2 mt-4">
+                <Button onClick={handleResumeDraft} size="sm">
+                  Resume Draft
+                </Button>
+                <Button onClick={handleStartNew} variant="outline" size="sm">
+                  Start New Study
+                </Button>
+                <Button 
+                  onClick={async () => {
+                    if (confirm(`Are you sure you want to delete the draft study "${draftStudy.study_name}"? This action cannot be undone.`)) {
+                      try {
+                        await studiesApi.cancelWizard(draftStudy.study_id);
+                        toast({
+                          title: "Draft deleted",
+                          description: "The draft study has been deleted successfully.",
+                        });
+                        setDraftStudy(null);
+                      } catch (error) {
+                        toast({
+                          title: "Delete failed",
+                          description: "Failed to delete the draft study. Please try again.",
+                          variant: "destructive",
+                        });
+                      }
+                    }
+                  }}
+                  variant="destructive" 
+                  size="sm"
+                >
+                  Delete Draft
+                </Button>
               </div>
+            </AlertDescription>
+          </Alert>
+        )}
 
-              <div>
-                <Label htmlFor="protocol_number">Protocol Number *</Label>
-                <Input
-                  id="protocol_number"
-                  placeholder="e.g., PROT-2024-001"
-                  value={formData.protocol_number || ''}
-                  onChange={(e) => setFormData({ ...formData, protocol_number: e.target.value })}
-                  required
-                />
-                <p className="text-sm text-muted-foreground mt-1">
-                  Unique protocol identifier for this study
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Describe the purpose and objectives of this study..."
-                  value={formData.description || ''}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  rows={4}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="phase">Study Phase *</Label>
-                  <Select
-                    value={formData.phase}
-                    onValueChange={(value) => setFormData({ ...formData, phase: value as StudyPhase })}
-                  >
-                    <SelectTrigger id="phase">
-                      <SelectValue placeholder="Select phase" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={StudyPhase.PHASE_1}>Phase 1</SelectItem>
-                      <SelectItem value={StudyPhase.PHASE_2}>Phase 2</SelectItem>
-                      <SelectItem value={StudyPhase.PHASE_3}>Phase 3</SelectItem>
-                      <SelectItem value={StudyPhase.PHASE_4}>Phase 4</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="therapeutic_area">Therapeutic Area</Label>
-                  <Input
-                    id="therapeutic_area"
-                    placeholder="e.g., Oncology, Cardiology"
-                    value={formData.therapeutic_area || ''}
-                    onChange={(e) => setFormData({ ...formData, therapeutic_area: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="indication">Indication</Label>
-                <Input
-                  id="indication"
-                  placeholder="e.g., Advanced Non-Small Cell Lung Cancer"
-                  value={formData.indication || ''}
-                  onChange={(e) => setFormData({ ...formData, indication: e.target.value })}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="planned_start_date">Planned Start Date</Label>
-                  <Input
-                    id="planned_start_date"
-                    type="date"
-                    value={formData.planned_start_date || ''}
-                    onChange={(e) => setFormData({ ...formData, planned_start_date: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="planned_end_date">Planned End Date</Label>
-                  <Input
-                    id="planned_end_date"
-                    type="date"
-                    value={formData.planned_end_date || ''}
-                    onChange={(e) => setFormData({ ...formData, planned_end_date: e.target.value })}
-                  />
-                </div>
-              </div>
-            </CardContent>
+        {(!draftStudy || resumingDraft) && (
+          <Card className="p-6">
+            <InitializationWizard
+              studyId={resumingDraft ? draftStudy?.study_id : undefined}
+              initialStep={resumingDraft ? (draftStudy?.current_step - 1 || 0) : 0}
+              organizationId={session?.user?.org_id}
+              onComplete={handleComplete}
+              onCancel={handleCancel}
+            />
           </Card>
-
-          <div className="flex justify-between mt-6">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => router.push('/studies')}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={createStudy.isPending}>
-              {createStudy.isPending ? 'Creating...' : 'Create Study'}
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
-        </form>
+        )}
       </div>
     </div>
   );

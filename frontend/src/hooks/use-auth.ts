@@ -11,6 +11,7 @@ export function useAuth() {
 
   const isAuthenticated = status === 'authenticated' && session?.accessToken;
   const isLoading = status === 'loading';
+  const token = session?.accessToken || null;
 
   const logout = useCallback(async () => {
     // Clear session on both client and server
@@ -37,5 +38,6 @@ export function useAuth() {
     checkAuth,
     user: session?.user,
     accessToken: session?.accessToken,
+    token,
   };
 }

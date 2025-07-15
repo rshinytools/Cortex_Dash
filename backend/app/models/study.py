@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
 class StudyStatus(str, Enum):
     """Study lifecycle status"""
+    DRAFT = "draft"  # Study created but initialization not completed
     PLANNING = "planning"
     SETUP = "setup"
     ACTIVE = "active"
@@ -151,10 +152,11 @@ class Study(StudyBase, table=True):
         back_populates="study",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
-    data_uploads: List["DataSourceUpload"] = Relationship(
-        back_populates="study",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
-    )
+    # Temporarily commented out until table is created
+    # data_uploads: List["DataSourceUpload"] = Relationship(
+    #     back_populates="study",
+    #     sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    # )
     activity_logs: List["ActivityLog"] = Relationship(back_populates="study")
     dashboard_template: Optional["DashboardTemplate"] = Relationship()
     widget_mappings: List["WidgetDataMapping"] = Relationship(

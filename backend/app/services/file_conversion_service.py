@@ -3,9 +3,23 @@
 
 import os
 import zipfile
-import pandas as pd
-import pyarrow as pa
-import pyarrow.parquet as pq
+import shutil
+import json
+
+try:
+    import pandas as pd
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+except ImportError:
+    pd = None
+    pa = None
+    pq = None
+
+try:
+    import pyreadstat
+except ImportError:
+    pyreadstat = None
+
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple, Callable, Awaitable
 from datetime import datetime
@@ -14,6 +28,12 @@ from dataclasses import dataclass
 import aiofiles
 import asyncio
 import uuid
+
+from app.clinical_modules.utils.folder_structure import (
+    get_study_data_path,
+    ensure_folder_exists,
+    get_timestamp_folder
+)
 
 logger = logging.getLogger(__name__)
 
@@ -361,73 +381,434 @@ class FileConversionService:
     
     async def convert_study_files(
         self,
+        org_id: uuid.UUID,
         study_id: uuid.UUID,
         files: List[Dict[str, Any]],
         progress_callback: Optional[Callable[[int, Optional[str]], Awaitable[None]]] = None
-    ) -> List[Dict[str, Any]]:
+    ) -> Dict[str, Any]:
         """
         Convert multiple study files to parquet with progress tracking
         
         Args:
+            org_id: Organization ID
             study_id: The study ID
             files: List of file information dictionaries
             progress_callback: Async callback for progress updates
             
         Returns:
-            List of converted file information
+            Comprehensive results including datasets, converted files, and folder information
         """
-        converted_files = []
-        total_files = len(files)
+        results = {
+            "org_id": str(org_id),
+            "study_id": str(study_id),
+            "timestamp": get_timestamp_folder(),
+            "processed_at": datetime.utcnow().isoformat(),
+            "datasets": {},
+            "converted_files": [],
+            "errors": [],
+            "warnings": []
+        }
         
-        for idx, file_info in enumerate(files):
+        # Create target folder structure using proper pattern
+        target_path = get_study_data_path(org_id, study_id, results["timestamp"])
+        ensure_folder_exists(target_path)
+        
+        # Track progress
+        total_steps = len(files) * 3  # Extract, convert, schema for each file
+        current_step = 0
+        
+        async def update_progress(message: str):
+            nonlocal current_step
+            current_step += 1
+            if progress_callback:
+                percent = int((current_step / total_steps) * 100)
+                await progress_callback(percent, message)
+        
+        # Process each uploaded file
+        for file_info in files:
             try:
-                # Update progress
-                if progress_callback:
-                    current_file = file_info.get("name", "unknown")
-                    progress = int((idx / total_files) * 100)
-                    await progress_callback(progress, current_file)
-                
-                # Determine file format
                 file_path = Path(file_info["path"])
-                file_extension = file_path.suffix.lower()
+                if not file_path.exists():
+                    results["errors"].append(f"File not found: {file_info['name']}")
+                    continue
                 
-                # Set up output path
-                output_dir = Path(f"/data/studies/{study_id}/parquet_data")
-                output_dir.mkdir(parents=True, exist_ok=True)
-                
-                # Convert based on file type
-                if file_info.get("type", "").lower() == "zip" or file_extension == ".zip":
-                    result = await self._process_zip_file(str(file_path), str(output_dir))
+                # Step 1: Extract if ZIP
+                if file_path.suffix.lower() == '.zip':
+                    await update_progress(f"Extracting {file_info['name']}...")
+                    extracted_files = await self._extract_zip_file_v2(file_path, target_path)
+                    
+                    # Process each extracted file
+                    for extracted_file in extracted_files:
+                        if extracted_file.suffix.lower() in self.SUPPORTED_FORMATS:
+                            await update_progress(f"Converting {extracted_file.name} to parquet...")
+                            parquet_path = await self._convert_to_parquet_v2(extracted_file, target_path)
+                            
+                            if parquet_path:
+                                await update_progress(f"Extracting schema from {parquet_path.name}...")
+                                schema_info = await self._extract_parquet_schema_v2(parquet_path)
+                                dataset_name = parquet_path.stem.lower()
+                                results["datasets"][dataset_name] = schema_info
+                                results["converted_files"].append({
+                                    "original": str(extracted_file),
+                                    "parquet": str(parquet_path),
+                                    "dataset": dataset_name
+                                })
                 else:
-                    result = await self._process_single_file(
-                        str(file_path),
-                        str(output_dir),
-                        file_extension[1:] if file_extension else file_info.get("type", "unknown")
-                    )
-                
-                if result.success:
-                    # Add conversion metadata
-                    for extracted_file in result.files_extracted:
-                        converted_files.append({
-                            **extracted_file,
-                            "source_file": file_info["name"],
-                            "converted_at": datetime.utcnow().isoformat()
+                    # Step 2: Convert to parquet
+                    await update_progress(f"Converting {file_info['name']} to parquet...")
+                    
+                    # Copy to target folder first
+                    target_file = target_path / file_path.name
+                    shutil.copy2(file_path, target_file)
+                    
+                    parquet_path = await self._convert_to_parquet_v2(target_file, target_path)
+                    
+                    if parquet_path:
+                        # Step 3: Extract schema
+                        await update_progress(f"Extracting schema from {parquet_path.name}...")
+                        schema_info = await self._extract_parquet_schema_v2(parquet_path)
+                        dataset_name = parquet_path.stem.lower()
+                        results["datasets"][dataset_name] = schema_info
+                        results["converted_files"].append({
+                            "original": str(target_file),
+                            "parquet": str(parquet_path),
+                            "dataset": dataset_name
                         })
-                else:
-                    logger.error(f"Failed to convert {file_info['name']}: {result.error_message}")
-                    if progress_callback:
-                        # Still update progress even on failure
-                        await progress_callback(
-                            int(((idx + 1) / total_files) * 100),
-                            f"Failed: {file_info['name']}"
-                        )
-                
+                        
             except Exception as e:
-                logger.error(f"Error converting file {file_info.get('name', 'unknown')}: {str(e)}")
-                continue
+                logger.error(f"Error processing file {file_info['name']}: {str(e)}")
+                results["errors"].append(f"Failed to process {file_info['name']}: {str(e)}")
         
         # Final progress update
         if progress_callback:
-            await progress_callback(100, "Conversion complete")
+            await progress_callback(100, "Processing complete")
         
-        return converted_files
+        # Add summary statistics
+        results["summary"] = {
+            "total_files_uploaded": len(files),
+            "total_datasets_created": len(results["datasets"]),
+            "total_files_converted": len(results["converted_files"]),
+            "data_folder": str(target_path),
+            "has_errors": len(results["errors"]) > 0
+        }
+        
+        # Merge warnings from self.warnings
+        if self.warnings:
+            results["warnings"].extend(self.warnings)
+        
+        return results
+    
+    async def _extract_zip_file_v2(self, zip_path: Path, target_dir: Path) -> List[Path]:
+        """Extract ZIP file and return list of extracted files"""
+        extracted_files = []
+        
+        try:
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                # Extract to temporary folder first
+                temp_extract = target_dir / f"_temp_extract_{zip_path.stem}"
+                temp_extract.mkdir(exist_ok=True)
+                
+                zip_ref.extractall(temp_extract)
+                
+                # Move files to target directory (flattening structure)
+                for item in temp_extract.rglob('*'):
+                    if item.is_file() and not item.name.startswith('.'):
+                        # Skip hidden files and non-data files
+                        if item.suffix.lower() in ['.csv', '.xlsx', '.xls', '.sas7bdat', '.xpt']:
+                            target_file = target_dir / item.name
+                            
+                            # Handle duplicate names
+                            if target_file.exists():
+                                base = target_file.stem
+                                ext = target_file.suffix
+                                counter = 1
+                                while target_file.exists():
+                                    target_file = target_dir / f"{base}_{counter}{ext}"
+                                    counter += 1
+                            
+                            shutil.move(str(item), str(target_file))
+                            extracted_files.append(target_file)
+                
+                # Clean up temp directory
+                shutil.rmtree(temp_extract)
+                
+        except Exception as e:
+            logger.error(f"Error extracting ZIP file: {str(e)}")
+            raise
+        
+        return extracted_files
+    
+    async def _convert_to_parquet_v2(self, file_path: Path, target_dir: Path) -> Optional[Path]:
+        """Convert file to parquet format"""
+        extension = file_path.suffix.lower()
+        
+        if extension not in self.SUPPORTED_FORMATS:
+            logger.warning(f"Unsupported file type for conversion: {extension}")
+            return None
+        
+        try:
+            # Use appropriate converter based on extension
+            if extension == '.csv':
+                return await self._convert_csv_to_parquet_v2(file_path, target_dir)
+            elif extension in ['.xlsx', '.xls']:
+                return await self._convert_excel_to_parquet_v2(file_path, target_dir)
+            elif extension == '.sas7bdat':
+                return await self._convert_sas_to_parquet_v2(file_path, target_dir)
+            elif extension == '.xpt':
+                return await self._convert_xpt_to_parquet_v2(file_path, target_dir)
+            else:
+                return None
+        except Exception as e:
+            logger.error(f"Error converting {file_path.name}: {str(e)}")
+            return None
+    
+    async def _convert_csv_to_parquet_v2(self, file_path: Path, target_dir: Path) -> Optional[Path]:
+        """Convert CSV to parquet"""
+        if pd is None:
+            logger.error("pandas not available for CSV conversion")
+            return None
+        
+        try:
+            loop = asyncio.get_event_loop()
+            
+            # Read CSV with proper handling
+            df = await loop.run_in_executor(
+                None,
+                lambda: pd.read_csv(
+                    file_path,
+                    encoding='utf-8',
+                    encoding_errors='replace',
+                    low_memory=False,
+                    na_values=['', 'NA', 'N/A', 'null', 'NULL', '.', ' ']
+                )
+            )
+            
+            # Clean column names
+            df.columns = [col.strip().upper() for col in df.columns]
+            
+            # Save as parquet
+            parquet_path = target_dir / f"{file_path.stem}.parquet"
+            
+            await loop.run_in_executor(
+                None,
+                lambda: df.to_parquet(parquet_path, engine='pyarrow', compression='snappy')
+            )
+            
+            return parquet_path
+            
+        except Exception as e:
+            logger.error(f"Error converting CSV to parquet: {str(e)}")
+            return None
+    
+    async def _convert_excel_to_parquet_v2(self, file_path: Path, target_dir: Path) -> Optional[Path]:
+        """Convert Excel to parquet"""
+        if pd is None:
+            logger.error("pandas not available for Excel conversion")
+            return None
+        
+        try:
+            loop = asyncio.get_event_loop()
+            
+            # Read Excel
+            df = await loop.run_in_executor(
+                None,
+                lambda: pd.read_excel(file_path, engine='openpyxl' if file_path.suffix == '.xlsx' else None)
+            )
+            
+            # Clean column names
+            df.columns = [col.strip().upper() for col in df.columns]
+            
+            # Save as parquet
+            parquet_path = target_dir / f"{file_path.stem}.parquet"
+            
+            await loop.run_in_executor(
+                None,
+                lambda: df.to_parquet(parquet_path, engine='pyarrow', compression='snappy')
+            )
+            
+            return parquet_path
+            
+        except Exception as e:
+            logger.error(f"Error converting Excel to parquet: {str(e)}")
+            return None
+    
+    async def _convert_sas_to_parquet_v2(self, file_path: Path, target_dir: Path) -> Optional[Path]:
+        """Convert SAS7BDAT to parquet"""
+        if pyreadstat is None:
+            logger.error("pyreadstat not available for SAS conversion")
+            return None
+        
+        try:
+            loop = asyncio.get_event_loop()
+            
+            # Read SAS file
+            df, meta = await loop.run_in_executor(
+                None,
+                lambda: pyreadstat.read_sas7bdat(str(file_path))
+            )
+            
+            # Clean column names
+            df.columns = [col.strip().upper() for col in df.columns]
+            
+            # Save as parquet
+            parquet_path = target_dir / f"{file_path.stem}.parquet"
+            
+            await loop.run_in_executor(
+                None,
+                lambda: df.to_parquet(parquet_path, engine='pyarrow', compression='snappy')
+            )
+            
+            # Save metadata
+            meta_path = target_dir / f"{file_path.stem}_metadata.json"
+            metadata = {
+                "column_labels": dict(zip(meta.column_names, meta.column_labels)) if hasattr(meta, 'column_labels') and meta.column_labels else {},
+                "file_label": meta.file_label if hasattr(meta, 'file_label') else None,
+                "file_encoding": meta.file_encoding if hasattr(meta, 'file_encoding') else None,
+                "original_format": "sas7bdat"
+            }
+            with open(meta_path, 'w') as f:
+                json.dump(metadata, f, indent=2)
+            
+            return parquet_path
+            
+        except Exception as e:
+            logger.error(f"Error converting SAS to parquet: {str(e)}")
+            return None
+    
+    async def _convert_xpt_to_parquet_v2(self, file_path: Path, target_dir: Path) -> Optional[Path]:
+        """Convert XPT to parquet"""
+        if pyreadstat is None:
+            logger.error("pyreadstat not available for XPT conversion")
+            return None
+        
+        try:
+            loop = asyncio.get_event_loop()
+            
+            # Read XPT file
+            df, meta = await loop.run_in_executor(
+                None,
+                lambda: pyreadstat.read_xport(str(file_path))
+            )
+            
+            # Clean column names
+            df.columns = [col.strip().upper() for col in df.columns]
+            
+            # Save as parquet
+            parquet_path = target_dir / f"{file_path.stem}.parquet"
+            
+            await loop.run_in_executor(
+                None,
+                lambda: df.to_parquet(parquet_path, engine='pyarrow', compression='snappy')
+            )
+            
+            # Save metadata
+            meta_path = target_dir / f"{file_path.stem}_metadata.json"
+            metadata = {
+                "column_labels": dict(zip(meta.column_names, meta.column_labels)) if hasattr(meta, 'column_labels') and meta.column_labels else {},
+                "original_format": "xpt"
+            }
+            with open(meta_path, 'w') as f:
+                json.dump(metadata, f, indent=2)
+            
+            return parquet_path
+            
+        except Exception as e:
+            logger.error(f"Error converting XPT to parquet: {str(e)}")
+            return None
+    
+    async def _extract_parquet_schema_v2(self, parquet_path: Path) -> Dict[str, Any]:
+        """Extract schema information from parquet file"""
+        if pq is None or pd is None:
+            logger.error("pyarrow/pandas not available for parquet schema extraction")
+            return {}
+        
+        try:
+            loop = asyncio.get_event_loop()
+            
+            # Read parquet file
+            def read_parquet_schema():
+                parquet_file = pq.ParquetFile(parquet_path)
+                metadata = parquet_file.metadata
+                schema = parquet_file.schema
+                
+                # Get first few rows for sampling
+                table = parquet_file.read(columns=None, use_threads=True)
+                df = table.to_pandas()
+                
+                return metadata, schema, df
+            
+            metadata, schema, df = await loop.run_in_executor(None, read_parquet_schema)
+            
+            # Build schema info
+            schema_info = {
+                "file_name": parquet_path.name,
+                "file_path": str(parquet_path),
+                "row_count": metadata.num_rows,
+                "column_count": len(schema),
+                "file_size_mb": round(parquet_path.stat().st_size / (1024 * 1024), 2),
+                "columns": {},
+                "sample_data": []
+            }
+            
+            # Extract column information
+            for field in schema:
+                col_name = field.name
+                
+                # Get pandas dtype for better type mapping
+                pandas_dtype = str(df[col_name].dtype)
+                
+                # Map to our standard types
+                if 'int' in pandas_dtype or 'float' in pandas_dtype:
+                    data_type = 'number'
+                elif 'bool' in pandas_dtype:
+                    data_type = 'boolean'
+                elif 'datetime' in pandas_dtype:
+                    data_type = 'datetime'
+                else:
+                    data_type = 'string'
+                
+                # Get column statistics
+                col_info = {
+                    "type": data_type,
+                    "parquet_type": str(field.type),
+                    "pandas_dtype": pandas_dtype,
+                    "nullable": field.nullable,
+                    "null_count": int(df[col_name].isnull().sum()),
+                    "unique_count": int(df[col_name].nunique())
+                }
+                
+                # Add sample values for categorical columns
+                if col_info["unique_count"] <= 20:
+                    unique_values = df[col_name].dropna().unique().tolist()
+                    col_info["unique_values"] = [str(v) for v in unique_values[:20]]
+                
+                # Add statistics for numeric columns
+                if data_type == 'number':
+                    col_info["stats"] = {
+                        "min": float(df[col_name].min()) if not pd.isna(df[col_name].min()) else None,
+                        "max": float(df[col_name].max()) if not pd.isna(df[col_name].max()) else None,
+                        "mean": float(df[col_name].mean()) if not pd.isna(df[col_name].mean()) else None,
+                        "std": float(df[col_name].std()) if not pd.isna(df[col_name].std()) else None
+                    }
+                
+                schema_info["columns"][col_name] = col_info
+            
+            # Add sample rows (first 5)
+            sample_df = df.head(5).fillna('')
+            schema_info["sample_data"] = sample_df.to_dict('records')
+            
+            # Check for metadata file
+            meta_path = parquet_path.parent / f"{parquet_path.stem}_metadata.json"
+            if meta_path.exists():
+                with open(meta_path, 'r') as f:
+                    schema_info["original_metadata"] = json.load(f)
+            
+            return schema_info
+            
+        except Exception as e:
+            logger.error(f"Error extracting parquet schema: {str(e)}")
+            return {
+                "file_name": parquet_path.name,
+                "file_path": str(parquet_path),
+                "error": str(e)
+            }

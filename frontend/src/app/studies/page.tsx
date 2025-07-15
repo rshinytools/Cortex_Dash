@@ -42,7 +42,11 @@ import {
   Trash2,
   Power,
   PowerOff,
-  Upload
+  Upload,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  Rocket
 } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
 import { UserRole, StudyStatus, StudyPhase } from '@/types';
@@ -77,6 +81,13 @@ interface Study {
   organization?: {
     name: string;
   };
+  // Initialization tracking
+  initialization_status?: string;
+  initialization_progress?: number;
+  template_applied_at?: string;
+  data_uploaded_at?: string;
+  mappings_configured_at?: string;
+  activated_at?: string;
 }
 
 export default function StudiesPage() {
@@ -86,10 +97,11 @@ export default function StudiesPage() {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [initializationFilter, setInitializationFilter] = useState<string>('all');
 
   // Declare all hooks before any conditional logic
   const { data: studies, isLoading } = useQuery({
-    queryKey: ['studies', searchTerm, statusFilter],
+    queryKey: ['studies', searchTerm, statusFilter, initializationFilter],
     queryFn: async () => {
       const response = await apiClient.get<Study[]>('/studies/');
       let filtered = response.data;
@@ -105,6 +117,16 @@ export default function StudiesPage() {
       
       if (statusFilter !== 'all') {
         filtered = filtered.filter(study => study.status === statusFilter);
+      } else {
+        // By default, don't show draft studies unless specifically filtered
+        filtered = filtered.filter(study => study.status !== StudyStatus.DRAFT);
+      }
+      
+      if (initializationFilter !== 'all') {
+        filtered = filtered.filter(study => {
+          const initStatus = study.initialization_status || 'not_started';
+          return initStatus === initializationFilter;
+        });
       }
       
       return filtered;
@@ -194,6 +216,8 @@ export default function StudiesPage() {
 
   const getStatusBadgeVariant = (status: StudyStatus) => {
     switch (status) {
+      case StudyStatus.DRAFT:
+        return 'outline';
       case StudyStatus.ACTIVE:
         return 'default';
       case StudyStatus.PLANNING:
@@ -223,6 +247,49 @@ export default function StudiesPage() {
         return 'default';
       default:
         return 'secondary';
+    }
+  };
+
+  const getInitializationStatus = (study: Study) => {
+    const status = study.initialization_status || 'not_started';
+    const progress = study.initialization_progress || 0;
+
+    switch (status) {
+      case 'not_started':
+        return (
+          <Badge variant="outline" className="gap-1">
+            <AlertCircle className="h-3 w-3" />
+            Not Started
+          </Badge>
+        );
+      case 'pending':
+      case 'in_progress':
+        return (
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
+            <span className="text-sm text-muted-foreground">{progress}%</span>
+          </div>
+        );
+      case 'completed':
+        return (
+          <Badge variant="default" className="gap-1 bg-green-500">
+            <CheckCircle2 className="h-3 w-3" />
+            Completed
+          </Badge>
+        );
+      case 'failed':
+        return (
+          <Badge variant="destructive" className="gap-1">
+            <AlertCircle className="h-3 w-3" />
+            Failed
+          </Badge>
+        );
+      default:
+        return (
+          <Badge variant="secondary">
+            {status}
+          </Badge>
+        );
     }
   };
 
@@ -284,12 +351,26 @@ export default function StudiesPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value={StudyStatus.DRAFT}>Draft</SelectItem>
                 <SelectItem value={StudyStatus.PLANNING}>Planning</SelectItem>
                 <SelectItem value={StudyStatus.SETUP}>Setup</SelectItem>
                 <SelectItem value={StudyStatus.ACTIVE}>Active</SelectItem>
                 <SelectItem value={StudyStatus.PAUSED}>Paused</SelectItem>
                 <SelectItem value={StudyStatus.COMPLETED}>Completed</SelectItem>
                 <SelectItem value={StudyStatus.ARCHIVED}>Archived</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={initializationFilter} onValueChange={setInitializationFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Initialization status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Initialization</SelectItem>
+                <SelectItem value="not_started">Not Started</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="in_progress">In Progress</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="failed">Failed</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -307,6 +388,7 @@ export default function StudiesPage() {
                   <TableHead>Organization</TableHead>
                   <TableHead>Phase</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Initialization</TableHead>
                   <TableHead>Start Date</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -334,6 +416,9 @@ export default function StudiesPage() {
                       <Badge variant={getStatusBadgeVariant(study.status)}>
                         {study.status}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {getInitializationStatus(study)}
                     </TableCell>
                     <TableCell>
                       {study.start_date 
@@ -388,6 +473,14 @@ export default function StudiesPage() {
                             <Settings className="mr-2 h-4 w-4" />
                             Settings
                           </DropdownMenuItem>
+                          {study.initialization_status && study.initialization_status !== 'completed' && (
+                            <DropdownMenuItem 
+                              onClick={() => router.push(`/studies/${study.id}/initialization`)}
+                            >
+                              <Rocket className="mr-2 h-4 w-4" />
+                              View Initialization
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuSeparator />
                           {study.is_active ? (
                             <DropdownMenuItem 

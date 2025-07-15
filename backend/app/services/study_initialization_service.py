@@ -12,7 +12,7 @@ import json
 from sqlmodel import Session
 from fastapi import HTTPException
 
-from app.models import Study, UnifiedDashboardTemplate, User
+from app.models import Study, DashboardTemplate as UnifiedDashboardTemplate, User
 from app.core.db import engine
 from app.core.websocket_manager import websocket_manager
 from app.services.file_conversion_service import FileConversionService

@@ -8,12 +8,13 @@ from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, BackgroundTasks, status
-from sqlmodel import Session
+from sqlmodel import Session, select
 from pydantic import BaseModel
 
 from app.api.deps import get_db, get_current_user
-from app.models import User, Study
+from app.models import User, Study, StudyDataConfiguration
 from app.services.study_initialization_service import StudyInitializationService
+from app.services.file_processing_service import FileProcessingService
 from app.core.permissions import has_permission, Permission
 from app.core.celery_app import celery_app
 
@@ -204,18 +205,117 @@ async def upload_study_data(
                 detail=f"Failed to save file {file.filename}"
             )
     
-    # Store upload info in study metadata
-    if not study.metadata:
-        study.metadata = {}
+    # Store upload info in study initialization steps
+    if not study.initialization_steps:
+        study.initialization_steps = {}
     
-    study.metadata["pending_uploads"] = uploaded_files
+    logger.info(f"Saving {len(uploaded_files)} files to pending_uploads")
+    study.initialization_steps["pending_uploads"] = uploaded_files
+    
+    # Force update to ensure it's saved
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(study, "initialization_steps")
+    
     db.add(study)
     db.commit()
+    db.refresh(study)
+    
+    logger.info(f"After save, pending_uploads has {len(study.initialization_steps.get('pending_uploads', []))} files")
     
     return {
         "message": "Files uploaded successfully",
         "files": uploaded_files,
         "total_files": len(uploaded_files)
+    }
+
+
+@router.post("/studies/{study_id}/initialize/process-files")
+async def process_uploaded_files(
+    study_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Process uploaded files to extract schema and prepare for mapping"""
+    # Check permissions
+    if not has_permission(current_user, Permission.MANAGE_STUDY):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to manage study"
+        )
+    
+    # Get study
+    study = db.get(Study, study_id)
+    if not study:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Study not found"
+        )
+    
+    # Check organization access
+    if study.org_id != current_user.org_id and not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied to this study"
+        )
+    
+    # Get uploaded files
+    uploaded_files = study.initialization_steps.get("pending_uploads", [])
+    if not uploaded_files:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No uploaded files found"
+        )
+    
+    # Process files
+    file_processor = FileProcessingService()
+    processing_results = await file_processor.process_uploaded_files(
+        str(study_id),
+        uploaded_files
+    )
+    
+    # Check if StudyDataConfiguration exists
+    study_data_config = db.exec(
+        select(StudyDataConfiguration).where(
+            StudyDataConfiguration.study_id == study_id
+        )
+    ).first()
+    
+    if not study_data_config:
+        study_data_config = StudyDataConfiguration(
+            study_id=study_id,
+            dataset_schemas=processing_results["datasets"],
+            created_by=current_user.id
+        )
+        db.add(study_data_config)
+    else:
+        study_data_config.dataset_schemas = processing_results["datasets"]
+        study_data_config.updated_at = datetime.utcnow()
+        study_data_config.updated_by = current_user.id
+    
+    # Store processing results in study
+    study.initialization_steps["file_processing"] = processing_results
+    
+    # Generate mapping suggestions if template is selected
+    if study.dashboard_template_id and study.initialization_steps.get("wizard_state", {}).get("template_requirements"):
+        template_requirements = study.initialization_steps["wizard_state"]["template_requirements"]
+        suggestions = file_processor.generate_mapping_suggestions(
+            template_requirements,
+            processing_results["datasets"]
+        )
+        study.initialization_steps["mapping_suggestions"] = suggestions
+    
+    db.add(study)
+    db.commit()
+    
+    return {
+        "message": "Files processed successfully",
+        "datasets": list(processing_results["datasets"].keys()),
+        "total_columns": sum(
+            len(ds.get("columns", {})) 
+            for ds in processing_results["datasets"].values()
+        ),
+        "errors": processing_results.get("errors", []),
+        "warnings": processing_results.get("warnings", [])
     }
 
 

@@ -5,7 +5,7 @@ import uuid
 from typing import Optional, List, Dict, Any
 from sqlmodel import Session, select
 
-from app.models import UnifiedDashboardTemplate
+from app.models import DashboardTemplate as UnifiedDashboardTemplate
 
 
 class TemplateService:

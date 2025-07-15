@@ -72,6 +72,7 @@ export enum StudyPhase {
 }
 
 export enum StudyStatus {
+  DRAFT = 'draft',
   PLANNING = 'planning',
   SETUP = 'setup',
   ACTIVE = 'active',

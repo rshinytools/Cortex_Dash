@@ -65,8 +65,12 @@ export function useStudyMenu(studyId: string): UseStudyMenuResult {
       setError(null)
       
       // First, get the study to find its menu template
-      const studyResponse = await fetch(`/api/v1/studies/${studyId}`, {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+      const studyResponse = await fetch(`${baseUrl}/studies/${studyId}/`, {
         credentials: 'include',
+        headers: {
+          'Authorization': `Bearer ${(session as any).access_token}`,
+        },
       })
 
       if (!studyResponse.ok) {
@@ -83,8 +87,11 @@ export function useStudyMenu(studyId: string): UseStudyMenuResult {
       }
 
       // Fetch the dashboard template which includes the menu structure
-      const templateResponse = await fetch(`/api/v1/dashboard-templates/${study.dashboard_template_id}`, {
+      const templateResponse = await fetch(`${baseUrl}/dashboard-templates/${study.dashboard_template_id}`, {
         credentials: 'include',
+        headers: {
+          'Authorization': `Bearer ${(session as any).access_token}`,
+        },
       })
 
       if (!templateResponse.ok) {
@@ -94,7 +101,9 @@ export function useStudyMenu(studyId: string): UseStudyMenuResult {
       const dashboardTemplate = await templateResponse.json()
       
       // Extract menu items from the template structure
-      const menuItems = dashboardTemplate.template_structure?.menu?.items || []
+      // Check both old and new structure formats
+      const menuStructure = dashboardTemplate.template_structure?.menuStructure || dashboardTemplate.template_structure?.menu
+      const menuItems = menuStructure?.items || []
       
       // Cache the raw menu items
       menuCache.set(studyId, {

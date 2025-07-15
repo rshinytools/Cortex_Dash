@@ -114,10 +114,13 @@ def get_organization_user_count(db: Session, org_id: uuid.UUID) -> int:
 
 
 def get_organization_study_count(db: Session, org_id: uuid.UUID) -> int:
-    """Get count of studies in organization"""
+    """Get count of studies in organization (excluding drafts)"""
     from app.models import Study
     return db.exec(
-        select(func.count(Study.id)).where(Study.org_id == org_id)
+        select(func.count(Study.id)).where(
+            Study.org_id == org_id,
+            Study.status != "DRAFT"  # Don't count draft studies
+        )
     ).first() or 0
 
 

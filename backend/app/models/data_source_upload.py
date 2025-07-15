@@ -119,7 +119,8 @@ class DataSourceUpload(DataSourceUploadBase, table=True):
     )
     
     # Relationships
-    study: "Study" = Relationship(back_populates="data_uploads")
+    # Temporarily commented out until table is created
+    # study: "Study" = Relationship(back_populates="data_uploads")
     creator: "User" = Relationship(
         sa_relationship_kwargs={"foreign_keys": "[DataSourceUpload.created_by]"}
     )

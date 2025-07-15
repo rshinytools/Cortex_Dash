@@ -90,50 +90,123 @@ Studies are the core organizational unit in the Clinical Dashboard Platform. Eac
 
 ### Study Initialization
 
-After creating a study, it needs to be initialized before data can be loaded and dashboards configured.
+The Study Initialization process is a comprehensive 4-phase workflow that sets up your study with templates, data, and configurations. The entire process features real-time progress tracking via WebSocket connections.
 
-#### What Happens During Initialization
-The initialization process sets up:
-- Default folder structure for study data
-- Pipeline configuration for data processing
-- Dashboard templates (if selected)
-- Data source configurations
-- Compliance settings (21 CFR Part 11, GDPR, HIPAA)
-- Default dashboard configuration
+#### Initialization Phases
+
+##### Phase 1: Template Application
+- Applies the selected dashboard template to your study
+- Creates menu structures and dashboard configurations
+- Extracts data requirements from widgets
+- Sets up initial field mapping templates
+
+##### Phase 2: Data Upload & Processing
+- Upload your clinical data files (SAS, CSV, Excel, XPT formats)
+- Automatic conversion to optimized Parquet format
+- Data validation and quality checks
+- Progress tracking for large file conversions
+
+##### Phase 3: Field Mapping Configuration
+- Intelligent CDISC SDTM/ADaM field detection
+- Automatic mapping suggestions with confidence scores
+- Manual override capability for complex mappings
+- Widget-based data requirement validation
+
+##### Phase 4: Study Activation
+- Final validation of all configurations
+- Activation of data pipelines
+- Dashboard visibility setup
+- Study goes live for users
 
 #### Using the Initialization Wizard
-1. After creating a study, you're automatically directed to the initialization wizard
-2. **Step 1: Select Dashboard Template**
-   - Choose from available templates (Safety, Efficacy, Enrollment, etc.)
-   - Or skip to configure manually later
-3. **Step 2: Configure Data Sources** (Optional)
-   - Set up connections to data sources
-   - Configure folder paths for data uploads
-4. **Step 3: Review and Activate**
+
+The new initialization wizard provides a streamlined 4-step process:
+
+1. **Navigate to Studies > Create New Study**
+2. **Step 1: Basic Information**
+   - Study name, code, and protocol number
+   - Clinical phase selection
+   - Organization assignment
+   - Therapeutic area and indication
+
+3. **Step 2: Template Selection**
+   - Browse available dashboard templates
+   - Preview template contents
+   - View included widgets and data requirements
+   - Select appropriate template for your study type
+
+4. **Step 3: Data Upload**
+   - Drag and drop or browse for data files
+   - Supported formats: SAS (.sas7bdat), CSV, Excel, XPT
+   - Real-time upload progress
+   - Automatic file validation
+
+5. **Step 4: Review & Activate**
    - Review all settings
-   - Click **Complete Setup** to initialize the study
+   - Check data requirements coverage
+   - Confirm field mappings
+   - Click **Initialize Study** to start the process
+
+#### Real-Time Progress Monitoring
+
+Once initialization begins, you'll see:
+- Overall progress percentage
+- Current phase status
+- Step-by-step progress indicators
+- Estimated time remaining
+- Detailed logs for troubleshooting
+
+The page updates in real-time via WebSocket, so you can:
+- Leave and return to check progress
+- Continue working elsewhere while initialization runs
+- Receive notifications when complete
+
+#### Initialization Status Indicators
+
+Studies display initialization status in the study list:
+- **Not Started** (gray): Study created but not initialized
+- **In Progress** (blue with spinner): Currently initializing with progress %
+- **Completed** (green): Successfully initialized and ready
+- **Failed** (red): Initialization encountered errors
+
+#### Troubleshooting Initialization
+
+If initialization fails:
+1. Check the detailed error message
+2. Common issues:
+   - Invalid file formats
+   - Missing required data columns
+   - Template compatibility issues
+3. Use the **Retry** button to restart from the failed step
+4. Contact support if issues persist
 
 #### Manual Initialization via API
-For programmatic initialization, use the POST endpoint:
+
+For programmatic initialization with progress tracking:
 ```
-POST /api/v1/studies/{study_id}/initialize
+POST /api/v1/studies/{study_id}/initialize/progress
 ```
 
 Request body:
 ```json
 {
-  "dashboard_template_id": "uuid-of-template",
-  "data_source_config": {
-    "primary": {
-      "type": "folder",
-      "path": "/custom/path"
-    }
-  },
-  "pipeline_config": {
-    "frequency": "daily",
-    "start_time": "02:00"
-  },
-  "auto_configure": true
+  "template_id": "uuid-of-template",
+  "skip_data_upload": false
+}
+```
+
+Monitor progress via WebSocket:
+```
+WS /ws/studies/{study_id}/initialization?token={auth_token}
+```
+
+Progress messages:
+```json
+{
+  "type": "progress",
+  "step": "data_conversion",
+  "progress": 75,
+  "message": "Converting ae.sas7bdat to Parquet format..."
 }
 ```
 

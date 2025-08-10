@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, AlertCircle } from 'lucide-react';
 import { studiesApi } from '@/lib/api/studies';
 import { cn } from '@/lib/utils';
 
@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { BasicInfoStep } from './steps/basic-info';
 import { TemplateSelectionStep } from './steps/template-selection';
 import { DataUploadStep } from './steps/data-upload';
+import { DataTransformationStep } from './steps/data-transformation';
 import { ReviewMappingsStep } from './steps/review-mappings';
 
 export interface WizardStep {
@@ -38,6 +39,11 @@ const wizardSteps: WizardStep[] = [
     id: 'data_upload',
     name: 'Upload Data',
     component: DataUploadStep,
+  },
+  {
+    id: 'data_transformation',
+    name: 'Transform Data',
+    component: DataTransformationStep,
   },
   {
     id: 'review_mappings',
@@ -80,6 +86,7 @@ export function InitializationWizard({
     }
     return completed;
   });
+  const [errorSteps, setErrorSteps] = useState<Set<string>>(new Set());
 
   // Load study data if resuming
   useEffect(() => {
@@ -89,8 +96,8 @@ export function InitializationWizard({
           const study = await studiesApi.getStudy(existingStudyId);
           const wizardState = await studiesApi.getWizardState(existingStudyId);
           
-          // Populate wizard data from study
-          setWizardData({
+          // Populate wizard data from study and wizard state
+          const baseData = {
             basic_info: {
               name: study.name,
               protocol_number: study.protocol_number,
@@ -102,8 +109,23 @@ export function InitializationWizard({
             template_selection: {
               templateId: study.dashboard_template_id,
             },
-            // Add other step data as needed
-          });
+          };
+          
+          // Merge with any saved wizard data
+          if (wizardState.data) {
+            setWizardData({ ...baseData, ...wizardState.data });
+          } else {
+            setWizardData(baseData);
+          }
+          
+          // Mark completed steps based on wizard state
+          if (wizardState.completed_steps) {
+            const completed = new Set<string>();
+            wizardState.completed_steps.forEach((step: string) => {
+              completed.add(step);
+            });
+            setCompletedSteps(completed);
+          }
           
           // Update current step from wizard state
           if (wizardState.current_step) {
@@ -218,6 +240,39 @@ export function InitializationWizard({
           }
           break;
 
+        case 'data_transformation':
+          // Data transformation step - pipelines are executed within the component
+          // Save transformation step completion status
+          if (studyId) {
+            try {
+              await studiesApi.completeTransformationStep(studyId, {
+                skipped: stepData.skipped || false,
+                pipeline_ids: stepData.pipelines || [],
+              });
+              
+              if (stepData.pipelines && stepData.pipelines.length > 0) {
+                toast({
+                  title: 'Transformations Complete',
+                  description: `Successfully executed ${stepData.pipelines.length} pipeline(s)`,
+                });
+              } else if (stepData.skipped) {
+                toast({
+                  title: 'Transformation Skipped',
+                  description: 'Proceeding without data transformation',
+                });
+              }
+            } catch (error) {
+              console.error('Failed to complete transformation step:', error);
+              toast({
+                title: 'Error',
+                description: 'Failed to save transformation step. You can continue anyway.',
+                variant: 'destructive',
+              });
+              // Don't throw error to allow continuing
+            }
+          }
+          break;
+
         case 'review_mappings':
           // Complete wizard
           if (studyId) {
@@ -243,14 +298,37 @@ export function InitializationWizard({
           break;
       }
 
-      // Mark step as completed
+      // Mark step as completed and remove from error steps
       setCompletedSteps(prev => new Set(prev).add(stepId));
+      setErrorSteps(prev => {
+        const newErrors = new Set(prev);
+        newErrors.delete(stepId);
+        return newErrors;
+      });
+      
+      // Save wizard state to backend
+      if (studyId) {
+        try {
+          await studiesApi.updateWizardState(studyId, {
+            current_step: currentStep + 2, // Backend expects 1-based index
+            data: wizardData,
+            completed_steps: Array.from(completedSteps).concat(stepId),
+          });
+        } catch (error) {
+          console.error('Failed to save wizard state:', error);
+          // Continue anyway - state saving is not critical
+        }
+      }
       
       // Move to next step
       if (!isLastStep) {
         goToNextStep();
       }
     } catch (error: any) {
+      // Mark step as having an error
+      const stepId = wizardSteps[currentStep].id;
+      setErrorSteps(prev => new Set(prev).add(stepId));
+      
       toast({
         title: 'Error',
         description: error.message || 'Failed to complete step',
@@ -300,7 +378,8 @@ export function InitializationWizard({
         {wizardSteps.map((step, index) => {
           const isActive = index === currentStep;
           const isCompleted = completedSteps.has(step.id);
-          const isPending = index > currentStep;
+          const hasError = errorSteps.has(step.id);
+          const isPending = index > currentStep && !isCompleted;
           
           return (
             <div
@@ -315,14 +394,18 @@ export function InitializationWizard({
                 disabled={isPending}
                 className={cn(
                   'flex items-center justify-center w-10 h-10 rounded-full border-2 transition-colors',
-                  isActive && 'border-primary bg-primary text-primary-foreground',
-                  isCompleted && !isActive && 'border-green-500 bg-green-500 text-white',
+                  isActive && !hasError && 'border-primary bg-primary text-primary-foreground',
+                  isActive && hasError && 'border-red-500 bg-red-500 text-white',
+                  isCompleted && !isActive && !hasError && 'border-green-500 bg-green-500 text-white',
+                  hasError && !isActive && 'border-red-500 bg-red-500 text-white',
                   isPending && 'border-gray-300 bg-white text-gray-400',
-                  !isActive && !isCompleted && !isPending && 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
+                  !isActive && !isCompleted && !isPending && !hasError && 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
                 )}
               >
-                {isCompleted ? (
+                {isCompleted && !hasError ? (
                   <Check className="h-5 w-5" />
+                ) : hasError ? (
+                  <AlertCircle className="h-5 w-5" />
                 ) : (
                   <span className="text-sm font-medium">{index + 1}</span>
                 )}
@@ -331,7 +414,8 @@ export function InitializationWizard({
                 <p className={cn(
                   'text-sm font-medium',
                   isActive && 'text-primary',
-                  isCompleted && 'text-green-600',
+                  isCompleted && !hasError && 'text-green-600',
+                  hasError && 'text-red-600',
                   isPending && 'text-gray-400'
                 )}>
                   {step.name}
@@ -340,7 +424,7 @@ export function InitializationWizard({
               {index < wizardSteps.length - 1 && (
                 <div className={cn(
                   'flex-1 h-0.5 mx-4',
-                  isCompleted ? 'bg-green-500' : 'bg-gray-300'
+                  isCompleted && !hasError ? 'bg-green-500' : hasError ? 'bg-red-500' : 'bg-gray-300'
                 )} />
               )}
             </div>

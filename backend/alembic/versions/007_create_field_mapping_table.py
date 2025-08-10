@@ -10,8 +10,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = '007_field_mapping_table'
-down_revision = '006_study_init_fields'
+revision = '007_create_field_mapping_table'
+down_revision = '006_add_data_source_uploads'
 branch_labels = None
 depends_on = None
 

@@ -14,7 +14,8 @@ import {
   GripVertical,
   GitBranch,
   History,
-  Settings
+  Settings,
+  Activity
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -102,11 +103,15 @@ export default function StudyPipelinePage() {
       const response = await apiClient.post(`/studies/${studyId}/pipeline/execute`);
       return response.data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
         title: 'Pipeline execution started',
         description: 'The pipeline is now running. Check the execution history for progress.',
       });
+      // Navigate to progress page with execution ID
+      if (data?.execution_id) {
+        router.push(`/studies/${studyId}/pipeline/progress?executionId=${data.execution_id}`);
+      }
     },
     onError: (error) => {
       toast({
@@ -221,6 +226,13 @@ export default function StudyPipelinePage() {
           </p>
         </div>
         <div className="flex space-x-2">
+          <Button 
+            variant="outline"
+            onClick={() => router.push(`/studies/${studyId}/pipeline/progress`)}
+          >
+            <Activity className="mr-2 h-4 w-4" />
+            Monitor Progress
+          </Button>
           <Button 
             variant="outline"
             onClick={() => router.push(`/studies/${studyId}/pipeline/history`)}

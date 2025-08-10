@@ -38,10 +38,24 @@ import {
   Lightbulb,
   Sparkles,
   X,
+  Layers,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { mappingApi, MappingType, DataType } from '@/lib/api/mapping';
 import { widgetsApi } from '@/lib/api/widgets';
 import { cn } from '@/lib/utils';
+
+interface DatasetSchema {
+  columns: Record<string, any>;
+  column_count?: number;
+  row_count: number;
+  last_updated?: string;
+  upload_id?: string;
+  source_type?: 'uploaded' | 'derived';
+  source_dataset?: string;
+  transformation_type?: string;
+  created_at?: string;
+}
 
 interface FieldMappingBuilderProps {
   studyId: string;
@@ -263,19 +277,56 @@ export function FieldMappingBuilder({
                   <SelectValue placeholder="Select a dataset" />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(dataConfig?.dataset_schemas || {}).map(([name, schema]: [string, any]) => (
+                  {Object.entries(dataConfig?.dataset_schemas || {}).map(([name, schema]: [string, DatasetSchema]) => (
                     <SelectItem key={name} value={name}>
                       <div className="flex items-center justify-between w-full">
-                        <span>{name}</span>
+                        <div className="flex items-center gap-2">
+                          <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
+                          <span>{name}</span>
+                        </div>
                         <Badge variant="outline" className="ml-2">
-                          {Object.keys(schema.columns).length} columns
+                          {Object.keys(schema.columns || {}).length} cols
                         </Badge>
                       </div>
                     </SelectItem>
                   ))}
+                  
+                  {Object.keys(dataConfig?.dataset_schemas || {}).length === 0 && (
+                    <div className="p-4 text-center text-muted-foreground">
+                      No datasets available
+                    </div>
+                  )}
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Dataset Info */}
+            {selectedDataset && dataConfig?.dataset_schemas[selectedDataset] && (
+              <div className="p-3 bg-muted rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <FileSpreadsheet className="h-4 w-4 text-blue-500" />
+                  <span className="text-sm font-medium">Dataset: {selectedDataset}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Rows:</span>{' '}
+                    <span className="font-medium">{dataConfig.dataset_schemas[selectedDataset]?.row_count || 0}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Columns:</span>{' '}
+                    <span className="font-medium">{Object.keys(dataConfig.dataset_schemas[selectedDataset]?.columns || {}).length}</span>
+                  </div>
+                  {dataConfig.dataset_schemas[selectedDataset]?.last_updated && (
+                    <div className="col-span-2">
+                      <span className="text-muted-foreground">Last Updated:</span>{' '}
+                      <span className="font-medium">
+                        {new Date(dataConfig.dataset_schemas[selectedDataset].last_updated).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2">
               <div className="flex justify-between text-sm">

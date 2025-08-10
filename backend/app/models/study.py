@@ -85,6 +85,13 @@ class StudyBase(SQLModel):
     data_uploaded_at: Optional[datetime] = Field(default=None, sa_column=Column(DateTime))
     mappings_configured_at: Optional[datetime] = Field(default=None, sa_column=Column(DateTime))
     activated_at: Optional[datetime] = Field(default=None, sa_column=Column(DateTime))
+    
+    # Transformation tracking
+    last_transformation_at: Optional[datetime] = Field(default=None, sa_column=Column(DateTime))
+    transformation_status: Optional[str] = Field(default=None, max_length=50)  # running, completed, failed
+    transformation_count: int = Field(default=0)  # Total number of transformations run
+    derived_datasets: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))  # Dataset schemas from transformations
+    transformation_errors: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))  # Recent transformation errors
 
 
 class StudyCreate(StudyBase):
@@ -117,6 +124,13 @@ class StudyUpdate(SQLModel):
     initialization_status: Optional[str] = Field(default=None, max_length=50)
     initialization_progress: Optional[int] = None
     initialization_steps: Optional[Dict[str, Any]] = None
+    
+    # Transformation tracking updates
+    last_transformation_at: Optional[datetime] = None
+    transformation_status: Optional[str] = Field(default=None, max_length=50)
+    transformation_count: Optional[int] = None
+    derived_datasets: Optional[Dict[str, Any]] = None
+    transformation_errors: Optional[Dict[str, Any]] = None
 
 
 class Study(StudyBase, table=True):
@@ -180,6 +194,12 @@ class StudyPublic(StudyBase):
     data_uploaded_at: Optional[datetime] = None
     mappings_configured_at: Optional[datetime] = None
     activated_at: Optional[datetime] = None
+    
+    # Transformation tracking
+    last_transformation_at: Optional[datetime] = None
+    transformation_status: Optional[str] = None
+    transformation_count: int
+    derived_datasets: Dict[str, Any]
 
 
 class StudiesPublic(SQLModel):

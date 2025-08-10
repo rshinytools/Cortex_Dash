@@ -6,3 +6,10 @@ app.egg-info
 .coverage
 htmlcov
 .venv
+venv
+env
+ENV
+lib
+lib64
+*.egg-info
+*.egg

@@ -18,7 +18,7 @@ from .dashboard import (
 )
 from .dashboard_audit import DashboardConfigAudit, OrgAdminPermission, OrgAdminPermissionBase, EntityType, AuditAction
 from .data_mapping import WidgetDataMapping, StudyDataConfiguration, FieldMappingTemplate
-from .pipeline import PipelineConfig, PipelineExecution, PipelineExecutionStep, TransformationScript
+from .pipeline import PipelineConfig, PipelineExecution, PipelineExecutionStep, TransformationScript, PipelineStatus, TransformationType
 # Refresh schedule models disabled temporarily
 # from .refresh_schedule import (
 #     RefreshSchedule, RefreshScheduleCreate, RefreshScheduleUpdate, RefreshScheduleResponse,
@@ -58,7 +58,7 @@ __all__ = [
     # Data mapping models
     "WidgetDataMapping", "StudyDataConfiguration", "FieldMappingTemplate",
     # Pipeline models
-    "PipelineConfig", "PipelineExecution", "PipelineExecutionStep", "TransformationScript",
+    "PipelineConfig", "PipelineExecution", "PipelineExecutionStep", "TransformationScript", "PipelineStatus", "TransformationType",
     # Refresh schedule models - disabled temporarily
     # "RefreshSchedule", "RefreshScheduleCreate", "RefreshScheduleUpdate", "RefreshScheduleResponse",
     # "RefreshExecution", "RefreshExecutionCreate", "RefreshExecutionUpdate", "RefreshExecutionResponse",

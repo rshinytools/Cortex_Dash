@@ -12,10 +12,12 @@ from sqlmodel import Session, select
 from pydantic import BaseModel, Field
 
 from app.api.deps import get_db, get_current_user
-from app.models import User, Study, DashboardTemplate as UnifiedDashboardTemplate, Organization, StudyDataConfiguration, StudyPhase
+from app.models import User, Study, StudyStatus, DashboardTemplate as UnifiedDashboardTemplate, Organization, StudyDataConfiguration, StudyPhase, PipelineConfig, PipelineExecution, PipelineStatus
 from app.core.permissions import has_permission, Permission
 from app.services.file_processing_service import FileProcessingService
 from app.services.file_conversion_service import FileConversionService
+from celery.result import AsyncResult
+from app.core.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +68,13 @@ class MappingReviewRequest(BaseModel):
     """Step 4: Field mapping review"""
     accept_auto_mappings: bool
     custom_mappings: Optional[Dict[str, Any]] = None
+
+
+class WizardStateUpdateRequest(BaseModel):
+    """Update wizard state"""
+    current_step: Optional[int] = None
+    completed_steps: Optional[List[str]] = None
+    data: Optional[Dict[str, Any]] = None
 
 
 class WizardStateResponse(BaseModel):
@@ -182,7 +191,7 @@ async def start_initialization_wizard(
         indication=study_info.indication,
         org_id=current_user.org_id,
         created_by=current_user.id,
-        status="draft",  # Use lowercase for enum value
+        status=StudyStatus.DRAFT,
         initialization_status="wizard_in_progress",
         initialization_steps={
             "wizard_state": {
@@ -317,6 +326,63 @@ async def get_wizard_state(
         is_complete=current_step == 4 and "review_mappings" in completed_steps,
         next_action=next_action
     )
+
+
+@router.patch("/wizard/{study_id}/state")
+async def update_wizard_state(
+    study_id: uuid.UUID,
+    request: WizardStateUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Update wizard state for a study"""
+    # Get study
+    study = db.get(Study, study_id)
+    if not study:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Study not found"
+        )
+    
+    # Check access
+    if study.org_id != current_user.org_id and not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
+    
+    # Update wizard state
+    if not study.initialization_steps:
+        study.initialization_steps = {}
+    
+    if "wizard_state" not in study.initialization_steps:
+        study.initialization_steps["wizard_state"] = {}
+    
+    wizard_state = study.initialization_steps["wizard_state"]
+    
+    # Update current step if provided
+    if request.current_step is not None:
+        wizard_state["current_step"] = request.current_step
+    
+    # Update completed steps if provided
+    if request.completed_steps is not None:
+        wizard_state["completed_steps"] = request.completed_steps
+    
+    # Store any additional data
+    if request.data:
+        wizard_state["data"] = request.data
+    
+    # Mark the field as modified for SQLAlchemy to detect the change
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(study, "initialization_steps")
+    
+    study.initialization_steps["wizard_state"] = wizard_state
+    
+    db.add(study)
+    db.commit()
+    db.refresh(study)
+    
+    return {"message": "Wizard state updated successfully"}
 
 
 @router.get("/wizard/{study_id}/templates", response_model=List[TemplateOption])
@@ -839,9 +905,9 @@ async def cancel_wizard(
             logger.error(f"Error deleting draft study: {str(e)}")
             db.rollback()
             
-            # Alternative: just mark as cancelled instead of deleting
+            # Alternative: just mark as archived instead of deleting
             study.initialization_status = "wizard_cancelled"
-            study.status = "cancelled"
+            study.status = StudyStatus.ARCHIVED
             db.add(study)
             db.commit()
             return {"message": "Draft study cancelled (could not delete due to dependencies)"}
@@ -854,3 +920,206 @@ async def cancel_wizard(
         db.add(study)
         db.commit()
         return {"message": "Wizard cancelled"}
+
+
+@router.get("/wizard/{study_id}/transformation-ready")
+async def check_transformation_ready(
+    study_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Check if study is ready for transformation step"""
+    # Get study
+    study = db.get(Study, study_id)
+    if not study:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Study not found"
+        )
+    
+    # Check access
+    if study.org_id != current_user.org_id and not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
+    
+    # Check prerequisites
+    wizard_state = study.initialization_steps.get("wizard_state", {})
+    completed_steps = wizard_state.get("completed_steps", [])
+    
+    is_ready = (
+        "template_selection" in completed_steps and
+        "data_upload" in completed_steps and
+        study.dashboard_template_id is not None
+    )
+    
+    # Get dataset info
+    study_data_config = db.exec(
+        select(StudyDataConfiguration).where(
+            StudyDataConfiguration.study_id == study_id
+        )
+    ).first()
+    
+    datasets = []
+    if study_data_config and study_data_config.dataset_schemas:
+        for name, schema in study_data_config.dataset_schemas.items():
+            datasets.append({
+                "name": name,
+                "columns": list(schema.get("columns", {}).keys()),
+                "row_count": schema.get("row_count", 0)
+            })
+    
+    # Check for existing pipelines
+    existing_pipelines = db.exec(
+        select(PipelineConfig).where(
+            PipelineConfig.study_id == study_id,
+            PipelineConfig.is_current_version == True
+        )
+    ).all()
+    
+    return {
+        "is_ready": is_ready,
+        "has_template": study.dashboard_template_id is not None,
+        "has_data": len(datasets) > 0,
+        "available_datasets": datasets,
+        "existing_pipelines_count": len(existing_pipelines),
+        "wizard_step": wizard_state.get("current_step", 0),
+        "missing_requirements": [] if is_ready else [
+            step for step in ["template_selection", "data_upload"] 
+            if step not in completed_steps
+        ]
+    }
+
+
+@router.get("/wizard/{study_id}/suggested-transformations")
+async def get_suggested_transformations(
+    study_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get suggested transformations based on template requirements"""
+    # Get study
+    study = db.get(Study, study_id)
+    if not study:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Study not found"
+        )
+    
+    # Check access
+    if study.org_id != current_user.org_id and not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
+    
+    suggestions = []
+    
+    # Get template and analyze widget requirements
+    if study.dashboard_template_id:
+        template = db.get(UnifiedDashboardTemplate, study.dashboard_template_id)
+        if template and template.template_structure:
+            # Extract unique data requirements from widgets
+            widget_requirements = set()
+            dashboards = template.template_structure.get("dashboardTemplates", [])
+            
+            for dashboard in dashboards:
+                for widget in dashboard.get("widgets", []):
+                    widget_type = widget.get("type", "")
+                    data_config = widget.get("dataConfiguration", {})
+                    
+                    # Analyze widget type for transformation needs
+                    if widget_type == "trend" and data_config.get("aggregation"):
+                        widget_requirements.add("time_series_aggregation")
+                    elif widget_type == "metric" and data_config.get("calculation"):
+                        widget_requirements.add("metric_calculation")
+                    elif widget_type in ["bar", "pie"] and data_config.get("groupBy"):
+                        widget_requirements.add("group_aggregation")
+                    elif widget_type == "table" and data_config.get("filters"):
+                        widget_requirements.add("filtered_subset")
+            
+            # Get available datasets
+            study_data_config = db.exec(
+                select(StudyDataConfiguration).where(
+                    StudyDataConfiguration.study_id == study_id
+                )
+            ).first()
+            
+            if study_data_config and study_data_config.dataset_schemas:
+                # Generate suggestions based on requirements
+                for req in widget_requirements:
+                    if req == "time_series_aggregation":
+                        # Find datasets with date columns
+                        for ds_name, schema in study_data_config.dataset_schemas.items():
+                            date_columns = [
+                                col for col, dtype in schema.get("columns", {}).items()
+                                if "date" in dtype.lower() or "dat" in col.lower()
+                            ]
+                            if date_columns:
+                                suggestions.append({
+                                    "type": "aggregation",
+                                    "name": f"Daily aggregation of {ds_name}",
+                                    "description": f"Aggregate {ds_name} data by day for trend analysis",
+                                    "source_dataset": ds_name,
+                                    "config": {
+                                        "group_by": date_columns[0],
+                                        "frequency": "daily",
+                                        "aggregations": {
+                                            "count": "*",
+                                            "numeric_columns": "mean"
+                                        }
+                                    },
+                                    "output_name": f"{ds_name}_daily_agg"
+                                })
+                    
+                    elif req == "metric_calculation":
+                        # Suggest summary statistics
+                        for ds_name, schema in study_data_config.dataset_schemas.items():
+                            numeric_columns = [
+                                col for col, dtype in schema.get("columns", {}).items()
+                                if "int" in dtype.lower() or "float" in dtype.lower() or "numeric" in dtype.lower()
+                            ]
+                            if numeric_columns:
+                                suggestions.append({
+                                    "type": "aggregation",
+                                    "name": f"Summary statistics for {ds_name}",
+                                    "description": f"Calculate key metrics from {ds_name}",
+                                    "source_dataset": ds_name,
+                                    "config": {
+                                        "aggregations": {
+                                            "total_records": "count",
+                                            **{col: ["mean", "sum", "min", "max"] for col in numeric_columns[:3]}
+                                        }
+                                    },
+                                    "output_name": f"{ds_name}_summary"
+                                })
+                    
+                    elif req == "group_aggregation":
+                        # Suggest grouping by categorical columns
+                        for ds_name, schema in study_data_config.dataset_schemas.items():
+                            categorical_columns = [
+                                col for col, dtype in schema.get("columns", {}).items()
+                                if "string" in dtype.lower() or "object" in dtype.lower()
+                            ]
+                            if categorical_columns:
+                                suggestions.append({
+                                    "type": "aggregation",
+                                    "name": f"Group analysis of {ds_name}",
+                                    "description": f"Aggregate {ds_name} by categories",
+                                    "source_dataset": ds_name,
+                                    "config": {
+                                        "group_by": categorical_columns[0],
+                                        "aggregations": {
+                                            "count": "*",
+                                            "numeric_columns": "mean"
+                                        }
+                                    },
+                                    "output_name": f"{ds_name}_by_{categorical_columns[0].lower()}"
+                                })
+    
+    return {
+        "suggestions": suggestions[:5],  # Limit to top 5 suggestions
+        "total_suggestions": len(suggestions),
+        "based_on_template": study.dashboard_template_id is not None
+    }

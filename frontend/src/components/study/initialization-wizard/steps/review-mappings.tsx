@@ -21,7 +21,9 @@ import {
   FileSpreadsheet,
   Rocket,
   Link2,
-  ArrowDown
+  ArrowDown,
+  GitBranch,
+  Layers
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -41,13 +43,24 @@ interface MappingSummary {
   mappings: Record<string, FieldMapping[]>;
 }
 
+interface DatasetInfo {
+  columns: Record<string, any>;
+  column_count: number;
+  row_count: number;
+  source_type?: 'uploaded' | 'derived';
+  source_dataset?: string;
+  transformation_type?: string;
+  created_at?: string;
+}
+
 interface MappingData {
-  dataset_schemas: Record<string, any>;
+  dataset_schemas: Record<string, DatasetInfo>;
   template_requirements: any[];
   mapping_suggestions: Record<string, any[]>;
   total_datasets: number;
   total_columns: number;
   total_widgets: number;
+  derived_datasets?: Record<string, DatasetInfo>;
 }
 
 interface ReviewMappingsStepProps {
@@ -305,23 +318,101 @@ export function ReviewMappingsStep({
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Available Datasets</CardTitle>
           <CardDescription>
-            Columns extracted from your uploaded files
+            Source data from uploads and derived datasets from transformations
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
-            {Object.entries(mappingData.dataset_schemas).map(([datasetName, schema]: [string, any]) => (
-              <div key={datasetName} className="flex items-center justify-between p-2 border rounded">
-                <div className="flex items-center gap-2">
-                  <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">{datasetName}</span>
-                  <Badge variant="outline">{schema.column_count} columns</Badge>
-                </div>
-                <span className="text-sm text-muted-foreground">
-                  {schema.row_count} rows
-                </span>
+          <div className="space-y-4">
+            {/* Source Datasets */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Database className="h-4 w-4 text-blue-500" />
+                <p className="text-sm font-medium">Source Datasets</p>
               </div>
-            ))}
+              <div className="space-y-2 ml-6">
+                {Object.entries(mappingData.dataset_schemas)
+                  .filter(([_, schema]) => !schema.source_type || schema.source_type === 'uploaded')
+                  .map(([datasetName, schema]: [string, DatasetInfo]) => (
+                    <div key={datasetName} className="flex items-center justify-between p-2 border rounded hover:bg-gray-50">
+                      <div className="flex items-center gap-2">
+                        <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">{datasetName}</span>
+                        <Badge variant="outline">{schema.column_count || Object.keys(schema.columns || {}).length} columns</Badge>
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        {schema.row_count} rows
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+            
+            {/* Derived Datasets */}
+            {Object.entries(mappingData.dataset_schemas)
+              .filter(([_, schema]) => schema.source_type === 'derived').length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <GitBranch className="h-4 w-4 text-purple-500" />
+                  <p className="text-sm font-medium">Derived Datasets</p>
+                </div>
+                <div className="space-y-2 ml-6">
+                  {Object.entries(mappingData.dataset_schemas)
+                    .filter(([_, schema]) => schema.source_type === 'derived')
+                    .map(([datasetName, schema]: [string, DatasetInfo]) => (
+                      <div key={datasetName} className="flex items-center justify-between p-2 border rounded hover:bg-gray-50">
+                        <div className="flex items-center gap-2">
+                          <Layers className="h-4 w-4 text-purple-500" />
+                          <div>
+                            <span className="font-medium">{datasetName}</span>
+                            {schema.source_dataset && (
+                              <p className="text-xs text-muted-foreground">
+                                from {schema.source_dataset} 
+                                {schema.transformation_type && ` (${schema.transformation_type})`}
+                              </p>
+                            )}
+                          </div>
+                          <Badge variant="secondary">{schema.column_count || Object.keys(schema.columns || {}).length} columns</Badge>
+                        </div>
+                        <span className="text-sm text-muted-foreground">
+                          {schema.row_count} rows
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Show derived datasets from separate property if present */}
+            {mappingData.derived_datasets && Object.keys(mappingData.derived_datasets).length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <GitBranch className="h-4 w-4 text-purple-500" />
+                  <p className="text-sm font-medium">Transformation Results</p>
+                </div>
+                <div className="space-y-2 ml-6">
+                  {Object.entries(mappingData.derived_datasets).map(([datasetName, schema]: [string, DatasetInfo]) => (
+                    <div key={datasetName} className="flex items-center justify-between p-2 border rounded hover:bg-gray-50">
+                      <div className="flex items-center gap-2">
+                        <Layers className="h-4 w-4 text-purple-500" />
+                        <div>
+                          <span className="font-medium">{datasetName}</span>
+                          {schema.source_dataset && (
+                            <p className="text-xs text-muted-foreground">
+                              from {schema.source_dataset} 
+                              {schema.transformation_type && ` (${schema.transformation_type})`}
+                            </p>
+                          )}
+                        </div>
+                        <Badge variant="secondary">{schema.column_count} columns</Badge>
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        {schema.row_count} rows
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

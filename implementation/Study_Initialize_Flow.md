@@ -2,14 +2,22 @@
 
 ## 🎯 Overview
 
-This document outlines the complete implementation plan for the Study Initialize Flow, ensuring seamless integration with the dashboard template and widget system. The goal is to create a unified, real-time experience for initializing clinical studies with automatic data mapping based on widget requirements.
+This document outlines the complete implementation plan for the Study Initialize Flow, including the data transformation pipeline that enables custom Python scripts for creating derived datasets (ADSL, ADAE, etc.). The goal is to create a unified, real-time experience for initializing clinical studies with automatic data mapping based on widget requirements.
 
 ## 📋 Current State Analysis
 
 ### Existing Components
-- **Frontend**: 4-step wizard (Template → Data Source → Field Mapping → Review)
+- **Frontend**: 4-step wizard (Basic Info → Template → Data Upload → Review)
 - **Backend**: File upload, conversion to Parquet, template application
-- **Missing**: Real-time progress, widget-driven mapping, unified status tracking
+- **Pipeline Infrastructure**: Complete pipeline system with Monaco Editor (Phase 3 of widget system - COMPLETED)
+- **Missing**: Integration of transformation step in wizard, real-time progress for transformations
+
+### New Flow (5 Steps)
+1. **Basic Information** - Collect study metadata
+2. **Template Selection** - Choose dashboard template  
+3. **Data Upload** - Upload and convert files to Parquet
+4. **Data Transformation** (NEW) - Create derived datasets using Python scripts
+5. **Review & Activate** - Map fields (including derived datasets) and activate study
 
 ## 🏗️ Architecture Overview
 
@@ -17,10 +25,14 @@ This document outlines the complete implementation plan for the Study Initialize
 ┌─────────────────────────────────────────────────────────────┐
 │                     Frontend (Next.js)                       │
 ├─────────────────────────────────────────────────────────────┤
-│  Study Initialize Wizard                                     │
+│  Study Initialize Wizard (5 Steps)                          │
+│  ├── Basic Information                                      │
 │  ├── Template Selection (with widget preview)               │
 │  ├── Data Source Configuration                              │
 │  │   └── Real-time upload progress                         │
+│  ├── Data Transformation (NEW)                              │
+│  │   ├── Pipeline Builder with Monaco Editor               │
+│  │   └── Execute Python scripts for ADSL/ADAE              │
 │  ├── Smart Field Mapping                                    │
 │  │   └── Widget-based auto-suggestions                     │
 │  └── Review & Activate                                      │
@@ -432,6 +444,200 @@ This document outlines the complete implementation plan for the Study Initialize
 - WebSocket fallback to polling should be implemented for environments that don't support WebSockets
 - All progress updates should be persisted to allow resuming after disconnection
 
+## 🔄 Data Transformation Pipeline Integration
+
+### Overview
+Integrate the existing pipeline infrastructure (completed in Phase 3 of widget system) into the study initialization wizard to enable creation of derived datasets (ADSL, ADAE, etc.) before field mapping.
+
+### Parallel Implementation Plan
+
+#### 🚀 Phase 1: Core Components (3 Sub-agents in Parallel)
+
+##### Sub-agent A: Frontend Wizard Integration
+**Task**: Create DataTransformationStep component
+**Files to create/modify**:
+- [ ] `frontend/src/components/study/initialization-wizard/steps/data-transformation.tsx`
+- [ ] Update `frontend/src/components/study/initialization-wizard/index.tsx`
+
+**Checklist**:
+- [ ] Create DataTransformationStep component structure
+- [ ] Integrate existing PipelineBuilder component
+- [ ] Add "Skip Transformation" option
+- [ ] Show uploaded datasets from previous step
+- [ ] Add pipeline execution trigger
+- [ ] Implement progress tracking UI
+
+##### Sub-agent B: Backend API Layer
+**Task**: Create transformation API endpoints
+**Files to create/modify**:
+- [ ] `backend/app/api/v1/endpoints/study_transformation.py` (new)
+- [ ] Update `backend/app/api/v1/endpoints/study_wizard.py`
+
+**Checklist**:
+- [ ] POST `/wizard/{study_id}/pipelines` - Create pipelines
+- [ ] POST `/wizard/{study_id}/execute-transformations` - Execute all
+- [ ] GET `/wizard/{study_id}/transformation-status` - Check status
+- [ ] GET `/wizard/{study_id}/derived-datasets` - List results
+- [ ] Update wizard state for new step
+
+##### Sub-agent C: Transformation Service
+**Task**: Create study transformation service
+**Files to create/modify**:
+- [ ] `backend/app/services/study_transformation_service.py` (new)
+- [ ] Update `backend/app/models/study.py`
+
+**Checklist**:
+- [ ] Create StudyTransformationService class
+- [ ] Implement batch pipeline execution
+- [ ] Add progress tracking callbacks
+- [ ] Handle derived dataset storage
+- [ ] Extract schemas from generated datasets
+- [ ] Update folder structure for derived data
+
+#### 🔧 Phase 2: Integration & UI (3 Sub-agents in Parallel)
+
+##### Sub-agent D: Wizard Flow Update
+**Task**: Update wizard flow and navigation
+**Files to modify**:
+- [ ] `frontend/src/components/study/initialization-wizard/index.tsx`
+- [ ] `frontend/src/lib/api/studies.ts`
+- [ ] `frontend/src/app/studies/new/page.tsx`
+
+**Checklist**:
+- [ ] Add transformation step to wizardSteps array
+- [ ] Update step navigation logic
+- [ ] Add transformation API calls
+- [ ] Update wizard state management
+- [ ] Handle skip transformation flow
+
+##### Sub-agent E: Mapping Enhancement
+**Task**: Update mapping UI for derived datasets
+**Files to modify**:
+- [ ] `frontend/src/components/study/initialization-wizard/steps/review-mappings.tsx`
+- [ ] `frontend/src/components/data-mapping/FieldMappingInterface.tsx`
+
+**Checklist**:
+- [ ] Include derived datasets in selector
+- [ ] Add visual indicators (source vs derived)
+- [ ] Update mapping suggestions
+- [ ] Show dataset lineage
+- [ ] Handle combined schemas
+
+##### Sub-agent F: Progress Monitoring
+**Task**: Create transformation progress tracking
+**Files to create**:
+- [ ] `frontend/src/components/study/transformation-progress.tsx`
+- [ ] `frontend/src/hooks/use-transformation-progress.ts`
+
+**Checklist**:
+- [ ] Create progress component
+- [ ] Add WebSocket support
+- [ ] Show pipeline execution status
+- [ ] Add error handling UI
+- [ ] Create execution logs viewer
+
+#### 🧪 Phase 3: Testing & Examples (2 Sub-agents in Parallel)
+
+##### Sub-agent G: Testing Suite
+**Task**: Create comprehensive tests
+**Files to create**:
+- [ ] `backend/tests/api/test_study_transformation.py`
+- [ ] `frontend/tests/data-transformation.test.tsx`
+
+**Checklist**:
+- [ ] Unit tests for transformation service
+- [ ] Integration tests for wizard flow
+- [ ] E2E tests for pipeline execution
+- [ ] Security tests for script sandbox
+- [ ] Performance tests
+
+##### Sub-agent H: Documentation & Examples
+**Task**: Create documentation and examples
+**Files to create**:
+- [ ] `docs/data-transformation-guide.md`
+- [ ] `frontend/src/components/pipelines/transformation-examples.ts`
+
+**Checklist**:
+- [ ] User guide for transformations
+- [ ] ADSL generation example
+- [ ] ADAE generation example
+- [ ] Common transformation patterns
+- [ ] Troubleshooting guide
+
+### Example Transformation Scripts
+
+#### ADSL (Subject Level Analysis Dataset)
+```python
+# Generate ADSL from demographics data
+import pandas as pd
+import numpy as np
+
+# Read source data
+dm = input_data  # Demographics dataset from upload
+
+# Create ADSL
+adsl = dm.copy()
+
+# Derive age groups
+adsl['AGEGR1'] = pd.cut(adsl['AGE'], 
+                        bins=[0, 18, 65, 100], 
+                        labels=['<18', '18-65', '>65'])
+
+# Add population flags
+adsl['SAFFL'] = 'Y'  # Safety population
+adsl['ITTFL'] = 'Y'  # Intent-to-treat
+
+# Add derived dates
+adsl['TRTSDT'] = pd.to_datetime(adsl['RFSTDTC'])
+adsl['TRTEDT'] = pd.to_datetime(adsl['RFENDTC'])
+
+# Set output
+output_data = adsl
+```
+
+#### ADAE (Adverse Events Analysis Dataset)
+```python
+# Generate ADAE from AE data
+import pandas as pd
+
+# Read source data
+ae = input_data  # AE dataset from upload
+
+# Create ADAE
+adae = ae.copy()
+
+# Add analysis flags
+adae['TRTEMFL'] = 'Y'  # Treatment emergent
+adae['AESER'] = adae['AESER'].fillna('N')
+
+# Derive severity ranking
+severity_map = {'MILD': 1, 'MODERATE': 2, 'SEVERE': 3}
+adae['ASEV'] = adae['AESEV'].map(severity_map)
+
+# Add duration
+adae['AESTDTC'] = pd.to_datetime(adae['AESTDTC'])
+adae['AEENDTC'] = pd.to_datetime(adae['AEENDTC'])
+adae['ADURN'] = (adae['AEENDTC'] - adae['AESTDTC']).dt.days
+
+# Set output
+output_data = adae
+```
+
+### Integration Points
+
+1. **After Data Upload**: Show transformation step only if files were successfully processed
+2. **Before Field Mapping**: Ensure all transformations complete before mapping
+3. **Schema Updates**: Combine source and derived dataset schemas for mapping
+4. **Progress Tracking**: Use same WebSocket infrastructure for transformation progress
+
+### Success Criteria
+- [ ] Transformation step seamlessly integrated into wizard
+- [ ] Python scripts execute in sandboxed environment
+- [ ] Derived datasets available for widget mapping
+- [ ] Real-time progress tracking works
+- [ ] Errors handled gracefully
+- [ ] Step can be skipped if not needed
+
 ---
-*Last Updated: January 14, 2025*
-*Status: Planning Phase*
+*Last Updated: January 15, 2025*
+*Status: Ready for Implementation*

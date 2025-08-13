@@ -188,7 +188,7 @@ class PipelineExecutor:
             raise ValueError("Pipeline execution not found")
         
         # Update status to running
-        execution.status = PipelineStatus.RUNNING
+        execution.status = PipelineStatus.RUNNING.value
         execution.started_at = datetime.utcnow()
         self.db.add(execution)
         self.db.commit()
@@ -210,7 +210,7 @@ class PipelineExecutor:
             output_info = self._save_output(execution, config, current_data)
             
             # Update execution as successful
-            execution.status = PipelineStatus.SUCCESS
+            execution.status = PipelineStatus.SUCCESS.value
             execution.completed_at = datetime.utcnow()
             execution.duration_seconds = (execution.completed_at - execution.started_at).total_seconds()
             execution.output_records = len(current_data)
@@ -229,7 +229,7 @@ class PipelineExecutor:
             
         except Exception as e:
             # Update execution as failed
-            execution.status = PipelineStatus.FAILED
+            execution.status = PipelineStatus.FAILED.value
             execution.completed_at = datetime.utcnow()
             execution.duration_seconds = (execution.completed_at - execution.started_at).total_seconds()
             execution.error_message = str(e)
@@ -364,7 +364,7 @@ class PipelineExecutor:
                 raise ValueError(f"Unsupported step type: {step_config['type']}")
             
             # Update step as successful
-            step.status = PipelineStatus.SUCCESS
+            step.status = PipelineStatus.SUCCESS.value
             step.completed_at = datetime.utcnow()
             step.duration_seconds = (step.completed_at - step.started_at).total_seconds()
             step.output_records = len(output_data)
@@ -387,7 +387,7 @@ class PipelineExecutor:
             
         except Exception as e:
             # Update step as failed
-            step.status = PipelineStatus.FAILED
+            step.status = PipelineStatus.FAILED.value
             step.completed_at = datetime.utcnow()
             step.duration_seconds = (step.completed_at - step.started_at).total_seconds()
             step.error_message = str(e)

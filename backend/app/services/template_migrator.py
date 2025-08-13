@@ -311,7 +311,7 @@ class TemplateMigratorService:
             patch_version=template.patch_version,
             change_description=description,
             template_structure=template.template_structure,
-            is_published=template.status == TemplateStatus.PUBLISHED,
+            is_published=template.status == TemplateStatus.PUBLISHED.value,
             migration_notes=f"Migration log: {migration_log}",
             breaking_changes=any(step.get("is_breaking", False) for step in migration_log),
             created_by=user_id

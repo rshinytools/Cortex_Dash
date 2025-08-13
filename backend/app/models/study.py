@@ -7,7 +7,7 @@ from datetime import datetime
 from enum import Enum
 
 from sqlmodel import Field, Relationship, SQLModel, Column
-from sqlalchemy import JSON, DateTime, String, Text
+from sqlalchemy import JSON, DateTime, String, Text, Enum as SQLEnum
 
 if TYPE_CHECKING:
     from .organization import Organization
@@ -20,13 +20,13 @@ if TYPE_CHECKING:
 
 class StudyStatus(str, Enum):
     """Study lifecycle status"""
-    DRAFT = "draft"  # Study created but initialization not completed
-    PLANNING = "planning"
-    SETUP = "setup"
-    ACTIVE = "active"
-    PAUSED = "paused"
-    COMPLETED = "completed"
-    ARCHIVED = "archived"
+    DRAFT = "DRAFT"  # Study created but initialization not completed
+    PLANNING = "PLANNING"
+    SETUP = "SETUP"
+    ACTIVE = "ACTIVE"
+    PAUSED = "PAUSED"
+    COMPLETED = "COMPLETED"
+    ARCHIVED = "ARCHIVED"
 
 
 class StudyPhase(str, Enum):
@@ -74,7 +74,10 @@ class StudyBase(SQLModel):
     org_id: uuid.UUID = Field(foreign_key="organization.id", index=True)
     
     # Status
-    status: StudyStatus = Field(default=StudyStatus.SETUP)
+    status: StudyStatus = Field(
+        default=StudyStatus.SETUP,
+        sa_column=Column(SQLEnum(StudyStatus, values_callable=lambda x: [e.value for e in x]))
+    )
     is_active: bool = Field(default=True)
     
     # Initialization tracking

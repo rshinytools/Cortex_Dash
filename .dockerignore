@@ -1,0 +1,33 @@
+# Documentation
+Implementation/
+Trash/
+Conversation/
+*.md
+
+# Development files
+.git/
+.github/
+.env
+.env.example
+*.log
+*.pyc
+__pycache__/
+
+# Test files
+tests/
+pytest.ini
+test_*.py
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Scripts not needed in container
+*.bat
+*.sh

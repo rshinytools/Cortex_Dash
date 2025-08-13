@@ -257,7 +257,7 @@ async def reprocess_upload(
         raise HTTPException(status_code=404, detail="Upload not found")
     
     # Reset processing status
-    upload.status = UploadStatus.PROCESSING
+    upload.status = UploadStatus.PROCESSING.value
     upload.processing_started_at = datetime.utcnow()
     upload.processing_completed_at = None
     upload.error_message = None
@@ -286,7 +286,7 @@ async def process_upload(upload_id: uuid.UUID, db: Session):
             return
         
         # Update status
-        upload.status = UploadStatus.PROCESSING
+        upload.status = UploadStatus.PROCESSING.value
         upload.processing_started_at = datetime.utcnow()
         db.add(upload)
         db.commit()
@@ -303,7 +303,7 @@ async def process_upload(upload_id: uuid.UUID, db: Session):
         )
         
         # Update upload record with results
-        upload.status = UploadStatus.COMPLETED if result.success else UploadStatus.FAILED
+        upload.status = UploadStatus.COMPLETED.value if result.success else UploadStatus.FAILED.value
         upload.processing_completed_at = datetime.utcnow()
         upload.processing_duration_seconds = (
             upload.processing_completed_at - upload.processing_started_at
@@ -330,7 +330,7 @@ async def process_upload(upload_id: uuid.UUID, db: Session):
         try:
             upload = db.get(DataSourceUpload, upload_id)
             if upload:
-                upload.status = UploadStatus.FAILED
+                upload.status = UploadStatus.FAILED.value
                 upload.error_message = str(e)
                 upload.processing_completed_at = datetime.utcnow()
                 db.add(upload)

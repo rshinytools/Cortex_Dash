@@ -48,7 +48,7 @@ import { VersionStatusIndicator } from "@/components/admin/version-status-indica
 import { VersionHistoryPanel } from "@/components/admin/version-history-panel";
 import { VersionDialog } from "@/components/admin/version-dialog";
 import { VersionComparison } from "@/components/admin/version-comparison";
-import { useAutoSave } from "@/hooks/useAutoSave";
+// import { useAutoSave } from "@/hooks/useAutoSave"; // Temporarily disabled
 import { TemplateVersionStatus } from "@/types/template-version";
 
 export interface UnifiedDashboardDesignerProps {
@@ -166,39 +166,49 @@ export function UnifiedDashboardDesigner({
     settings: {}
   }), [name, description, tags, category, menuItems, dashboards]);
 
-  // Auto-save hook
-  const {
-    isSaving,
-    lastSaved,
-    hasChanges: hasAutoSaveChanges,
-    draft,
-    error: autoSaveError,
-    saveNow,
-    discardChanges,
-    getSaveStatus
-  } = useAutoSave({
-    templateId: templateId || '',
-    content: draftContent,
-    enabled: !!templateId,
-    interval: 30000, // 30 seconds
-    onChange: (content) => {
-      // Update state from draft if needed
-      if (content) {
-        setName(content.name || '');
-        setDescription(content.description || '');
-        setTags(content.tags || []);
-        setCategory(content.category || 'custom');
-        setMenuItems(content.menu_structure?.items || []);
-        if (content.dashboardTemplates) {
-          const dashboardsObj: Record<string, DashboardTemplateWithMenu> = {};
-          content.dashboardTemplates.forEach((dashboard: DashboardTemplateWithMenu) => {
-            dashboardsObj[dashboard.menuItemId] = dashboard;
-          });
-          setDashboards(dashboardsObj);
-        }
-      }
-    }
-  });
+  // Auto-save hook - TEMPORARILY DISABLED TO FIX INFINITE LOOP
+  const isSaving = false;
+  const lastSaved = null;
+  const hasAutoSaveChanges = false;
+  const draft = null;
+  const autoSaveError = null;
+  const saveNow = async () => {};
+  const discardChanges = async () => {};
+  const getSaveStatus = () => 'Auto-save disabled';
+  
+  // Commented out to fix infinite loop issue
+  // const {
+  //   isSaving,
+  //   lastSaved,
+  //   hasChanges: hasAutoSaveChanges,
+  //   draft,
+  //   error: autoSaveError,
+  //   saveNow,
+  //   discardChanges,
+  //   getSaveStatus
+  // } = useAutoSave({
+  //   templateId: templateId || '',
+  //   content: draftContent,
+  //   enabled: !!templateId,
+  //   interval: 30000, // 30 seconds
+  //   onChange: (content) => {
+  //     // Update state from draft if needed
+  //     if (content) {
+  //       setName(content.name || '');
+  //       setDescription(content.description || '');
+  //       setTags(content.tags || []);
+  //       setCategory(content.category || 'custom');
+  //       setMenuItems(content.menu_structure?.items || []);
+  //       if (content.dashboardTemplates) {
+  //         const dashboardsObj: Record<string, DashboardTemplateWithMenu> = {};
+  //         content.dashboardTemplates.forEach((dashboard: DashboardTemplateWithMenu) => {
+  //           dashboardsObj[dashboard.menuItemId] = dashboard;
+  //         });
+  //         setDashboards(dashboardsObj);
+  //       }
+  //     }
+  //   }
+  // });
 
   // Calculate data requirements from all dashboards
   const dataRequirements = useMemo(() => {
@@ -500,13 +510,20 @@ export function UnifiedDashboardDesigner({
       },
     };
 
-    setDashboards((prev) => ({
-      ...prev,
-      [selectedMenuItemId]: {
-        ...prev[selectedMenuItemId],
-        widgets: [...prev[selectedMenuItemId].widgets, newWidget],
-      },
-    }));
+    setDashboards((prev) => {
+      const updated = {
+        ...prev,
+        [selectedMenuItemId]: {
+          ...prev[selectedMenuItemId],
+          widgets: [...prev[selectedMenuItemId].widgets, newWidget],
+        },
+      };
+      console.log('[ADD WIDGET] Updated dashboards:', updated);
+      console.log('[ADD WIDGET] Widget added to dashboard:', selectedMenuItemId);
+      console.log('[ADD WIDGET] New widget:', newWidget);
+      console.log('[ADD WIDGET] Total widgets in dashboard:', updated[selectedMenuItemId].widgets.length);
+      return updated;
+    });
   }, [selectedMenuItemId, selectedDashboard, widgetDefinitions]);
 
   // Update widget in current dashboard
@@ -543,9 +560,9 @@ export function UnifiedDashboardDesigner({
   }, [selectedMenuItemId, selectedDashboard]);
 
   // Save template (now opens version dialog if template exists)
-  const handleSave = async () => {
-    // If we have a templateId, show version dialog instead of direct save
-    if (templateId) {
+  const handleSave = async (skipVersionDialog = false) => {
+    // If we have a templateId and not skipping dialog, show version dialog
+    if (templateId && !skipVersionDialog) {
       setShowVersionDialog(true);
       return;
     }
@@ -585,6 +602,8 @@ export function UnifiedDashboardDesigner({
     };
 
     try {
+      console.log("[SAVE] Current dashboards state:", dashboards);
+      console.log("[SAVE] Dashboard values being saved:", Object.values(dashboards));
       console.log("Saving template:", template);
       console.log("Menu items:", JSON.stringify(menuItems, null, 2));
       console.log("Dashboards:", JSON.stringify(dashboards, null, 2));
@@ -868,7 +887,7 @@ export function UnifiedDashboardDesigner({
                   />
                 </label>
               </Button>
-              <Button onClick={handleSave}>
+              <Button onClick={() => handleSave()}>
                 <Save className="mr-2 h-4 w-4" />
                 Save Template
               </Button>
@@ -1143,17 +1162,41 @@ export function UnifiedDashboardDesigner({
           currentVersion={initialTemplate?.version}
           versionStatus={versionStatus}
           onVersionCreated={async (version) => {
-            // Save current draft content
-            await saveNow();
-            // Trigger the parent save handler
-            await handleSave();
-            // Close dialog
-            setShowVersionDialog(false);
-            // Show success message
-            toast({
-              title: "Version created",
-              description: `Version ${version} has been created successfully`,
-            });
+            // Save the actual template (skip showing dialog again)
+            const template: CreateUnifiedDashboardTemplateDto = {
+              name,
+              description,
+              tags,
+              category,
+              menuTemplate: {
+                name: `${name} Menu`,
+                position: MenuPosition.SIDEBAR,
+                items: menuItems,
+                version: "1.0.0",
+                isActive: true,
+              },
+              dashboardTemplates: Object.values(dashboards),
+            };
+            
+            console.log('[VERSION SAVE] Saving with dashboards:', Object.values(dashboards));
+            
+            try {
+              await onSave(template);
+              // Close dialog
+              setShowVersionDialog(false);
+              // Show success message
+              toast({
+                title: "Version created",
+                description: `Version ${version} has been created successfully`,
+              });
+            } catch (error) {
+              console.error('[VERSION SAVE] Error:', error);
+              toast({
+                title: "Error",
+                description: error instanceof Error ? error.message : "Failed to save version",
+                variant: "destructive",
+              });
+            }
           }}
         />
       )}

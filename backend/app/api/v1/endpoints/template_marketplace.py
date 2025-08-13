@@ -100,7 +100,7 @@ async def get_marketplace_templates(
     
     query = db.query(DashboardTemplate).filter(
         DashboardTemplate.is_public == True,
-        DashboardTemplate.status == TemplateStatus.PUBLISHED
+        DashboardTemplate.status == TemplateStatus.PUBLISHED.value
     )
     
     # Apply filters
@@ -188,7 +188,7 @@ async def get_template_details(
     template = db.query(DashboardTemplate).filter(
         DashboardTemplate.id == template_id,
         DashboardTemplate.is_public == True,
-        DashboardTemplate.status == TemplateStatus.PUBLISHED
+        DashboardTemplate.status == TemplateStatus.PUBLISHED.value
     ).first()
     
     if not template:
@@ -232,7 +232,7 @@ async def get_template_details(
         DashboardTemplate.category == template.category,
         DashboardTemplate.id != template_id,
         DashboardTemplate.is_public == True,
-        DashboardTemplate.status == TemplateStatus.PUBLISHED
+        DashboardTemplate.status == TemplateStatus.PUBLISHED.value
     ).order_by(desc(DashboardTemplate.average_rating)).limit(3).all()
     
     related_templates = []
@@ -510,7 +510,7 @@ async def get_marketplace_categories(db: Session = Depends(get_db)):
         func.count(DashboardTemplate.id).label('count')
     ).filter(
         DashboardTemplate.is_public == True,
-        DashboardTemplate.status == TemplateStatus.PUBLISHED
+        DashboardTemplate.status == TemplateStatus.PUBLISHED.value
     ).group_by(DashboardTemplate.category).all()
     
     categories = []
@@ -530,17 +530,17 @@ async def get_marketplace_stats(db: Session = Depends(get_db)):
     
     total_templates = db.query(func.count(DashboardTemplate.id)).filter(
         DashboardTemplate.is_public == True,
-        DashboardTemplate.status == TemplateStatus.PUBLISHED
+        DashboardTemplate.status == TemplateStatus.PUBLISHED.value
     ).scalar()
     
     total_downloads = db.query(func.sum(DashboardTemplate.download_count)).filter(
         DashboardTemplate.is_public == True,
-        DashboardTemplate.status == TemplateStatus.PUBLISHED
+        DashboardTemplate.status == TemplateStatus.PUBLISHED.value
     ).scalar() or 0
     
     avg_rating = db.query(func.avg(DashboardTemplate.average_rating)).filter(
         DashboardTemplate.is_public == True,
-        DashboardTemplate.status == TemplateStatus.PUBLISHED,
+        DashboardTemplate.status == TemplateStatus.PUBLISHED.value,
         DashboardTemplate.average_rating.isnot(None)
     ).scalar() or 0
     
@@ -548,7 +548,7 @@ async def get_marketplace_stats(db: Session = Depends(get_db)):
         DashboardTemplate, TemplateReview.template_id == DashboardTemplate.id
     ).filter(
         DashboardTemplate.is_public == True,
-        DashboardTemplate.status == TemplateStatus.PUBLISHED
+        DashboardTemplate.status == TemplateStatus.PUBLISHED.value
     ).scalar()
     
     return {

@@ -35,24 +35,19 @@ import { WidgetCategory, WidgetType, WidgetDefinition } from '@/types/widget'
 import { CreateWidgetRequest, UpdateWidgetRequest } from '@/lib/api/widgets'
 
 const widgetFormSchema = z.object({
+  code: z.string().min(1, 'Code is required').regex(/^[a-z_]+$/, 'Code must be lowercase with underscores'),
   name: z.string().min(3, 'Name must be at least 3 characters').max(100),
   description: z.string().optional(),
   category: z.nativeEnum(WidgetCategory),
-  type: z.nativeEnum(WidgetType),
-  componentPath: z.string().min(1, 'Component path is required'),
-  tags: z.string().optional(),
-  size: z.object({
+  size_constraints: z.object({
     minWidth: z.number().min(1).max(24),
     minHeight: z.number().min(1).max(24),
+    maxWidth: z.number().min(1).max(24).optional(),
+    maxHeight: z.number().min(1).max(24).optional(),
     defaultWidth: z.number().min(1).max(24),
     defaultHeight: z.number().min(1).max(24),
   }),
-  dataRequirements: z.object({
-    sourceType: z.enum(['dataset', 'api', 'static']),
-    requiredFields: z.string().optional(),
-    optionalFields: z.string().optional(),
-    refreshInterval: z.number().optional(),
-  }).optional(),
+  is_active: z.boolean().optional(),
 })
 
 type WidgetFormValues = z.infer<typeof widgetFormSchema>
@@ -69,32 +64,23 @@ export function WidgetForm({ widget, onSubmit, isLoading }: WidgetFormProps) {
     widget?.defaultConfig ? JSON.stringify(widget.defaultConfig, null, 2) : '{}'
   )
   const [configSchema, setConfigSchema] = useState<string>(
-    widget?.config_schema ? JSON.stringify(widget.config_schema, null, 2) : '{}'
+    widget?.config_schema ? JSON.stringify(widget.config_schema, null, 2) : '{\n  "type": "object",\n  "properties": {}\n}'
   )
 
   const form = useForm<WidgetFormValues>({
     resolver: zodResolver(widgetFormSchema),
     defaultValues: {
+      code: widget?.code || '',
       name: widget?.name || '',
       description: widget?.description || '',
       category: widget?.category || WidgetCategory.METRICS,
-      type: widget?.type || WidgetType.METRIC,
-      componentPath: widget?.componentPath || '',
-      tags: widget?.tags?.join(', ') || '',
-      size: widget?.size || {
+      size_constraints: widget?.size_constraints || {
         minWidth: 2,
         minHeight: 2,
         defaultWidth: 4,
         defaultHeight: 3,
       },
-      dataRequirements: widget?.dataRequirements ? {
-        sourceType: widget.dataRequirements.sourceType,
-        requiredFields: widget.dataRequirements.requiredFields?.join(', ') || '',
-        optionalFields: widget.dataRequirements.optionalFields?.join(', ') || '',
-        refreshInterval: widget.dataRequirements.refreshInterval,
-      } : {
-        sourceType: 'dataset',
-      },
+      is_active: widget?.is_active !== undefined ? widget.is_active : true,
     },
   })
 
@@ -117,28 +103,15 @@ export function WidgetForm({ widget, onSubmit, isLoading }: WidgetFormProps) {
     }
 
     const data: CreateWidgetRequest = {
+      code: values.code,
       name: values.name,
       description: values.description,
       category: values.category,
-      type: values.type,
-      componentPath: values.componentPath,
-      defaultConfig: JSON.parse(defaultConfig),
-      configSchema: JSON.parse(configSchema),
-      size: values.size,
-      tags: values.tags ? values.tags.split(',').map(t => t.trim()).filter(Boolean) : undefined,
-    }
-
-    if (values.dataRequirements) {
-      data.dataRequirements = {
-        sourceType: values.dataRequirements.sourceType,
-        requiredFields: values.dataRequirements.requiredFields 
-          ? values.dataRequirements.requiredFields.split(',').map(f => f.trim()).filter(Boolean)
-          : undefined,
-        optionalFields: values.dataRequirements.optionalFields
-          ? values.dataRequirements.optionalFields.split(',').map(f => f.trim()).filter(Boolean)
-          : undefined,
-        refreshInterval: values.dataRequirements.refreshInterval,
-      }
+      config_schema: JSON.parse(configSchema),
+      default_config: JSON.parse(defaultConfig),
+      size_constraints: values.size_constraints,
+      data_requirements: {},  // Can be expanded based on needs
+      is_active: values.is_active,
     }
 
     onSubmit(data)
@@ -156,13 +129,14 @@ export function WidgetForm({ widget, onSubmit, isLoading }: WidgetFormProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="name"
+                name="code"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Widget Name</FormLabel>
+                    <FormLabel>Widget Code</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., Enrollment Metric" {...field} />
+                      <Input placeholder="e.g., metric_card" {...field} disabled={!!widget} />
                     </FormControl>
+                    <FormDescription>Unique identifier (lowercase with underscores)</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -170,14 +144,14 @@ export function WidgetForm({ widget, onSubmit, isLoading }: WidgetFormProps) {
 
               <FormField
                 control={form.control}
-                name="componentPath"
+                name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Component Path</FormLabel>
+                    <FormLabel>Display Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., widgets/EnrollmentMetric" {...field} />
+                      <Input placeholder="e.g., Metric Card" {...field} />
                     </FormControl>
-                    <FormDescription>Path to the React component</FormDescription>
+                    <FormDescription>Human-readable name</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -202,69 +176,46 @@ export function WidgetForm({ widget, onSubmit, isLoading }: WidgetFormProps) {
               )}
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="category"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Category</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a category" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {Object.entries(WidgetCategory).map(([key, value]) => (
-                          <SelectItem key={value} value={value}>
-                            {key.charAt(0) + key.slice(1).toLowerCase().replace('_', ' ')}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Type</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {Object.entries(WidgetType).map(([key, value]) => (
-                          <SelectItem key={value} value={value}>
-                            {key.charAt(0) + key.slice(1).toLowerCase().replace('_', ' ')}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            <FormField
+              control={form.control}
+              name="category"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Category</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a category" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {Object.entries(WidgetCategory).map(([key, value]) => (
+                        <SelectItem key={value} value={value}>
+                          {key.charAt(0) + key.slice(1).toLowerCase().replace('_', ' ')}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}
-              name="tags"
+              name="is_active"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tags</FormLabel>
+                <FormItem className="flex items-center space-x-2">
                   <FormControl>
-                    <Input placeholder="e.g., enrollment, safety, real-time (comma separated)" {...field} />
+                    <input
+                      type="checkbox"
+                      checked={field.value}
+                      onChange={(e) => field.onChange(e.target.checked)}
+                      className="h-4 w-4"
+                    />
                   </FormControl>
-                  <FormDescription>Comma-separated tags for categorization</FormDescription>
-                  <FormMessage />
+                  <FormLabel className="!mt-0">Active</FormLabel>
+                  <FormDescription className="!mt-0 ml-2">Widget is available for use</FormDescription>
                 </FormItem>
               )}
             />
@@ -280,7 +231,7 @@ export function WidgetForm({ widget, onSubmit, isLoading }: WidgetFormProps) {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <FormField
                 control={form.control}
-                name="size.minWidth"
+                name="size_constraints.minWidth"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Min Width</FormLabel>
@@ -300,7 +251,7 @@ export function WidgetForm({ widget, onSubmit, isLoading }: WidgetFormProps) {
 
               <FormField
                 control={form.control}
-                name="size.minHeight"
+                name="size_constraints.minHeight"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Min Height</FormLabel>
@@ -320,7 +271,7 @@ export function WidgetForm({ widget, onSubmit, isLoading }: WidgetFormProps) {
 
               <FormField
                 control={form.control}
-                name="size.defaultWidth"
+                name="size_constraints.defaultWidth"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Default Width</FormLabel>
@@ -340,7 +291,7 @@ export function WidgetForm({ widget, onSubmit, isLoading }: WidgetFormProps) {
 
               <FormField
                 control={form.control}
-                name="size.defaultHeight"
+                name="size_constraints.defaultHeight"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Default Height</FormLabel>
@@ -405,7 +356,7 @@ export function WidgetForm({ widget, onSubmit, isLoading }: WidgetFormProps) {
                     validateJSON(e.target.value, 'configSchema')
                   }}
                   className="font-mono text-sm min-h-[200px]"
-                  placeholder='{"type": "object", "properties": {"title": {"type": "string"}}}'
+                  placeholder='{"type": "object", "properties": {"title": {"type": "string"}}, "required": ["title"]}'
                 />
                 <p className="text-sm text-muted-foreground mt-2">
                   JSON Schema for validating widget configurations
@@ -415,93 +366,6 @@ export function WidgetForm({ widget, onSubmit, isLoading }: WidgetFormProps) {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Data Requirements</CardTitle>
-            <CardDescription>Specify the data requirements for this widget</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="dataRequirements.sourceType"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Data Source Type</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select source type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="dataset">Dataset</SelectItem>
-                      <SelectItem value="api">API</SelectItem>
-                      <SelectItem value="static">Static</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="dataRequirements.requiredFields"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Required Fields</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="e.g., patientId, visitDate, status (comma separated)" 
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescription>Fields that must be present in the data source</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="dataRequirements.optionalFields"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Optional Fields</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="e.g., age, gender, site (comma separated)" 
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescription>Fields that can enhance the widget if available</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="dataRequirements.refreshInterval"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Refresh Interval (seconds)</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="number" 
-                      min={0}
-                      placeholder="e.g., 300 (5 minutes)"
-                      {...field}
-                      onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                    />
-                  </FormControl>
-                  <FormDescription>How often the widget should refresh its data (0 = no auto-refresh)</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-        </Card>
 
         <div className="flex justify-end gap-4">
           <Button type="submit" disabled={isLoading || !!jsonError}>

@@ -809,11 +809,11 @@ class WidgetDataExecutorFactory:
         """Create appropriate executor based on widget category"""
         category = widget_definition.category
         
-        if category == WidgetCategory.METRICS:
+        if category == WidgetCategory.METRICS.value:
             return MetricWidgetDataExecutor(db, study, widget_definition)
-        elif category == WidgetCategory.CHARTS:
+        elif category == WidgetCategory.CHARTS.value:
             return ChartWidgetDataExecutor(db, study, widget_definition)
-        elif category == WidgetCategory.TABLES:
+        elif category == WidgetCategory.TABLES.value:
             return TableWidgetDataExecutor(db, study, widget_definition)
         else:
             raise ValueError(f"Unsupported widget category: {category}")

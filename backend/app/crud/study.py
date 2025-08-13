@@ -7,7 +7,7 @@ from sqlmodel import Session, select
 from sqlalchemy import and_
 import uuid
 
-from app.models import Study, StudyCreate, StudyUpdate, User
+from app.models import Study, StudyCreate, StudyUpdate, User, StudyStatus
 from app.clinical_modules.services import FileService
 
 
@@ -70,7 +70,7 @@ def get_studies(
         # Only show studies that are active AND not in planning or archived status
         # Studies in setup, active, paused, or completed are shown
         conditions.append(Study.is_active == True)
-        conditions.append(Study.status.in_(["setup", "active", "paused", "completed"]))
+        conditions.append(Study.status.in_([StudyStatus.SETUP, StudyStatus.ACTIVE, StudyStatus.PAUSED, StudyStatus.COMPLETED]))
     
     if conditions:
         query = query.where(and_(*conditions))
@@ -131,7 +131,7 @@ def delete_study(db: Session, study_id: uuid.UUID, hard_delete: bool = False) ->
             db.commit()
         else:
             # Soft delete - archive the study
-            db_study.status = "archived"
+            db_study.status = StudyStatus.ARCHIVED
             db_study.is_active = False
             db_study.updated_at = datetime.utcnow()
             db.add(db_study)

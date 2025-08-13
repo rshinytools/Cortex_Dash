@@ -112,7 +112,7 @@ async def check_draft_study(
     draft_study = db.exec(
         select(Study).where(
             Study.org_id == current_user.org_id,
-            Study.status == "DRAFT",
+            Study.status == StudyStatus.DRAFT,
             Study.created_by == current_user.id
         ).order_by(Study.created_at.desc())
     ).first()
@@ -152,9 +152,10 @@ async def start_initialization_wizard(
     
     # Check if user has organization
     if not current_user.org_id:
+        logger.error(f"User {current_user.email} has no organization assigned. Run 'docker compose exec backend python scripts/create_default_org.py' to create one.")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User must belong to an organization to create studies"
+            detail="User must belong to an organization to create studies. Please contact your administrator to assign you to an organization."
         )
     
     # Check if protocol number already exists
@@ -407,11 +408,10 @@ async def get_available_templates(
             detail="Access denied"
         )
     
-    # Get all active templates
+    # Get all active templates (all created templates are published by default)
     templates = db.exec(
         select(UnifiedDashboardTemplate).where(
-            UnifiedDashboardTemplate.is_active == True,
-            UnifiedDashboardTemplate.status.in_(["published", "PUBLISHED"])
+            UnifiedDashboardTemplate.is_active == True
         )
     ).all()
     
@@ -851,7 +851,7 @@ async def complete_wizard(
     study.mappings_configured_at = datetime.utcnow()
     
     # Change status from DRAFT to SETUP when wizard is completed
-    study.status = "SETUP"
+    study.status = StudyStatus.SETUP
     
     db.add(study)
     db.commit()
@@ -895,7 +895,7 @@ async def cancel_wizard(
         )
     
     # Delete the study if it's still a draft
-    if study.status == "draft" or study.status == "DRAFT":  # Handle both cases
+    if study.status == StudyStatus.DRAFT:
         try:
             # Try to delete the study
             db.delete(study)

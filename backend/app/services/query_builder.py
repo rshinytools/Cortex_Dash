@@ -294,7 +294,7 @@ class QueryBuilder:
     
     def _quote_identifier(self, identifier: str) -> str:
         """Quote identifier to prevent SQL injection"""
-        if self.data_source_type == DataSourceType.POSTGRESQL:
+        if self.data_source_type == DataSourceType.POSTGRESQL.value:
             # PostgreSQL uses double quotes
             return f'"{identifier}"'
         else:

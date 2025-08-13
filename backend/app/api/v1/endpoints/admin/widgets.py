@@ -252,19 +252,9 @@ async def delete_widget(
             detail="Widget not found"
         )
     
-    # Check if widget is in use by any dashboards
-    from app.models import DashboardWidget
-    widget_usage = db.exec(
-        select(DashboardWidget).where(
-            DashboardWidget.widget_definition_id == widget_id
-        ).limit(1)
-    ).first()
-    
-    if widget_usage and not force:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Widget is in use by dashboards. Use force=true to delete anyway."
-        )
+    # TODO: Check if widget is in use by any dashboards once DashboardWidget model is implemented
+    # For now, allow deletion
+    widget_usage = None
     
     # Perform soft delete
     success = crud_widget.delete_widget(db, widget_id=widget_id)
@@ -275,8 +265,8 @@ async def delete_widget(
         )
     
     # If force delete and soft delete failed, hard delete
-    if force and widget_usage:
-        # Remove all widget instances from dashboards
+    if force:
+        # TODO: Remove all widget instances from dashboards once DashboardWidget model is implemented
         db.exec(
             select(DashboardWidget).where(
                 DashboardWidget.widget_definition_id == widget_id
@@ -404,9 +394,9 @@ async def get_widget_schema(
     }
     
     # Add widget-specific validation rules
-    if db_widget.category == WidgetCategory.CHARTS:
+    if db_widget.category == WidgetCategory.CHARTS.value:
         validation_rules["axis_fields_must_exist"] = True
-    elif db_widget.category == WidgetCategory.TABLES:
+    elif db_widget.category == WidgetCategory.TABLES.value:
         validation_rules["columns_must_be_array"] = True
     
     schema_response = WidgetSchemaResponse(

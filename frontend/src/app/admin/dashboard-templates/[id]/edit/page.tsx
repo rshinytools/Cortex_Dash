@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
@@ -24,8 +24,24 @@ export default function EditDashboardTemplatePage() {
   const [widgetDefinitions, setWidgetDefinitions] = useState<WidgetDefinition[]>([]);
   const [template, setTemplate] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
+    // Only load if we're in loading state and don't have data yet
+    if (!loading || template || hasError) {
+      return;
+    }
+    
+    // Check sessionStorage to prevent duplicate loads
+    const loadKey = `template-loading-${templateId}`;
+    const isLoading = sessionStorage.getItem(loadKey);
+    if (isLoading === 'true') {
+      return;
+    }
+    
+    // Mark as loading in sessionStorage
+    sessionStorage.setItem(loadKey, 'true');
+    
     // Fetch both template and widget definitions
     const loadData = async () => {
       try {
@@ -51,16 +67,13 @@ export default function EditDashboardTemplatePage() {
           dashboardTemplates: dashboardTemplates
         };
         
-        // Debug logging
-        console.log('Template data from backend:', templateData);
-        console.log('Menu items:', menuItems);
-        console.log('Dashboard templates:', dashboardTemplates);
-        console.log('Transformed template:', transformedTemplate);
+        // Debug logging disabled
         
         setTemplate(transformedTemplate);
         setWidgetDefinitions(widgets);
       } catch (error) {
         console.error('Failed to load data:', error);
+        setHasError(true);
         toast({
           title: "Error",
           description: "Failed to load dashboard template",
@@ -69,11 +82,18 @@ export default function EditDashboardTemplatePage() {
         router.push("/admin/dashboard-templates");
       } finally {
         setLoading(false);
+        // Clear the loading flag from sessionStorage
+        sessionStorage.removeItem(loadKey);
       }
     };
 
     loadData();
-  }, [templateId, toast, router]);
+    
+    // Cleanup function to clear sessionStorage on unmount
+    return () => {
+      sessionStorage.removeItem(loadKey);
+    };
+  }, [loading, template, hasError, templateId, toast, router]); // Include all dependencies
 
   const handleSave = async (updatedTemplate: CreateUnifiedDashboardTemplateDto) => {
     try {

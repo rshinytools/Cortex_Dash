@@ -85,7 +85,7 @@ async def test_data_source_connection(
     
     try:
         # For now, return mock responses until connectors are fully integrated
-        if source_type == DataSourceType.MEDIDATA_API:
+        if source_type == DataSourceType.MEDIDATA_API.value:
             # Validate required fields
             required = ["base_url", "username", "password", "study_oid"]
             missing = [f for f in required if not config.get(f)]
@@ -97,7 +97,7 @@ async def test_data_source_connection(
                 }
             success = True
             message = "Connection test successful (mock)"
-        elif source_type == DataSourceType.SFTP:
+        elif source_type == DataSourceType.SFTP.value:
             # Validate required fields
             required = ["host", "username"]
             missing = [f for f in required if not config.get(f)]
@@ -109,7 +109,7 @@ async def test_data_source_connection(
                 }
             success = True
             message = "SFTP connection test successful (mock)"
-        elif source_type == DataSourceType.ZIP_UPLOAD:
+        elif source_type == DataSourceType.ZIP_UPLOAD.value:
             # Manual upload doesn't need connection testing
             success = True
             message = "Manual upload ready"

@@ -1,8 +1,6 @@
 # ABOUTME: Production build configuration for local testing
 # ABOUTME: Uses production builds but runs locally without external dependencies
 
-version: '3.8'
-
 services:
   # PostgreSQL Database
   postgres:
@@ -34,37 +32,11 @@ services:
       timeout: 5s
       retries: 5
 
-  # Prestart - Database migrations
-  prestart:
-    image: cortex-backend:prod
-    container_name: cortex_dash-prestart-1
-    depends_on:
-      postgres:
-        condition: service_healthy
-    command: bash scripts/prestart.sh
-    environment:
-      - PROJECT_NAME=Cortex Clinical Dashboard
-      - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS}
-      - FRONTEND_HOST=http://localhost:3000
-      - POSTGRES_SERVER=postgres
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=changethis
-      - POSTGRES_DB=clinical_dashboard
-      - REDIS_URL=redis://redis:6379/0
-      - SECRET_KEY=your-secret-key-here-change-in-production
-      - FIRST_SUPERUSER=admin@sagarmatha.ai
-      - FIRST_SUPERUSER_PASSWORD=adadad123
-      - SMTP_HOST=mailcatcher
-      - SMTP_PORT=1025
-      - SMTP_TLS=false
-      - EMAILS_FROM_EMAIL=noreply@example.com
-    volumes:
-      - ./data:/data
-
   # Backend - FastAPI Application (Production Build)
   backend:
     build:
       context: ./backend
+      dockerfile: Dockerfile
     image: cortex-backend:prod
     container_name: cortex_dash-backend-1
     ports:
@@ -74,8 +46,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      prestart:
-        condition: service_completed_successfully
     environment:
       - PROJECT_NAME=Cortex Clinical Dashboard
       - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS}
@@ -116,7 +86,6 @@ services:
         - NODE_ENV=production
         - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
         - NEXTAUTH_URL=http://localhost:3000
-        - NEXTAUTH_SECRET=your-secret-key-here-change-in-production
     container_name: cortex_dash-frontend-1
     ports:
       - "3000:3000"

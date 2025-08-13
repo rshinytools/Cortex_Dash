@@ -27,14 +27,12 @@ COPY . .
 # Accept build arguments and convert to environment variables
 ARG NEXT_PUBLIC_API_URL
 ARG NEXTAUTH_URL
-ARG NEXTAUTH_SECRET
 ARG NODE_ENV=production
 
 # Set environment variables for build
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV NEXTAUTH_URL=${NEXTAUTH_URL}
-ENV NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
 ENV NODE_ENV=${NODE_ENV}
 
 RUN npm run build
@@ -43,8 +41,8 @@ RUN npm run build
 FROM base AS runner
 WORKDIR /app
 
-ENV NODE_ENV production
-ENV NEXT_TELEMETRY_DISABLED 1
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
@@ -63,8 +61,8 @@ USER nextjs
 
 EXPOSE 3000
 
-ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
 
 # For production
 CMD ["node", "server.js"]

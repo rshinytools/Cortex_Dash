@@ -1,22 +1,25 @@
-# ABOUTME: Development Dockerfile for backend with hot reload support
-# ABOUTME: Includes all development tools and dependencies
-
-FROM python:3.12-slim
+FROM python:3.10-slim
 
 WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
+    g++ \
     postgresql-client \
     curl \
+    libpq-dev \
+    netcat-traditional \
     && rm -rf /var/lib/apt/lists/*
 
+# Upgrade pip to latest version
+RUN pip install --upgrade pip
+
 # Copy requirements
-COPY requirements.txt .
+COPY requirements-prod.txt requirements.txt ./
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements-prod.txt
 
 # Copy application code
 COPY . .
@@ -24,8 +27,12 @@ COPY . .
 # Create necessary directories
 RUN mkdir -p /data/studies
 
+# Make startup script executable
+RUN chmod +x /app/scripts/startup.sh
+
 # Set Python path
 ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
 
-# Default command (can be overridden)
-CMD ["uvicorn", "app.main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"]
+# For development, override the startup script to use uvicorn with reload
+CMD ["/app/scripts/startup.sh"]

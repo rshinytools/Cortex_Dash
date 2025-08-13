@@ -278,7 +278,7 @@ async def execute_transformations(
             existing_execution = db.exec(
                 select(PipelineExecution).where(
                     PipelineExecution.pipeline_config_id == pipeline.id,
-                    PipelineExecution.status == PipelineStatus.SUCCESS
+                    PipelineExecution.status == PipelineStatus.SUCCESS.value
                 )
             ).first()
             
@@ -394,16 +394,16 @@ async def get_transformation_status(
             
             # Calculate progress
             progress = 0
-            if latest_execution.status == PipelineStatus.SUCCESS:
+            if latest_execution.status == PipelineStatus.SUCCESS.value:
                 progress = 100
-            elif latest_execution.status == PipelineStatus.FAILED:
+            elif latest_execution.status == PipelineStatus.FAILED.value:
                 progress = 0
                 has_errors = True
                 if latest_execution.error_message:
                     error_messages.append(f"{pipeline.name}: {latest_execution.error_message}")
             elif task_status["state"] == "PROGRESS":
                 progress = task_status["info"].get("current", 0)
-            elif latest_execution.status == PipelineStatus.RUNNING:
+            elif latest_execution.status == PipelineStatus.RUNNING.value:
                 progress = 50
             
             pipeline_statuses.append({
@@ -439,9 +439,9 @@ async def get_transformation_status(
     else:
         overall_progress = int(total_progress / len(pipeline_statuses))
         
-        if all(p["status"] == PipelineStatus.SUCCESS for p in pipeline_statuses):
+        if all(p["status"] == PipelineStatus.SUCCESS.value for p in pipeline_statuses):
             overall_status = "completed"
-        elif any(p["status"] == PipelineStatus.FAILED for p in pipeline_statuses):
+        elif any(p["status"] == PipelineStatus.FAILED.value for p in pipeline_statuses):
             overall_status = "failed"
         elif any(p["status"] in [PipelineStatus.RUNNING, PipelineStatus.PENDING] for p in pipeline_statuses):
             overall_status = "in_progress"

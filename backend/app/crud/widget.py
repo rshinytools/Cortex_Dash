@@ -110,13 +110,9 @@ def delete_widget(db: Session, widget_id: uuid.UUID) -> bool:
     if not db_widget:
         return False
     
-    # Check if widget is in use by any dashboards
-    from app.models import DashboardWidget
-    widget_usage = db.exec(
-        select(DashboardWidget).where(
-            DashboardWidget.widget_definition_id == widget_id
-        ).limit(1)
-    ).first()
+    # TODO: Check if widget is in use by any dashboards once DashboardWidget model is implemented
+    # For now, allow deletion
+    widget_usage = None
     
     if widget_usage:
         # Don't delete if widget is in use

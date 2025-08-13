@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     postgresql-client \
     curl \
     libpq-dev \
+    netcat-traditional \
     && rm -rf /var/lib/apt/lists/*
 
 # Upgrade pip to latest version
@@ -26,9 +27,12 @@ COPY . .
 # Create necessary directories
 RUN mkdir -p /data/studies
 
+# Make startup script executable
+RUN chmod +x /app/scripts/startup.sh
+
 # Set Python path
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 
-# Run with gunicorn for production
-CMD ["gunicorn", "app.main:app", "--workers", "4", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]
+# Run startup script which handles initialization and starts the app
+ENTRYPOINT ["/bin/bash", "/app/scripts/startup.sh"]

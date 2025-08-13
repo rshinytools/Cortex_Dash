@@ -27,10 +27,9 @@ class DashboardCategory(str, Enum):
 
 class TemplateStatus(str, Enum):
     """Template status for lifecycle management"""
-    DRAFT = "draft"
-    PUBLISHED = "published"
-    DEPRECATED = "deprecated"
-    ARCHIVED = "archived"
+    PUBLISHED = "PUBLISHED"
+    DEPRECATED = "DEPRECATED"
+    ARCHIVED = "ARCHIVED"
 
 
 class InheritanceType(str, Enum):
@@ -59,7 +58,7 @@ class DashboardTemplateBase(SQLModel):
     major_version: int = Field(default=1)
     minor_version: int = Field(default=0)
     patch_version: int = Field(default=0)
-    status: TemplateStatus = Field(default=TemplateStatus.DRAFT)
+    status: TemplateStatus = Field(default=TemplateStatus.PUBLISHED)
     
     # Template inheritance
     parent_template_id: Optional[uuid.UUID] = Field(default=None, foreign_key="dashboard_templates.id")

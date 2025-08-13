@@ -13,16 +13,16 @@ from app.crud.activity_log import create_activity_log as crud_create_activity_lo
 
 class ActivityAction(str, Enum):
     """Standard activity actions for audit logging"""
-    CREATE = "create"
-    READ = "read"
-    UPDATE = "update"
-    DELETE = "delete"
-    LOGIN = "login"
-    LOGOUT = "logout"
-    EXPORT = "export"
-    IMPORT = "import"
-    APPROVE = "approve"
-    REJECT = "reject"
+    CREATE = "CREATE"
+    READ = "READ"
+    UPDATE = "UPDATE"
+    DELETE = "DELETE"
+    LOGIN = "LOGIN"
+    LOGOUT = "LOGOUT"
+    EXPORT = "EXPORT"
+    IMPORT = "IMPORT"
+    APPROVE = "APPROVE"
+    REJECT = "REJECT"
 
 
 def create_activity_log(

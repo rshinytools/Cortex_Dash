@@ -504,7 +504,7 @@ async def activate_study(
         )
     
     # Update study status to active
-    study.status = "active"
+    study.status = StudyStatus.ACTIVE
     study.is_active = True
     study.updated_at = datetime.utcnow()
     study.updated_by = current_user.id

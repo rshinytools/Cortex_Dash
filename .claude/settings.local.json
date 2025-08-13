@@ -79,7 +79,14 @@
       "Bash(docker cp:*)",
       "Bash(git remote set-url:*)",
       "Bash(docker stop:*)",
-      "Bash(docker rm:*)"
+      "Bash(docker rm:*)",
+      "Bash(git remote set-head:*)",
+      "Bash(git --help remote)",
+      "Bash(taskkill:*)",
+      "Bash(docker ps:*)",
+      "Bash(docker system prune:*)",
+      "Bash(.rebuild.bat backend)",
+      "Bash(cmd /c:*)"
     ],
     "deny": []
   }

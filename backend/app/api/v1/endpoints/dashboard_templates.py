@@ -283,6 +283,19 @@ async def update_dashboard_template(
     """
     Update dashboard template. Requires MANAGE_TEMPLATES permission.
     """
+    import json
+    print(f"[BACKEND] Updating template {template_id}")
+    print(f"[BACKEND] Received data: {template_in.model_dump()}")
+    if hasattr(template_in, 'template_structure') and template_in.template_structure:
+        print(f"[BACKEND] template_structure keys: {template_in.template_structure.keys() if isinstance(template_in.template_structure, dict) else 'not a dict'}")
+        if isinstance(template_in.template_structure, dict):
+            dashboards = template_in.template_structure.get('dashboardTemplates', [])
+            print(f"[BACKEND] dashboardTemplates count: {len(dashboards)}")
+            for idx, dashboard in enumerate(dashboards):
+                if isinstance(dashboard, dict):
+                    widgets = dashboard.get('widgets', [])
+                    print(f"[BACKEND] Dashboard {idx}: {dashboard.get('name', 'unnamed')}, widgets: {len(widgets)}")
+    
     template = db.get(DashboardTemplate, template_id)
     if not template:
         raise HTTPException(

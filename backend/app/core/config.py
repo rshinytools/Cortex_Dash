@@ -48,6 +48,17 @@ class Settings(BaseSettings):
     
     # Compliance Settings
     ENABLE_21CFR_PART11: bool = True
+    
+    # Redis Cache Settings
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+    REDIS_DB: int = 0
+    REDIS_PASSWORD: str | None = None
+    CACHE_PREFIX: str = "cortex"
+    CACHE_DEFAULT_TTL: int = 3600  # 1 hour
+    CACHE_WIDGET_TTL: int = 3600  # 1 hour
+    CACHE_QUERY_TTL: int = 1800  # 30 minutes
+    CACHE_ENABLED: bool = True
     ENABLE_HIPAA: bool = True
     PHI_ENCRYPTION_KEY: str | None = None
     PASSWORD_EXPIRE_DAYS: int = 90

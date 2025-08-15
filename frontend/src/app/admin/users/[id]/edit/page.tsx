@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/lib/auth-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import { ArrowLeft, Save, User } from 'lucide-react';
 import { UserRole } from '@/types';
 import { apiClient } from '@/lib/api/client';
 import { useToast } from '@/hooks/use-toast';
+import { organizationsApi } from '@/lib/api/organizations';
 
 interface UserUpdateData {
   full_name?: string;
@@ -23,12 +24,13 @@ interface UserUpdateData {
   role?: string;
   department?: string;
   is_active?: boolean;
+  org_id?: string;
 }
 
 export default function EditUserPage() {
   const router = useRouter();
   const params = useParams();
-  const { data: session } = useSession();
+  const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const userId = params.id as string;
@@ -36,8 +38,8 @@ export default function EditUserPage() {
   const [formData, setFormData] = useState<UserUpdateData>({});
 
   // Check permissions
-  const canAccessPage = session?.user?.role && 
-    [UserRole.SYSTEM_ADMIN, UserRole.ORG_ADMIN].includes(session.user.role as UserRole);
+  const canAccessPage = currentUser?.role && 
+    [UserRole.SYSTEM_ADMIN, UserRole.ORG_ADMIN].includes(currentUser.role as UserRole);
 
   // Fetch user data
   const { data: user, isLoading } = useQuery({
@@ -49,6 +51,13 @@ export default function EditUserPage() {
     enabled: !!userId && canAccessPage,
   });
 
+  // Fetch organizations for system admins
+  const { data: organizations } = useQuery({
+    queryKey: ['organizations'],
+    queryFn: organizationsApi.getOrganizations,
+    enabled: currentUser?.role === UserRole.SYSTEM_ADMIN,
+  });
+
   // Update form when user data is loaded
   useEffect(() => {
     if (user) {
@@ -58,6 +67,7 @@ export default function EditUserPage() {
         role: user.role || '',
         department: user.department || '',
         is_active: user.is_active !== undefined ? user.is_active : true,
+        org_id: user.org_id || '',
       });
     }
   }, [user]);
@@ -130,7 +140,7 @@ export default function EditUserPage() {
   }
 
   // Check if org admin can edit this user
-  if (session?.user?.role === UserRole.ORG_ADMIN && user.org_id !== session.user.org_id) {
+  if (currentUser?.role === UserRole.ORG_ADMIN && user.org_id !== currentUser.org_id) {
     return (
       <div className="container mx-auto py-6">
         <Card>
@@ -144,7 +154,7 @@ export default function EditUserPage() {
     );
   }
 
-  const availableRoles = session?.user?.role === UserRole.SYSTEM_ADMIN
+  const availableRoles = currentUser?.role === UserRole.SYSTEM_ADMIN
     ? [
         UserRole.SYSTEM_ADMIN,
         UserRole.ORG_ADMIN,
@@ -230,6 +240,34 @@ export default function EditUserPage() {
                 />
               </div>
 
+              {/* Organization selector for system admins */}
+              {currentUser?.role === UserRole.SYSTEM_ADMIN && (
+                <div>
+                  <Label htmlFor="organization">Organization</Label>
+                  <Select
+                    value={formData.org_id}
+                    onValueChange={(value) => setFormData({ ...formData, org_id: value })}
+                  >
+                    <SelectTrigger id="organization">
+                      <SelectValue placeholder="Select organization" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {organizations && organizations.length > 0 ? (
+                        organizations.map((org) => (
+                          <SelectItem key={org.id} value={org.id}>
+                            {org.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="p-2 text-center text-muted-foreground">
+                          No organizations found
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               <div>
                 <Label htmlFor="department">Department</Label>
                 <Input
@@ -272,7 +310,7 @@ export default function EditUserPage() {
                 </Label>
               </div>
 
-              {user.id === session?.user?.id && (
+              {user.id === currentUser?.id && (
                 <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg">
                   <p className="text-sm text-yellow-800 dark:text-yellow-200">
                     You are editing your own account. Some changes may require you to log in again.

@@ -3,11 +3,11 @@
 
 'use client';
 
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/lib/auth-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function DebugPage() {
-  const { data: session, status } = useSession();
+  const { user, isAuthenticated, isLoading } = useAuth();
 
   return (
     <div className="container mx-auto py-6">
@@ -20,7 +20,7 @@ export default function DebugPage() {
           </CardHeader>
           <CardContent>
             <pre className="bg-muted p-4 rounded-lg overflow-auto">
-              {JSON.stringify({ status }, null, 2)}
+              {JSON.stringify({ isLoading, isAuthenticated }, null, 2)}
             </pre>
           </CardContent>
         </Card>
@@ -31,7 +31,7 @@ export default function DebugPage() {
           </CardHeader>
           <CardContent>
             <pre className="bg-muted p-4 rounded-lg overflow-auto">
-              {JSON.stringify(session, null, 2)}
+              {JSON.stringify(user, null, 2)}
             </pre>
           </CardContent>
         </Card>
@@ -41,13 +41,13 @@ export default function DebugPage() {
             <CardTitle>User Information</CardTitle>
           </CardHeader>
           <CardContent>
-            {session?.user && (
+            {user && (
               <div className="space-y-2">
-                <p><strong>Email:</strong> {session.user.email}</p>
-                <p><strong>Name:</strong> {session.user.full_name || 'Not set'}</p>
-                <p><strong>Role:</strong> {session.user.role || 'Not set'}</p>
-                <p><strong>Org ID:</strong> {session.user.org_id || 'Not set'}</p>
-                <p><strong>Is Superuser:</strong> {(session.user as any).is_superuser ? 'Yes' : 'No'}</p>
+                <p><strong>Email:</strong> {user.email}</p>
+                <p><strong>Name:</strong> {user.full_name || 'Not set'}</p>
+                <p><strong>Role:</strong> {user.role || 'Not set'}</p>
+                <p><strong>Org ID:</strong> {user.org_id || 'Not set'}</p>
+                <p><strong>Is Superuser:</strong> {(user as any).is_superuser ? 'Yes' : 'No'}</p>
               </div>
             )}
           </CardContent>

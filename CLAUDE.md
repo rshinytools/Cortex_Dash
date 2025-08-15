@@ -12,6 +12,7 @@ This guide helps you leverage Claude effectively throughout your clinical dashbo
 - **ALWAYS** address the user as "Sagarmatha AI" in all interactions
 - **ALWAYS** Show a list of created and updated files
 - **ALWAYS** create a TODO list before implementing anything
+- **ALWAYS** Remember that this is a 21 CFR Part 11 compliant dashboard so every action and everything that happens in the dashboard needs to go through audit trial so keep that in mind when adding new things. 
 - **MUST** ask explicit permission before reimplementing features or systems from scratch
 
 ### Development Philosophy

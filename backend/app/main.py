@@ -6,6 +6,7 @@ from starlette.middleware.cors import CORSMiddleware
 
 from app.api.main import api_router
 from app.core.config import settings
+from app.core.audit_middleware import AuditMiddleware
 
 logger = logging.getLogger(__name__)
 
@@ -35,5 +36,9 @@ if settings.all_cors_origins:
         allow_headers=["*"],
     )
     logger.info(f"CORS middleware configured with origins: {settings.all_cors_origins}")
+    
+    # Add audit middleware to capture all API calls
+    app.middleware("http")(AuditMiddleware())
+    logger.info("Audit middleware configured for comprehensive logging")
 
 app.include_router(api_router, prefix=settings.API_V1_STR)

@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useSession, signOut } from 'next-auth/react';
+import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -19,16 +19,15 @@ import { Badge } from '@/components/ui/badge';
 import { useRouter } from 'next/navigation';
 
 export function UserMenu() {
-  const { data: session } = useSession();
+  const { user, logout } = useAuth();
   const router = useRouter();
 
-  if (!session?.user) {
+  if (!user) {
     return null;
   }
 
   const handleLogout = async () => {
-    await signOut({ redirect: false });
-    router.push('/');
+    await logout();
   };
 
   // Get initials for avatar
@@ -57,7 +56,7 @@ export function UserMenu() {
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10">
             <AvatarFallback className="bg-primary text-primary-foreground">
-              {getInitials(session.user.email || '')}
+              {getInitials(user.email || '')}
             </AvatarFallback>
           </Avatar>
         </Button>
@@ -65,10 +64,10 @@ export function UserMenu() {
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{session.user.email}</p>
+            <p className="text-sm font-medium leading-none">{user.email}</p>
             <div className="flex items-center gap-2 mt-1">
-              <Badge variant={getRoleBadgeVariant(session.user.role || '')}>
-                {session.user.role?.replace('_', ' ')}
+              <Badge variant={getRoleBadgeVariant(user.role || '')}>
+                {user.role?.replace('_', ' ')}
               </Badge>
             </div>
           </div>

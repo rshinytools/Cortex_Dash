@@ -1,7 +1,7 @@
 from datetime import timedelta
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.security import OAuth2PasswordRequestForm
 
@@ -23,24 +23,91 @@ router = APIRouter(tags=["login"])
 
 @router.post("/login/access-token")
 def login_access_token(
-    session: SessionDep, form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
+    session: SessionDep, 
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    request: Any = None
 ) -> Token:
     """
     OAuth2 compatible token login, get an access token for future requests
     """
+    from fastapi import Request
+    from datetime import datetime
+    from app.crud import activity_log as crud_activity
+    
+    # Get IP address and user agent if request is available
+    ip_address = None
+    user_agent = None
+    if request and isinstance(request, Request):
+        ip_address = request.client.host if request.client else None
+        user_agent = request.headers.get("user-agent")
+    
     user = crud.authenticate(
         session=session, email=form_data.username, password=form_data.password
     )
+    
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect email or password")
     elif not user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
+    
+    # Log successful login - keep this as it's a special authentication event
+    from app.crud import activity_log as crud_activity
+    try:
+        crud_activity.create_activity_log(
+            db=session,
+            user=user,
+            action="LOGIN",
+            resource_type="authentication",
+            resource_id=str(user.id),
+            details={"email": user.email, "role": user.role},
+            ip_address=ip_address,
+            user_agent=user_agent
+        )
+    except Exception as e:
+        # Log error but don't fail login
+        print(f"Failed to log activity: {e}")
+    
+    # Update last login time
+    user.last_login = datetime.utcnow()
+    session.add(user)
+    session.commit()
+    
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     return Token(
         access_token=security.create_access_token(
             user.id, expires_delta=access_token_expires
         )
     )
+
+
+@router.post("/logout")
+def logout(
+    session: SessionDep,
+    current_user: CurrentUser,
+    request: Request
+) -> Message:
+    """
+    Logout the current user
+    """
+    from app.crud import activity_log as crud_activity
+    
+    # Log the logout
+    try:
+        crud_activity.create_activity_log(
+            db=session,
+            user=current_user,
+            action="LOGOUT",
+            resource_type="authentication",
+            resource_id=str(current_user.id),
+            details={"email": current_user.email, "role": current_user.role},
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent")
+        )
+    except Exception as e:
+        # Log error but don't fail logout
+        print(f"Failed to log logout activity: {e}")
+    
+    return Message(message="Logged out successfully")
 
 
 @router.post("/login/test-token", response_model=UserPublic)

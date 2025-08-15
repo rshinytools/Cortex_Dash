@@ -2,7 +2,7 @@
 // ABOUTME: Handles study initialization progress and other real-time updates
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth } from '@/lib/auth-context';
 import { toast } from '@/hooks/use-toast';
 
 export interface WebSocketMessage {

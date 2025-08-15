@@ -2,7 +2,7 @@
 // ABOUTME: Extracts menu structure from unified dashboard templates with permission filtering
 
 import { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
+import { useAuth } from '@/lib/auth-context'
 
 interface MenuItem {
   id: string
@@ -25,7 +25,7 @@ const menuCache = new Map<string, { items: MenuItem[], timestamp: number }>()
 const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
 
 export function useStudyMenu(studyId: string): UseStudyMenuResult {
-  const { data: session } = useSession()
+  const { user } = useAuth()
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -47,7 +47,7 @@ export function useStudyMenu(studyId: string): UseStudyMenuResult {
   }
 
   const fetchMenu = async () => {
-    if (!studyId || !session?.user) {
+    if (!studyId || !user) {
       setLoading(false)
       return
     }
@@ -55,7 +55,7 @@ export function useStudyMenu(studyId: string): UseStudyMenuResult {
     // Check cache first
     const cached = menuCache.get(studyId)
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      const userPermissions = (session.user as any).permissions || []
+      const userPermissions = (user as any).permissions || []
       setMenuItems(filterMenuItemsByPermissions(cached.items, userPermissions))
       setLoading(false)
       return
@@ -69,7 +69,7 @@ export function useStudyMenu(studyId: string): UseStudyMenuResult {
       const studyResponse = await fetch(`${baseUrl}/studies/${studyId}/`, {
         credentials: 'include',
         headers: {
-          'Authorization': `Bearer ${(session as any).access_token}`,
+          'Authorization': `Bearer ${(user as any).access_token}`,
         },
       })
 
@@ -90,7 +90,7 @@ export function useStudyMenu(studyId: string): UseStudyMenuResult {
       const templateResponse = await fetch(`${baseUrl}/dashboard-templates/${study.dashboard_template_id}`, {
         credentials: 'include',
         headers: {
-          'Authorization': `Bearer ${(session as any).access_token}`,
+          'Authorization': `Bearer ${(user as any).access_token}`,
         },
       })
 
@@ -112,7 +112,7 @@ export function useStudyMenu(studyId: string): UseStudyMenuResult {
       })
 
       // Filter by user permissions
-      const userPermissions = (session.user as any).permissions || []
+      const userPermissions = (user as any).permissions || []
       const filteredItems = filterMenuItemsByPermissions(menuItems, userPermissions)
       
       setMenuItems(filteredItems)
@@ -134,7 +134,7 @@ export function useStudyMenu(studyId: string): UseStudyMenuResult {
 
   useEffect(() => {
     fetchMenu()
-  }, [studyId, session])
+  }, [studyId, user])
 
   return {
     menuItems,

@@ -32,29 +32,61 @@ router = APIRouter(prefix="/users", tags=["users"])
 @router.get(
     "/",
     dependencies=[Depends(get_current_active_superuser)],
-    response_model=UsersPublic,
 )
 def read_users(session: SessionDep, skip: int = 0, limit: int = 100) -> Any:
     """
-    Retrieve users.
+    Retrieve users with organization data.
     """
+    from app.models.organization import Organization
+    from sqlalchemy.orm import selectinload
 
     count_statement = select(func.count()).select_from(User)
     count = session.exec(count_statement).one()
 
-    statement = select(User).offset(skip).limit(limit)
+    # Load users with organization relationship
+    statement = select(User).options(selectinload(User.organization)).offset(skip).limit(limit)
     users = session.exec(statement).all()
+    
+    # Enrich with organization data
+    enriched_users = []
+    for user in users:
+        user_dict = {
+            "id": str(user.id),
+            "email": user.email,
+            "full_name": user.full_name,
+            "role": user.role,
+            "department": user.department,
+            "is_active": user.is_active,
+            "is_superuser": user.is_superuser,
+            "org_id": str(user.org_id) if user.org_id else None,
+            "created_at": user.created_at.isoformat() if user.created_at else None,
+            "last_login": user.last_login.isoformat() if user.last_login else None,
+        }
+        
+        # Add organization data
+        if user.org_id:
+            org = session.get(Organization, user.org_id)
+            if org:
+                user_dict["organization"] = {
+                    "id": str(org.id),
+                    "name": org.name
+                }
+        
+        enriched_users.append(user_dict)
 
-    return UsersPublic(data=users, count=count)
+    return {"data": enriched_users, "count": count}
 
 
 @router.post(
     "/", dependencies=[Depends(get_current_active_superuser)], response_model=UserPublic
 )
-def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
+def create_user(*, session: SessionDep, user_in: UserCreate, current_user: CurrentUser) -> Any:
     """
     Create new user.
     """
+    from app.models.activity_log import ActivityLog, ActivityAction
+    from datetime import datetime
+    
     user = crud.get_user_by_email(session=session, email=user_in.email)
     if user:
         raise HTTPException(
@@ -63,6 +95,23 @@ def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
         )
 
     user = crud.create_user(session=session, user_create=user_in)
+    
+    # Log user creation
+    activity_log = ActivityLog(
+        action=ActivityAction.CREATE,
+        resource_type="user",
+        resource_id=str(user.id),
+        user_id=current_user.id,
+        details={
+            "created_user_email": user.email,
+            "created_user_role": user.role,
+            "created_by": current_user.email
+        },
+        timestamp=datetime.utcnow()
+    )
+    session.add(activity_log)
+    session.commit()
+    
     if settings.emails_enabled and user_in.email:
         email_data = generate_new_account_email(
             email_to=user_in.email, username=user_in.email, password=user_in.password
@@ -104,6 +153,9 @@ def update_password_me(
     """
     Update own password.
     """
+    from app.models.activity_log import ActivityLog, ActivityAction
+    from datetime import datetime
+    
     if not verify_password(body.current_password, current_user.hashed_password):
         raise HTTPException(status_code=400, detail="Incorrect password")
     if body.current_password == body.new_password:
@@ -113,7 +165,19 @@ def update_password_me(
     hashed_password = get_password_hash(body.new_password)
     current_user.hashed_password = hashed_password
     session.add(current_user)
+    
+    # Log password change
+    activity_log = ActivityLog(
+        action=ActivityAction.PASSWORD_CHANGED,
+        resource_type="user",
+        resource_id=str(current_user.id),
+        user_id=current_user.id,
+        details={"email": current_user.email},
+        timestamp=datetime.utcnow()
+    )
+    session.add(activity_log)
     session.commit()
+    
     return Message(message="Password updated successfully")
 
 
@@ -183,10 +247,13 @@ def update_user(
     session: SessionDep,
     user_id: uuid.UUID,
     user_in: UserUpdate,
+    current_user: CurrentUser,
 ) -> Any:
     """
     Update a user.
     """
+    from app.models.activity_log import ActivityLog, ActivityAction
+    from datetime import datetime
 
     db_user = session.get(User, user_id)
     if not db_user:
@@ -201,7 +268,29 @@ def update_user(
                 status_code=409, detail="User with this email already exists"
             )
 
+    # Track what changed
+    old_values = {"email": db_user.email, "role": db_user.role, "is_active": db_user.is_active}
+    
     db_user = crud.update_user(session=session, db_user=db_user, user_in=user_in)
+    
+    # Log user update
+    new_values = {"email": db_user.email, "role": db_user.role, "is_active": db_user.is_active}
+    activity_log = ActivityLog(
+        action=ActivityAction.UPDATE,
+        resource_type="user",
+        resource_id=str(user_id),
+        user_id=current_user.id,
+        old_value=old_values,
+        new_value=new_values,
+        details={
+            "updated_by": current_user.email,
+            "updated_user": db_user.email
+        },
+        timestamp=datetime.utcnow()
+    )
+    session.add(activity_log)
+    session.commit()
+    
     return db_user
 
 
@@ -212,6 +301,9 @@ def delete_user(
     """
     Delete a user.
     """
+    from app.models.activity_log import ActivityLog, ActivityAction
+    from datetime import datetime
+    
     user = session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -219,8 +311,27 @@ def delete_user(
         raise HTTPException(
             status_code=403, detail="Super users are not allowed to delete themselves"
         )
+    
+    # Store user info before deletion
+    deleted_user_info = {"email": user.email, "role": user.role}
+    
     statement = delete(Item).where(col(Item.owner_id) == user_id)
     session.exec(statement)  # type: ignore
     session.delete(user)
+    
+    # Log user deletion
+    activity_log = ActivityLog(
+        action=ActivityAction.DELETE,
+        resource_type="user",
+        resource_id=str(user_id),
+        user_id=current_user.id,
+        details={
+            "deleted_by": current_user.email,
+            "deleted_user": deleted_user_info
+        },
+        timestamp=datetime.utcnow()
+    )
+    session.add(activity_log)
     session.commit()
+    
     return Message(message="User deleted successfully")

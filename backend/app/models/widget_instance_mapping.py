@@ -1,8 +1,8 @@
 # ABOUTME: Widget instance mapping models for study-specific widget configurations
-# ABOUTME: Stores how widgets are mapped to datasets, filters, and aggregations for each study
+# ABOUTME: Stores simplified dropdown-based mappings between uploaded data and widgets
 
 import uuid
-from typing import Optional, Dict, Any, TYPE_CHECKING
+from typing import Optional, Dict, Any, List, TYPE_CHECKING
 from datetime import datetime
 from enum import Enum
 
@@ -12,7 +12,8 @@ from sqlalchemy import JSON, DateTime, String, UniqueConstraint
 if TYPE_CHECKING:
     from .user import User
     from .study import Study
-    from .widget import WidgetDefinition
+    from .widget import Widget
+    from .data_source_upload import DataSourceUpload
 
 
 class AggregationMethod(str, Enum):
@@ -53,64 +54,39 @@ class ComparisonType(str, Enum):
 
 
 class WidgetInstanceMappingBase(SQLModel):
-    """Base properties for widget instance mapping"""
-    study_id: uuid.UUID = Field(foreign_key="study.id")
-    widget_instance_id: str = Field(max_length=100)  # Unique ID within dashboard template
-    widget_definition_id: uuid.UUID = Field(foreign_key="widget_definitions.id")
+    """Base properties for widget instance mapping - simplified dropdown approach"""
+    widget_id: str = Field(foreign_key="widgets.id")
+    data_upload_id: str = Field(foreign_key="data_source_uploads.id")
     
-    # Dataset configuration
-    dataset_name: str = Field(max_length=100)  # e.g., "AE", "DM", "ADSL"
-    dataset_source: str = Field(default="source_data")  # "source_data" or "transformed_data"
-    
-    # Aggregation configuration
-    aggregation_method: AggregationMethod
-    aggregation_config: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    # Simple dataset and field mapping
+    dataset_name: str = Field(max_length=100)  # Selected dataset from upload
+    field_mappings: Dict[str, str] = Field(default_factory=dict, sa_column=Column(JSON))
     # Example: {
-    #   "value_column": "AVAL",  # For SUM, AVG, etc.
-    #   "unique_columns": ["USUBJID"],  # For COUNT_DISTINCT
-    #   "group_by": ["SITEID", "ARM"]  # Optional grouping
+    #   "value": "AVAL",  # Widget field -> Data column
+    #   "label": "PARAM",
+    #   "date": "VISITDAT",
+    #   "category": "ARM"
     # }
     
-    # Filter configuration
-    filter_config: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSON))
+    # Optional transformations (simple expressions)
+    transformations: Optional[Dict[str, str]] = Field(default=None, sa_column=Column(JSON))
     # Example: {
-    #   "logic": "AND",
-    #   "conditions": [
-    #     {"column": "AETERM", "operator": "not_null"},
-    #     {"column": "AESEV", "operator": "equals", "value": "SEVERE"}
-    #   ],
-    #   "groups": [
-    #     {
-    #       "logic": "OR",
-    #       "conditions": [
-    #         {"column": "AESER", "operator": "equals", "value": "Y"}
-    #       ]
-    #     }
-    #   ]
+    #   "value": "value * 100",  # Simple transformation
+    #   "date": "to_date(date, 'YYYY-MM-DD')"
     # }
     
-    # Comparison configuration
-    comparison_config: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSON))
-    # Example: {
-    #   "enabled": true,
-    #   "type": "previous_extract",
-    #   "label": "vs last month",
-    #   "target_value": 100  # Only for target_value type
-    # }
-    
-    # Display configuration
-    display_config: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSON))
-    # Example: {
-    #   "format": "number",
-    #   "decimal_places": 0,
-    #   "prefix": "",
-    #   "suffix": " subjects"
-    # }
+    # Optional filters
+    filters: Optional[List[Dict[str, Any]]] = Field(default=None, sa_column=Column(JSON))
+    # Example: [
+    #   {"column": "AESER", "operator": "equals", "value": "Y"},
+    #   {"column": "AESEV", "operator": "in_list", "value": ["MODERATE", "SEVERE"]}
+    # ]
     
     # Metadata
     is_active: bool = Field(default=True)
-    last_executed_at: Optional[datetime] = Field(default=None)
-    last_execution_error: Optional[str] = Field(default=None, sa_column=Column(String(500)))
+    validation_status: Optional[str] = Field(default=None)  # valid, invalid, pending
+    validation_errors: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
+    last_validated_at: Optional[datetime] = Field(default=None)
 
 
 class WidgetInstanceMappingCreate(WidgetInstanceMappingBase):
@@ -120,13 +96,11 @@ class WidgetInstanceMappingCreate(WidgetInstanceMappingBase):
 
 class WidgetInstanceMappingUpdate(SQLModel):
     """Properties to receive on widget instance mapping update"""
+    data_upload_id: Optional[str] = None
     dataset_name: Optional[str] = None
-    dataset_source: Optional[str] = None
-    aggregation_method: Optional[AggregationMethod] = None
-    aggregation_config: Optional[Dict[str, Any]] = None
-    filter_config: Optional[Dict[str, Any]] = None
-    comparison_config: Optional[Dict[str, Any]] = None
-    display_config: Optional[Dict[str, Any]] = None
+    field_mappings: Optional[Dict[str, str]] = None
+    transformations: Optional[Dict[str, str]] = None
+    filters: Optional[List[Dict[str, Any]]] = None
     is_active: Optional[bool] = None
 
 
@@ -134,23 +108,24 @@ class WidgetInstanceMapping(WidgetInstanceMappingBase, table=True):
     """Database model for widget instance mappings"""
     __tablename__ = "widget_instance_mappings"
     __table_args__ = (
-        UniqueConstraint("study_id", "widget_instance_id", name="unique_study_widget_instance"),
+        UniqueConstraint("widget_id", name="unique_widget_mapping"),
     )
     
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     
     # Audit fields
-    created_by: uuid.UUID = Field(foreign_key="user.id")
+    created_by: str = Field(foreign_key="user.id")
+    updated_by: Optional[str] = Field(default=None, foreign_key="user.id")
     created_at: datetime = Field(
         sa_column=Column(DateTime, default=datetime.utcnow, nullable=False)
     )
-    updated_at: datetime = Field(
-        sa_column=Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at: Optional[datetime] = Field(
+        sa_column=Column(DateTime, onupdate=datetime.utcnow, nullable=True)
     )
     
     # Relationships
-    study: "Study" = Relationship()
-    widget_definition: "WidgetDefinition" = Relationship()
+    widget: "Widget" = Relationship(back_populates="data_mappings")
+    data_upload: "DataSourceUpload" = Relationship()
     creator: "User" = Relationship(
         sa_relationship_kwargs={"foreign_keys": "[WidgetInstanceMapping.created_by]"}
     )

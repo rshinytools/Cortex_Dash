@@ -4,7 +4,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,7 +35,7 @@ interface ProfileUpdateData {
 }
 
 export default function ProfilePage() {
-  const { data: session, update: updateSession, status } = useSession();
+  const { user, updateUser, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -52,7 +52,7 @@ export default function ProfilePage() {
       const response = await apiClient.get('/users/me');
       return response.data;
     },
-    enabled: !!session?.accessToken,
+    enabled: !!user,
   });
 
   // Update form data when user data loads
@@ -74,16 +74,8 @@ export default function ProfilePage() {
       // Refetch user data from server to ensure we have the latest
       await refetchUser();
       
-      // Update the session with new user data
-      if (session) {
-        await updateSession({
-          ...session,
-          user: {
-            ...session.user,
-            ...updatedUser,
-          },
-        });
-      }
+      // Update the auth context with new user data
+      updateUser(updatedUser);
       
       // Invalidate queries that might depend on user data
       queryClient.invalidateQueries({ queryKey: ['currentUser'] });
@@ -119,16 +111,16 @@ export default function ProfilePage() {
 
   // Determine where to go back based on user role
   const getBackPath = () => {
-    if (!session?.user) return '/dashboard';
+    if (!user) return '/dashboard';
     
-    const role = session.user.role as UserRole;
+    const role = user.role as UserRole;
     if (role === UserRole.SYSTEM_ADMIN || role === UserRole.ORG_ADMIN) {
       return '/admin';
     }
     return '/dashboard';
   };
 
-  if (status === 'loading') {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-200px)]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -136,8 +128,8 @@ export default function ProfilePage() {
     );
   }
 
-  if (status === 'unauthenticated') {
-    router.push('/auth/login');
+  if (!isAuthenticated) {
+    router.push('/');
     return null;
   }
 
@@ -152,8 +144,8 @@ export default function ProfilePage() {
     }
   };
 
-  // Use currentUser data if available, otherwise fall back to session data
-  const userData = currentUser || session?.user;
+  // Use currentUser data if available, otherwise fall back to user data
+  const userData = currentUser || user;
 
   return (
     <div className="container mx-auto py-6 max-w-4xl">
@@ -167,7 +159,7 @@ export default function ProfilePage() {
           Dashboard
         </Button>
         <span>/</span>
-        {(session?.user?.role === UserRole.SYSTEM_ADMIN || session?.user?.role === UserRole.ORG_ADMIN) && (
+        {(user?.role === UserRole.SYSTEM_ADMIN || user?.role === UserRole.ORG_ADMIN) && (
           <>
             <Button
               variant="link"

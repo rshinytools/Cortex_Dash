@@ -1,10 +1,11 @@
 @echo off
-REM ABOUTME: Complete fresh installation script for Cortex Dashboard (Windows)
-REM ABOUTME: Removes all old containers, volumes, and creates a fresh installation
+REM ABOUTME: Complete fresh installation script for Cortex Clinical Dashboard Platform
+REM ABOUTME: Sets up all phases (5-8) with RBAC, Data Sources, Integrations, and Advanced Features
 
-echo =============================================
-echo    Cortex Dashboard - Fresh Installation
-echo =============================================
+echo ============================================================
+echo    CORTEX CLINICAL DASHBOARD - FRESH INSTALLATION
+echo    Phases 5-8: Complete Platform Setup
+echo ============================================================
 echo.
 
 REM Check if Docker is running
@@ -94,6 +95,25 @@ REM Wait for backend to be ready
 echo Waiting for backend to initialize...
 timeout /t 15 /nobreak >nul
 
+REM Run database migrations including RBAC
+echo Running database migrations with RBAC setup...
+docker exec cortex_dash-backend-1 alembic upgrade head 2>nul
+
+REM Initialize RBAC data
+echo Initializing RBAC roles and permissions...
+docker exec cortex_dash-backend-1 python scripts/init_rbac_data.py 2>nul
+if %ERRORLEVEL% NEQ 0 (
+    echo Note: RBAC data may already be initialized or script not found.
+)
+
+REM Initialize Widget definitions
+echo Initializing widget definitions...
+docker cp backend/scripts/create_widgets.py cortex_dash-backend-1:/app/scripts/ >nul 2>&1
+docker exec cortex_dash-backend-1 python scripts/create_widgets.py 2>nul
+if %ERRORLEVEL% NEQ 0 (
+    echo Note: Widget data may already be initialized or script not found.
+)
+
 REM Start remaining services
 echo Starting frontend and worker services...
 docker compose -f docker-compose.local-prod.yml up -d frontend celery-worker
@@ -139,6 +159,14 @@ echo.
 echo Login credentials:
 echo   - Email: admin@sagarmatha.ai
 echo   - Password: adadad123
+echo   - Role: System Administrator (full permissions)
+echo.
+echo RBAC System Features:
+echo   - 5 pre-configured roles with different access levels
+echo   - 50+ granular permissions for fine-grained control
+echo   - Permission matrix for easy management
+echo   - Audit trail for all permission changes
+echo   - Role-based navigation and UI elements
 echo.
 echo To view logs:
 echo   docker compose -f docker-compose.local-prod.yml logs -f

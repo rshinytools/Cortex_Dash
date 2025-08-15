@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -101,12 +101,12 @@ const roleDefinitions: RoleDefinition[] = [
 ];
 
 export default function RolesPage() {
-  const { data: session } = useSession();
+  const { user } = useAuth();
   const router = useRouter();
 
   // Check if user has permission
-  const canAccessPage = session?.user?.role && 
-    [UserRole.SYSTEM_ADMIN, UserRole.ORG_ADMIN].includes(session.user.role as UserRole);
+  const canAccessPage = user?.role && 
+    [UserRole.SYSTEM_ADMIN, UserRole.ORG_ADMIN].includes(user.role as UserRole);
 
   if (!canAccessPage) {
     return (

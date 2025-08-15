@@ -5,12 +5,15 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, LayoutDashboard, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { UnifiedDashboardDesigner } from "@/components/admin/unified-dashboard-designer";
 import { useToast } from "@/components/ui/use-toast";
+import { motion } from "framer-motion";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { UserMenu } from "@/components/user-menu";
 import { dashboardTemplatesApi, CreateUnifiedDashboardTemplateDto } from "@/lib/api/dashboard-templates";
 import type { WidgetDefinition } from "@/types/widget";
 import { widgetsApi } from "@/lib/api/widgets";
@@ -115,25 +118,39 @@ export default function EditDashboardTemplatePage() {
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <p>Loading dashboard template...</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="flex h-screen items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-indigo-600 dark:text-indigo-400" />
+            <p className="text-gray-600 dark:text-gray-400">Loading dashboard template...</p>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (!template) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <p>Template not found</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="flex h-screen items-center justify-center">
+          <Card className="border-0 shadow-lg bg-white dark:bg-gray-800 p-8">
+            <p className="text-gray-600 dark:text-gray-400">Template not found</p>
+          </Card>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-screen flex-col bg-gray-50 dark:bg-gray-900">
       {/* Header with breadcrumb */}
-      <div className="border-b px-8 py-4">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-8 py-6 shadow-sm"
+      >
+        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
           <Button
             variant="link"
             className="p-0 h-auto font-normal"
@@ -153,34 +170,48 @@ export default function EditDashboardTemplatePage() {
           <span className="text-foreground">Edit</span>
         </div>
         
-        <div className="flex items-center">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push('/admin/dashboard-templates')}
-            className="mr-4"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold">Edit Dashboard Template</h1>
-            <p className="text-muted-foreground">
-              Modify the dashboard template and menu structure
-            </p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push('/admin/dashboard-templates')}
+              className="mr-4 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-400 dark:to-blue-400 bg-clip-text text-transparent flex items-center gap-3">
+                <LayoutDashboard className="h-7 w-7 text-indigo-600 dark:text-indigo-400" />
+                Edit Dashboard Template
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-1">
+                Modify the dashboard template and menu structure
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            <UserMenu />
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Designer - fills remaining space */}
-      <div className="flex-1 overflow-hidden">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3, delay: 0.1 }}
+        className="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-900"
+      >
         <UnifiedDashboardDesigner
           templateId={templateId}
           initialTemplate={template}
           widgetDefinitions={widgetDefinitions}
           onSave={handleSave}
         />
-      </div>
+      </motion.div>
     </div>
   );
 }

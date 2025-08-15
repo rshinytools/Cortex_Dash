@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/lib/auth-context';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -105,17 +105,17 @@ const navItems: NavItem[] = [
 ];
 
 export function Sidebar() {
-  const { data: session } = useSession();
+  const { user } = useAuth();
   const pathname = usePathname();
 
   const filteredNavItems = navItems.filter((item) => {
     if (!item.roles) return true;
-    return item.roles.includes(session?.user?.role as UserRole);
+    return item.roles.includes(user?.role as UserRole);
   }).map((item) => ({
     ...item,
     children: item.children?.filter((child) => {
       if (!child.roles) return true;
-      return child.roles.includes(session?.user?.role as UserRole);
+      return child.roles.includes(user?.role as UserRole);
     })
   }));
 

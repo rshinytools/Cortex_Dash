@@ -36,7 +36,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, Clock, Mail, FileText, Play, Pause, Trash2, Edit, Plus } from 'lucide-react';
 import { toast } from 'sonner';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/lib/auth-context';
 import { format } from 'date-fns';
 
 interface ScheduledExportsProps {
@@ -76,7 +76,7 @@ export function ScheduledExports({ dashboardId, dashboardName, isOpen, onClose }
   const [isLoading, setIsLoading] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingExport, setEditingExport] = useState<ScheduledExport | null>(null);
-  const { data: session } = useSession();
+  const { user, token } = useAuth();
 
   // Form state
   const [formData, setFormData] = useState({
@@ -97,7 +97,7 @@ export function ScheduledExports({ dashboardId, dashboardName, isOpen, onClose }
   }, [isOpen]);
 
   const fetchScheduledExports = async () => {
-    if (!session?.user) return;
+    if (!user) return;
 
     setIsLoading(true);
     try {
@@ -105,7 +105,7 @@ export function ScheduledExports({ dashboardId, dashboardName, isOpen, onClose }
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/dashboards/${dashboardId}/scheduled-exports`,
         {
           headers: {
-            Authorization: `Bearer ${(session.user as any).accessToken}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
@@ -123,7 +123,7 @@ export function ScheduledExports({ dashboardId, dashboardName, isOpen, onClose }
   };
 
   const handleCreate = async () => {
-    if (!session?.user) return;
+    if (!user) return;
 
     try {
       const recipients = formData.email_recipients
@@ -137,7 +137,7 @@ export function ScheduledExports({ dashboardId, dashboardName, isOpen, onClose }
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${(session.user as any).accessToken}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             ...formData,
@@ -163,7 +163,7 @@ export function ScheduledExports({ dashboardId, dashboardName, isOpen, onClose }
   };
 
   const handleUpdate = async () => {
-    if (!session?.user || !editingExport) return;
+    if (!user || !editingExport) return;
 
     try {
       const recipients = formData.email_recipients
@@ -177,7 +177,7 @@ export function ScheduledExports({ dashboardId, dashboardName, isOpen, onClose }
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${(session.user as any).accessToken}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             ...formData,
@@ -199,7 +199,7 @@ export function ScheduledExports({ dashboardId, dashboardName, isOpen, onClose }
   };
 
   const handleDelete = async (id: string) => {
-    if (!session?.user) return;
+    if (!user) return;
 
     try {
       const response = await fetch(
@@ -207,7 +207,7 @@ export function ScheduledExports({ dashboardId, dashboardName, isOpen, onClose }
         {
           method: 'DELETE',
           headers: {
-            Authorization: `Bearer ${(session.user as any).accessToken}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
@@ -223,7 +223,7 @@ export function ScheduledExports({ dashboardId, dashboardName, isOpen, onClose }
   };
 
   const handleToggleActive = async (exportItem: ScheduledExport) => {
-    if (!session?.user) return;
+    if (!user) return;
 
     try {
       const response = await fetch(
@@ -232,7 +232,7 @@ export function ScheduledExports({ dashboardId, dashboardName, isOpen, onClose }
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${(session.user as any).accessToken}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             is_active: !exportItem.is_active,
@@ -253,7 +253,7 @@ export function ScheduledExports({ dashboardId, dashboardName, isOpen, onClose }
   };
 
   const handleRunNow = async (id: string) => {
-    if (!session?.user) return;
+    if (!user) return;
 
     try {
       const response = await fetch(
@@ -261,7 +261,7 @@ export function ScheduledExports({ dashboardId, dashboardName, isOpen, onClose }
         {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${(session.user as any).accessToken}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );

@@ -37,12 +37,11 @@ except Exception as e:
 if ! check_db_initialized; then
     echo "Database not initialized. Running setup..."
     
-    # Run Alembic migrations
-    echo "Running database migrations..."
-    alembic upgrade head || {
-        echo "Migration failed, trying to initialize from scratch..."
-        # If migrations fail, it might be a fresh database
-        alembic stamp head
+    # Initialize database with tables
+    echo "Initializing database tables..."
+    python scripts/init_db.py || {
+        echo "Database initialization failed!"
+        exit 1
     }
     
     # Run post-installation setup
@@ -53,9 +52,23 @@ if ! check_db_initialized; then
     }
     
     echo "Database initialization complete!"
+    
+    # Initialize RBAC data
+    echo "Initializing RBAC system..."
+    python scripts/init_rbac_data.py || echo "RBAC initialization failed or already exists"
+    
+    # Initialize Widget definitions
+    echo "Initializing widget definitions..."
+    python scripts/create_widgets.py || echo "Widget initialization failed or already exists"
 else
     echo "Database already initialized, checking for pending migrations..."
     alembic upgrade head || echo "No pending migrations or migration check failed"
+    
+    # Check and initialize RBAC data if needed
+    python scripts/init_rbac_data.py 2>/dev/null || true
+    
+    # Check and initialize Widget definitions if needed
+    python scripts/create_widgets.py 2>/dev/null || true
 fi
 
 # Verify admin user and organization are properly configured

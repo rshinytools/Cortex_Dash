@@ -8,8 +8,9 @@ from app.api.v1.endpoints import organizations, studies, pipelines, data_sources
 # from app.api.v1.endpoints import reports, exports, dashboard_exports, scheduled_exports
 from app.api.v1.endpoints import system_settings, notification_settings, integrations, custom_fields, workflows
 from app.api.v1.endpoints import audit_trail, electronic_signatures, data_integrity, access_control, regulatory_compliance
+from app.api.v1.endpoints import rbac
 from app.api.v1.endpoints import system_health, performance_monitoring, backup_recovery, job_monitoring
-from app.api.v1.endpoints import users as users_v1, branding, documentation, dashboard_templates
+from app.api.v1.endpoints import branding, documentation, dashboard_templates
 from app.api.v1.endpoints.admin import widgets as admin_widgets, dashboards as admin_dashboards, menus as admin_menus
 from app.core.config import settings
 
@@ -26,7 +27,6 @@ api_router.include_router(study_initialization.router, prefix="", tags=["study-i
 api_router.include_router(study_wizard.router, prefix="/studies", tags=["study-wizard"])
 api_router.include_router(study_transformation.router, prefix="/studies", tags=["study-transformation"])
 api_router.include_router(websocket.router, prefix="", tags=["websocket"])
-api_router.include_router(users_v1.router, prefix="/v1/users", tags=["users-clinical"])
 api_router.include_router(pipelines.router, prefix="/pipelines", tags=["pipelines"])
 api_router.include_router(data_sources.router, prefix="/data-sources", tags=["data-sources"])
 api_router.include_router(transformations.router, prefix="/transformations", tags=["transformations"])
@@ -44,8 +44,10 @@ api_router.include_router(data_mapping.router, prefix="/data-mapping", tags=["da
 # Phase 5: Dashboard & Visualization APIs
 # api_router.include_router(dashboards.router, prefix="/dashboards", tags=["dashboards"])
 api_router.include_router(dashboard_templates.router, prefix="/dashboard-templates", tags=["dashboard-templates"])
-from app.api.v1.endpoints import widgets
+from app.api.v1.endpoints import widgets, widget_execution, mapping_templates
 api_router.include_router(widgets.router, prefix="/widgets", tags=["widgets"])
+api_router.include_router(widget_execution.router, prefix="/widget-execution", tags=["widget-execution"])
+api_router.include_router(mapping_templates.router, prefix="/mapping-templates", tags=["mapping-templates"])
 # api_router.include_router(visualizations.router, prefix="/visualizations", tags=["visualizations"])
 # api_router.include_router(advanced_visualizations.router, prefix="/advanced-visualizations", tags=["advanced-visualizations"])
 
@@ -61,6 +63,9 @@ api_router.include_router(notification_settings.router, prefix="/notification-se
 api_router.include_router(integrations.router, prefix="/integrations", tags=["integrations"])
 api_router.include_router(custom_fields.router, prefix="/custom-fields", tags=["custom-fields"])
 api_router.include_router(workflows.router, prefix="/workflows", tags=["workflows"])
+
+# RBAC System
+api_router.include_router(rbac.router, prefix="/rbac", tags=["rbac"])
 
 # Phase 8: Compliance & Audit APIs
 api_router.include_router(audit_trail.router, prefix="/audit-trail", tags=["audit-trail"])

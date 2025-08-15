@@ -5,19 +5,21 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, AlertCircle } from 'lucide-react';
+import { ArrowLeft, AlertCircle, FlaskConical, Plus, Info, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/lib/auth-context';
 import { UserMenu } from '@/components/user-menu';
+import { motion } from 'framer-motion';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { InitializationWizard } from '@/components/study/initialization-wizard';
 import { studiesApi } from '@/lib/api/studies';
 import { useToast } from '@/hooks/use-toast';
 
 export default function NewStudyPage() {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [draftStudy, setDraftStudy] = useState<any>(null);
   const [checkingDraft, setCheckingDraft] = useState(true);
@@ -48,10 +50,10 @@ export default function NewStudyPage() {
       }
     };
     
-    if (session) {
+    if (user) {
       checkDraft();
     }
-  }, [session, router]);
+  }, [user, router]);
 
   const handleComplete = (studyId: string) => {
     // Navigate to the initialization progress page
@@ -93,64 +95,95 @@ export default function NewStudyPage() {
 
   if (checkingDraft) {
     return (
-      <div className="container mx-auto py-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="container mx-auto py-6">
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto py-6">
-      <div className="max-w-4xl mx-auto">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-          <Button
-            variant="link"
-            className="p-0 h-auto font-normal"
-            onClick={() => router.push('/admin')}
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="container mx-auto py-8 px-4">
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="mb-8"
           >
-            Admin
-          </Button>
-          <span>/</span>
-          <Button
-            variant="link"
-            className="p-0 h-auto font-normal"
-            onClick={() => router.push('/studies')}
-          >
-            Studies
-          </Button>
-          <span>/</span>
-          <span className="text-foreground">New</span>
-        </div>
+            {/* Breadcrumb */}
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+              <Button
+                variant="link"
+                className="p-0 h-auto font-normal"
+                onClick={() => router.push('/admin')}
+              >
+                Admin
+              </Button>
+              <span>/</span>
+              <Button
+                variant="link"
+                className="p-0 h-auto font-normal"
+                onClick={() => router.push('/studies')}
+              >
+                Studies
+              </Button>
+              <span>/</span>
+              <span className="text-foreground">New</span>
+            </div>
 
-        <div className="flex items-center mb-6">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push('/studies')}
-            className="mr-4"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Studies
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-3xl font-bold">Create New Study</h1>
-            <p className="text-muted-foreground mt-1">
-              Complete the setup process to start using your study dashboard
-            </p>
-          </div>
-          <UserMenu />
-        </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent flex items-center gap-3">
+                  <FlaskConical className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                  Create New Study
+                </h1>
+                <p className="text-gray-600 dark:text-gray-400 mt-2">
+                  Complete the setup process to start using your study dashboard
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <ThemeToggle />
+                <UserMenu />
+              </div>
+            </div>
+          </motion.div>
 
-        {/* Draft Study Alert - Only show when not resuming */}
-        {draftStudy && !resumingDraft && (
-          <Alert className="mb-6">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Draft Study Found</AlertTitle>
-            <AlertDescription className="mt-2">
-              <p>
+          {/* Information Alert */}
+          {!draftStudy && !resumingDraft && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.1 }}
+              className="mb-6"
+            >
+              <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20">
+                <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <AlertDescription className="text-blue-800 dark:text-blue-200">
+                  The study creation wizard will guide you through setting up a new clinical study, including basic information, data templates, and initial configuration.
+                </AlertDescription>
+              </Alert>
+            </motion.div>
+          )}
+
+          {/* Draft Study Alert - Only show when not resuming */}
+          {draftStudy && !resumingDraft && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.1 }}
+              className="mb-6"
+            >
+              <Alert className="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-900/20">
+                <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                <AlertTitle className="text-yellow-900 dark:text-yellow-100">Draft Study Found</AlertTitle>
+                <AlertDescription className="mt-2 text-yellow-800 dark:text-yellow-200">
+                  <p>
                 You have an incomplete study "{draftStudy.study_name}" started {' '}
                 {(() => {
                   const draftDate = new Date(draftStudy.created_at);
@@ -165,15 +198,19 @@ export default function NewStudyPage() {
                   if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
                   return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
                 })()}.
-              </p>
-              <div className="flex gap-2 mt-4">
-                <Button onClick={handleResumeDraft} size="sm">
-                  Resume Draft
-                </Button>
-                <Button onClick={handleStartNew} variant="outline" size="sm">
-                  Start New Study
-                </Button>
-                <Button 
+                  </p>
+                  <div className="flex gap-2 mt-4">
+                    <Button 
+                      onClick={handleResumeDraft} 
+                      size="sm"
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                    >
+                      Resume Draft
+                    </Button>
+                    <Button onClick={handleStartNew} variant="outline" size="sm" className="border-gray-300 dark:border-gray-600">
+                      Start New Study
+                    </Button>
+                    <Button 
                   onClick={async () => {
                     if (confirm(`Are you sure you want to delete the draft study "${draftStudy.study_name}"? This action cannot be undone.`)) {
                       try {
@@ -195,24 +232,34 @@ export default function NewStudyPage() {
                   variant="destructive" 
                   size="sm"
                 >
-                  Delete Draft
-                </Button>
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
+                      Delete Draft
+                    </Button>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            </motion.div>
+          )}
 
-        {(!draftStudy || resumingDraft) && (
-          <Card className="p-6">
-            <InitializationWizard
-              studyId={resumingDraft ? draftStudy?.study_id : undefined}
-              initialStep={resumingDraft ? (draftStudy?.current_step - 1 || 0) : 0}
-              organizationId={session?.user?.org_id}
-              onComplete={handleComplete}
-              onCancel={handleCancel}
-            />
-          </Card>
-        )}
+          {(!draftStudy || resumingDraft) && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.2 }}
+            >
+              <Card className="border-0 shadow-lg bg-white dark:bg-gray-800">
+                <CardContent className="p-6">
+                  <InitializationWizard
+                    studyId={resumingDraft ? draftStudy?.study_id : undefined}
+                    initialStep={resumingDraft ? (draftStudy?.current_step - 1 || 0) : 0}
+                    organizationId={user?.org_id}
+                    onComplete={handleComplete}
+                    onCancel={handleCancel}
+                  />
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+        </div>
       </div>
     </div>
   );

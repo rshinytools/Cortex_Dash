@@ -3,7 +3,7 @@
 
 'use client';
 
-import { signOut, useSession } from 'next-auth/react';
+import { useAuth } from '@/lib/auth-context';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,9 +19,9 @@ import { ThemeToggle } from '@/components/ui/theme-toggle';
 import Link from 'next/link';
 
 export function Header() {
-  const { data: session } = useSession();
+  const { user, logout } = useAuth();
 
-  const userInitials = session?.user?.full_name
+  const userInitials = user?.full_name
     ?.split(' ')
     .map((n) => n[0])
     .join('')
@@ -47,7 +47,7 @@ export function Header() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                 <Avatar className="h-10 w-10">
-                  <AvatarImage src="/placeholder-avatar.jpg" alt={session?.user?.full_name} />
+                  <AvatarImage src="/placeholder-avatar.jpg" alt={user?.full_name} />
                   <AvatarFallback>{userInitials}</AvatarFallback>
                 </Avatar>
               </Button>
@@ -55,9 +55,9 @@ export function Header() {
             <DropdownMenuContent className="w-56" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{session?.user?.full_name}</p>
+                  <p className="text-sm font-medium leading-none">{user?.full_name}</p>
                   <p className="text-xs leading-none text-muted-foreground">
-                    {session?.user?.email}
+                    {user?.email}
                   </p>
                 </div>
               </DropdownMenuLabel>
@@ -76,7 +76,7 @@ export function Header() {
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={() => signOut({ callbackUrl: '/auth/login' })}
+                onClick={logout}
                 className="cursor-pointer text-destructive"
               >
                 <LogOut className="mr-2 h-4 w-4" />

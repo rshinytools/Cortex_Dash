@@ -19,7 +19,7 @@ import { Progress } from '@/components/ui/progress';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertCircle, Download, FileText, FileSpreadsheet, FileImage, Check, Clock, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/lib/auth-context';
 
 interface ExportManagerProps {
   dashboardId: string;
@@ -43,7 +43,7 @@ export function ExportManager({ dashboardId, dashboardName, isOpen, onClose }: E
   const [isExporting, setIsExporting] = useState(false);
   const [exportStatus, setExportStatus] = useState<ExportStatus | null>(null);
   const [pollInterval, setPollInterval] = useState<NodeJS.Timeout | null>(null);
-  const { data: session } = useSession();
+  const { user, token } = useAuth();
 
   const formatOptions = [
     {
@@ -76,7 +76,7 @@ export function ExportManager({ dashboardId, dashboardName, isOpen, onClose }: E
   }, [pollInterval]);
 
   const startExport = async () => {
-    if (!session?.user) {
+    if (!user) {
       toast.error('Authentication required');
       return;
     }
@@ -91,7 +91,7 @@ export function ExportManager({ dashboardId, dashboardName, isOpen, onClose }: E
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${(session.user as any).accessToken}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             format: selectedFormat,
@@ -130,7 +130,7 @@ export function ExportManager({ dashboardId, dashboardName, isOpen, onClose }: E
           `${process.env.NEXT_PUBLIC_API_URL}/api/v1/dashboard-exports/${exportId}/status`,
           {
             headers: {
-              Authorization: `Bearer ${(session?.user as any)?.accessToken}`,
+              Authorization: `Bearer ${token}`,
             },
           }
         );
@@ -163,14 +163,14 @@ export function ExportManager({ dashboardId, dashboardName, isOpen, onClose }: E
   };
 
   const downloadExport = async () => {
-    if (!exportStatus?.download_url || !session?.user) return;
+    if (!exportStatus?.download_url || !user) return;
 
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}${exportStatus.download_url}`,
         {
           headers: {
-            Authorization: `Bearer ${(session.user as any).accessToken}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );

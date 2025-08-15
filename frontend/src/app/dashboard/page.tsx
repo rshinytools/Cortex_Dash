@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout/main-layout';
@@ -22,18 +22,18 @@ import { studiesApi } from '@/lib/api/studies';
 import { format } from 'date-fns';
 
 export default function DashboardPage() {
-  const { data: session, status } = useSession();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
 
   const { data: studies, isLoading } = useQuery({
     queryKey: ['studies'],
     queryFn: studiesApi.getStudies,
-    enabled: status === 'authenticated',
+    enabled: isAuthenticated,
   });
 
   const activeStudies = studies?.filter(s => s.status === StudyStatus.ACTIVE) || [];
 
-  if (status === 'loading' || isLoading) {
+  if (authLoading || isLoading) {
     return (
       <MainLayout>
         <div className="space-y-6">

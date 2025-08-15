@@ -1,0 +1,47 @@
+// ABOUTME: Authentication guard component that protects pages from unauthorized access
+// ABOUTME: Redirects to login if user is not authenticated and shows loading state
+
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
+
+interface AuthGuardProps {
+  children: React.ReactNode;
+  requiredRoles?: string[];
+}
+
+export function AuthGuard({ children, requiredRoles }: AuthGuardProps) {
+  const { user, isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push('/login');
+    } else if (!isLoading && requiredRoles && user) {
+      // Check if user has required role
+      if (!requiredRoles.includes(user.role)) {
+        router.push('/dashboard');
+      }
+    }
+  }, [isAuthenticated, isLoading, router, requiredRoles, user]);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  if (requiredRoles && user && !requiredRoles.includes(user.role)) {
+    return null;
+  }
+
+  return <>{children}</>;
+}

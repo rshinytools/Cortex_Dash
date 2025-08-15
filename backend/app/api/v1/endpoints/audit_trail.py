@@ -14,15 +14,15 @@ from app.core.permissions import Permission, require_permission
 router = APIRouter()
 
 
-@router.get("/", response_model=Dict[str, Any])
+@router.get("/", response_model=List[Dict[str, Any]])
 async def get_audit_logs(
     start_date: Optional[datetime] = Query(None, description="Start date for filtering"),
     end_date: Optional[datetime] = Query(None, description="End date for filtering"),
     user_id: Optional[uuid.UUID] = Query(None, description="Filter by user"),
     study_id: Optional[uuid.UUID] = Query(None, description="Filter by study"),
     action_type: Optional[str] = Query(None, description="Filter by action type"),
-    entity_type: Optional[str] = Query(None, description="Filter by entity type"),
-    entity_id: Optional[str] = Query(None, description="Filter by entity ID"),
+    resource_type: Optional[str] = Query(None, description="Filter by resource type"),
+    resource_id: Optional[str] = Query(None, description="Filter by resource ID"),
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
@@ -31,89 +31,77 @@ async def get_audit_logs(
     """
     Get audit trail logs with filtering and pagination.
     """
-    # TODO: Implement actual audit log retrieval from database
+    from app.models.activity_log import ActivityLog
+    from sqlalchemy.orm import selectinload
+    from sqlalchemy import and_, or_, desc
     
-    # Generate mock audit logs
-    audit_logs = []
-    action_types = ["create", "update", "delete", "view", "export", "login", "logout", "approve", "reject"]
-    entity_types = ["study", "subject", "user", "report", "dashboard", "pipeline", "export"]
-    
-    # Generate sample logs
-    base_time = datetime.utcnow()
-    for i in range(500):
-        log_time = base_time - timedelta(hours=i)
-        action = action_types[i % len(action_types)]
-        entity = entity_types[i % len(entity_types)]
-        
-        audit_log = {
-            "id": str(uuid.uuid4()),
-            "timestamp": log_time.isoformat(),
-            "user_id": str(uuid.uuid4()),
-            "user_email": f"user{i % 10}@example.com",
-            "user_name": f"User {i % 10}",
-            "action": action,
-            "entity_type": entity,
-            "entity_id": str(uuid.uuid4()),
-            "entity_name": f"{entity.capitalize()} {i}",
-            "study_id": str(uuid.uuid4()) if entity in ["subject", "report", "export"] else None,
-            "details": {
-                "ip_address": f"192.168.1.{i % 255}",
-                "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-                "session_id": str(uuid.uuid4()),
-                "changes": generate_change_details(action, entity)
-            },
-            "compliance_flags": {
-                "gxp_relevant": action in ["create", "update", "delete", "approve", "reject"],
-                "phi_accessed": entity in ["subject", "export"],
-                "electronically_signed": action in ["approve", "reject"]
-            }
-        }
-        audit_logs.append(audit_log)
+    # Build query
+    query = select(ActivityLog).options(selectinload(ActivityLog.user))
     
     # Apply filters
-    filtered_logs = audit_logs
+    conditions = []
+    
+    # For non-superusers, only show logs from their organization
+    if not current_user.is_superuser and current_user.org_id:
+        conditions.append(ActivityLog.org_id == current_user.org_id)
     
     if start_date:
-        filtered_logs = [log for log in filtered_logs if datetime.fromisoformat(log["timestamp"]) >= start_date]
+        conditions.append(ActivityLog.timestamp >= start_date)
     
     if end_date:
-        filtered_logs = [log for log in filtered_logs if datetime.fromisoformat(log["timestamp"]) <= end_date]
+        conditions.append(ActivityLog.timestamp <= end_date)
     
     if user_id:
-        filtered_logs = [log for log in filtered_logs if log["user_id"] == str(user_id)]
+        conditions.append(ActivityLog.user_id == user_id)
     
     if study_id:
-        filtered_logs = [log for log in filtered_logs if log.get("study_id") == str(study_id)]
+        conditions.append(ActivityLog.study_id == study_id)
     
     if action_type:
-        filtered_logs = [log for log in filtered_logs if log["action"] == action_type]
+        conditions.append(ActivityLog.action == action_type)
     
-    if entity_type:
-        filtered_logs = [log for log in filtered_logs if log["entity_type"] == entity_type]
+    if resource_type:
+        conditions.append(ActivityLog.resource_type == resource_type)
     
-    if entity_id:
-        filtered_logs = [log for log in filtered_logs if log["entity_id"] == entity_id]
+    if resource_id:
+        conditions.append(ActivityLog.resource_id == resource_id)
     
-    # Pagination
-    total = len(filtered_logs)
-    paginated_logs = filtered_logs[offset:offset + limit]
+    if conditions:
+        query = query.where(and_(*conditions))
     
-    return {
-        "items": paginated_logs,
-        "total": total,
-        "limit": limit,
-        "offset": offset,
-        "has_more": offset + limit < total,
-        "filters_applied": {
-            "start_date": start_date.isoformat() if start_date else None,
-            "end_date": end_date.isoformat() if end_date else None,
-            "user_id": str(user_id) if user_id else None,
-            "study_id": str(study_id) if study_id else None,
-            "action_type": action_type,
-            "entity_type": entity_type,
-            "entity_id": entity_id
-        }
-    }
+    # Order by timestamp descending
+    query = query.order_by(desc(ActivityLog.timestamp))
+    
+    # Apply pagination
+    query = query.offset(offset).limit(limit)
+    
+    # Execute query
+    logs = db.exec(query).all()
+    
+    # Format response
+    audit_logs = []
+    for log in logs:
+        # Get user email
+        user_email = None
+        if log.user:
+            user_email = log.user.email
+        
+        audit_logs.append({
+            "id": str(log.id),
+            "created_at": log.timestamp.isoformat() if log.timestamp else None,
+            "user_id": str(log.user_id) if log.user_id else None,
+            "user_email": user_email,
+            "action": log.action,
+            "resource_type": log.resource_type,
+            "resource_id": log.resource_id,
+            "study_id": str(log.study_id) if log.study_id else None,
+            "details": log.details or {},
+            "ip_address": log.ip_address,
+            "user_agent": log.user_agent,
+            "reason": log.reason
+        })
+    
+    return audit_logs
 
 
 @router.get("/summary", response_model=Dict[str, Any])

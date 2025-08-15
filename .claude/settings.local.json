@@ -86,8 +86,29 @@
       "Bash(docker ps:*)",
       "Bash(docker system prune:*)",
       "Bash(.rebuild.bat backend)",
-      "Bash(cmd /c:*)"
+      "Bash(cmd /c:*)",
+      "Bash(where python)",
+      "Bash(py tests/test_widget_engines_simple.py)",
+      "Bash(py tests/test_all_widgets.py)",
+      "Bash(py tests/test_backend_services.py)",
+      "Bash(py tests/test_implementation_complete.py)",
+      "Bash(py teststest_rbac_system.py)",
+      "Bash(py tests/test_rbac_system.py)",
+      "Bash(py tests/test_rbac_simple.py)",
+      "Bash(py teststest_data_source_framework.py)",
+      "Bash(py tests/test_data_source_framework.py)",
+      "Bash(py tests/test_api_integrations.py)",
+      "Bash(py tests/test_advanced_features.py)",
+      "Bash(for file in backend/app/services/widget_engines/*.py)",
+      "Bash(do sed -i 's/from backend\\.app\\./from app\\./g' \"$file\")",
+      "Bash(bash:*)",
+      "Bash(./rebuild-frontend.sh:*)",
+      "Bash(docker build:*)",
+      "Bash(.fresh_install_auto.bat)",
+      "Bash(py:*)",
+      "Bash(git reset:*)"
     ],
-    "deny": []
+    "deny": [],
+    "defaultMode": "acceptEdits"
   }
 }

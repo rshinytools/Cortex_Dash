@@ -4,7 +4,7 @@
 'use client';
 
 import { ReactNode } from 'react';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/lib/auth-context';
 import { Sidebar } from './sidebar';
 import { Header } from './header';
 import { cn } from '@/lib/utils';
@@ -14,9 +14,9 @@ interface MainLayoutProps {
 }
 
 export function MainLayout({ children }: MainLayoutProps) {
-  const { data: session } = useSession();
+  const { user } = useAuth();
 
-  if (!session) {
+  if (!user) {
     return null;
   }
 

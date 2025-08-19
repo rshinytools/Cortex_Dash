@@ -559,35 +559,10 @@ export default function StudiesPage() {
                             View Dashboard
                           </DropdownMenuItem>
                           <DropdownMenuItem 
-                            onClick={() => router.push(`/studies/${study.id}/data-sources`)}
-                          >
-                            <Database className="mr-2 h-4 w-4" />
-                            Data Sources
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => router.push(`/studies/${study.id}/data-sources/upload`)}
-                          >
-                            <Upload className="mr-2 h-4 w-4" />
-                            Upload Data
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => router.push(`/studies/${study.id}/pipeline`)}
-                          >
-                            <GitBranch className="mr-2 h-4 w-4" />
-                            Pipeline
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            onClick={() => router.push(`/studies/${study.id}/edit`)}
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit Study
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => router.push(`/studies/${study.id}/settings`)}
+                            onClick={() => router.push(`/studies/${study.id}/manage`)}
                           >
                             <Settings className="mr-2 h-4 w-4" />
-                            Settings
+                            Manage Study
                           </DropdownMenuItem>
                           {study.initialization_status && study.initialization_status !== 'completed' && (
                             <DropdownMenuItem 

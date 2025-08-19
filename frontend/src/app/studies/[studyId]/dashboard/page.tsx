@@ -544,16 +544,6 @@ export default function StudyDashboardPage() {
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Refresh
               </Button>
-              <Link href={`/studies/${studyId}/manage`}>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-white"
-                >
-                  <Settings className="h-4 w-4 mr-2" />
-                  Manage Study
-                </Button>
-              </Link>
               <Link href="/studies">
                 <Button
                   variant="outline"

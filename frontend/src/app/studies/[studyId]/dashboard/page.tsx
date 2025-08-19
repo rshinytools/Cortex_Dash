@@ -428,7 +428,7 @@ export default function StudyDashboardPage() {
               Template: {template.name}
             </p>
             <div className="flex gap-2">
-              <Link href="/admin/dashboards">
+              <Link href="/admin/dashboard-templates">
                 <Button className="bg-blue-600 hover:bg-blue-700">
                   Configure Dashboard
                 </Button>

@@ -48,7 +48,7 @@ import { VersionStatusIndicator } from "@/components/admin/version-status-indica
 import { VersionHistoryPanel } from "@/components/admin/version-history-panel";
 import { VersionDialog } from "@/components/admin/version-dialog";
 import { VersionComparison } from "@/components/admin/version-comparison";
-// import { useAutoSave } from "@/hooks/useAutoSave"; // Temporarily disabled
+// import { useAutoSave } from "@/hooks/use-auto-save"; // Temporarily disabled
 import { TemplateVersionStatus } from "@/types/template-version";
 
 export interface UnifiedDashboardDesignerProps {

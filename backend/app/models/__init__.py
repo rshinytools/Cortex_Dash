@@ -6,7 +6,7 @@ from .user import User, UserBase, UserCreate, UserUpdate, UserRegister, UserPubl
 from .organization import Organization, OrganizationCreate, OrganizationUpdate, OrganizationPublic
 from .study import Study, StudyCreate, StudyUpdate, StudyPublic, StudyStatus, StudyPhase
 from .activity_log import ActivityLog, ActivityLogCreate, ActivityLogPublic
-from .data_source import DataSource, DataSourceCreate, DataSourceUpdate, DataSourceConfig, DataSourceType
+from .data_source import DataSource, DataSourceCreate, DataSourceUpdate, DataSourceConfig, DataSourceType, DataSourceStatus
 from .data_source_upload import DataSourceUpload, DataSourceUploadCreate, DataSourceUploadUpdate, DataSourceUploadPublic, DataSourceUploadsPublic, UploadStatus, FileFormat, ParquetFileInfo
 from .item import Item, ItemBase, ItemCreate, ItemUpdate, ItemPublic, ItemsPublic, Message
 from .token import Token, TokenPayload, NewPassword
@@ -41,7 +41,7 @@ __all__ = [
     # Activity logging
     "ActivityLog", "ActivityLogCreate", "ActivityLogPublic",
     # Data sources
-    "DataSource", "DataSourceCreate", "DataSourceUpdate", "DataSourceConfig", "DataSourceType",
+    "DataSource", "DataSourceCreate", "DataSourceUpdate", "DataSourceConfig", "DataSourceType", "DataSourceStatus",
     # Data source uploads
     "DataSourceUpload", "DataSourceUploadCreate", "DataSourceUploadUpdate", "DataSourceUploadPublic", "DataSourceUploadsPublic", "UploadStatus", "FileFormat", "ParquetFileInfo",
     # Items (from template)

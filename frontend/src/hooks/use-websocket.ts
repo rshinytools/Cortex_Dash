@@ -45,16 +45,15 @@ export function useWebSocket(
     if (!url || !token) return;
 
     try {
-      // Add token as query parameter for WebSocket authentication
-      const wsUrl = new URL(url, window.location.origin);
-      wsUrl.searchParams.set('token', token);
+      // Construct WebSocket URL to connect to backend directly on port 8000
+      // WebSocket endpoints are under /api/v1 prefix
+      const backendHost = 'localhost:8000';
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const fullUrl = `${wsProtocol}//${backendHost}/api/v1${url}`;
       
-      // Convert http to ws protocol
-      if (wsUrl.protocol === 'http:') {
-        wsUrl.protocol = 'ws:';
-      } else if (wsUrl.protocol === 'https:') {
-        wsUrl.protocol = 'wss:';
-      }
+      // Add token as query parameter for WebSocket authentication
+      const wsUrl = new URL(fullUrl);
+      wsUrl.searchParams.set('token', token);
 
       const ws = new WebSocket(wsUrl.toString());
       wsRef.current = ws;

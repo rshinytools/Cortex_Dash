@@ -5,27 +5,38 @@
 
 import { DynamicSidebar } from '@/components/layout/dynamic-sidebar'
 import { Breadcrumbs } from '@/components/layout/breadcrumbs'
-import { useState } from 'react'
+import { useState, use } from 'react'
 import { Button } from '@/components/ui/button'
 import { Menu, X } from 'lucide-react'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
+import { usePathname } from 'next/navigation'
 
 interface StudyLayoutProps {
   children: React.ReactNode
-  params: {
+  params: Promise<{
     studyId: string
-  }
+  }>
 }
 
 export default function StudyLayout({ children, params }: StudyLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { studyId } = use(params)
+  const pathname = usePathname()
+  
+  // Check if we're on the dashboard page
+  const isDashboard = pathname?.includes('/dashboard')
+  
+  // If on dashboard, render children directly without sidebar
+  if (isDashboard) {
+    return <>{children}</>;
+  }
 
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Desktop Sidebar */}
       <div className="hidden lg:block">
         <DynamicSidebar 
-          studyId={params.studyId} 
+          studyId={studyId} 
           className="w-64 border-r bg-background"
         />
       </div>
@@ -34,7 +45,7 @@ export default function StudyLayout({ children, params }: StudyLayoutProps) {
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <SheetContent side="left" className="p-0 w-64">
           <DynamicSidebar 
-            studyId={params.studyId}
+            studyId={studyId}
             onNavigate={() => setMobileMenuOpen(false)}
           />
         </SheetContent>
@@ -57,7 +68,7 @@ export default function StudyLayout({ children, params }: StudyLayoutProps) {
             </Button>
 
             {/* Breadcrumbs */}
-            <Breadcrumbs studyId={params.studyId} homeLabel="Studies" homeHref="/studies" />
+            <Breadcrumbs studyId={studyId} homeLabel="Studies" homeHref="/studies" />
           </div>
         </header>
 

@@ -7,6 +7,7 @@ import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from 'sonner';
+import { WidgetSystemInitializer } from "@/components/widgets/widget-system-initializer";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -32,7 +33,9 @@ export default function RootLayout({
           <AuthProvider>
             <RBACProvider>
               <QueryProvider>
-                {children}
+                <WidgetSystemInitializer>
+                  {children}
+                </WidgetSystemInitializer>
                 <Toaster />
                 <Sonner />
               </QueryProvider>

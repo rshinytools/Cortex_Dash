@@ -57,7 +57,7 @@ export default function NewStudyPage() {
 
   const handleComplete = (studyId: string) => {
     // Navigate to the initialization progress page
-    router.push(`/studies/${studyId}/initialization`);
+    router.push(`/initialization/${studyId}`);
   };
 
   const handleCancel = () => {

@@ -23,7 +23,8 @@ import {
   Link2,
   ArrowDown,
   GitBranch,
-  Layers
+  Layers,
+  FlaskConical
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -68,6 +69,8 @@ interface ReviewMappingsStepProps {
   data: {
     acceptAutoMappings?: boolean;
     customMappings?: any;
+    files?: any[];
+    fieldMappings?: any;
   };
   onComplete: (data: {
     acceptAutoMappings: boolean;
@@ -83,12 +86,29 @@ export function ReviewMappingsStep({
   isLoading
 }: ReviewMappingsStepProps) {
   const { toast } = useToast();
+  
+  // Debug: Log received data
+  console.log('ReviewMappingsStep received data:', data);
+  console.log('Field mappings from previous step:', data.fieldMappings);
+  
+  // Extract mappings from fieldMappings (which contains the complete step data)
+  const fieldMappingData = data.fieldMappings || {};
+  const mappingsFromPrevStep = fieldMappingData.mappings || {};
+  const acceptAutoFromPrevStep = fieldMappingData.acceptAutoMappings;
+  
+  console.log('Extracted mappings:', mappingsFromPrevStep);
+  console.log('Accept auto mappings:', acceptAutoFromPrevStep);
+  
   const [acceptAutoMappings, setAcceptAutoMappings] = useState(
-    data.acceptAutoMappings ?? true
+    acceptAutoFromPrevStep ?? data.acceptAutoMappings ?? true
   );
   const [mappingData, setMappingData] = useState<MappingData | null>(null);
-  const [customMappings, setCustomMappings] = useState<Record<string, any>>({});
+  const [customMappings, setCustomMappings] = useState<Record<string, any>>(
+    mappingsFromPrevStep || {}
+  );
   const [isLoadingMappings, setIsLoadingMappings] = useState(true);
+  
+  console.log('Custom mappings state initialized with:', customMappings);
 
   useEffect(() => {
     // Fetch real mapping data from backend
@@ -102,20 +122,23 @@ export function ReviewMappingsStep({
         const response = await studiesApi.getMappingData(studyId);
         setMappingData(response);
         
-        // Initialize custom mappings from suggestions
-        const initialMappings: Record<string, any> = {};
-        Object.entries(response.mapping_suggestions).forEach(([widgetId, suggestions]) => {
-          initialMappings[widgetId] = {};
-          (suggestions as any[]).forEach((suggestion: any) => {
-            if (suggestion.suggested_column && suggestion.confidence > 0.7) {
-              initialMappings[widgetId][suggestion.field_name] = {
-                dataset: suggestion.suggested_dataset,
-                column: suggestion.suggested_column
-              };
-            }
+        // Only initialize from suggestions if we don't have mappings from previous step
+        if (!mappingsFromPrevStep || Object.keys(mappingsFromPrevStep).length === 0) {
+          const initialMappings: Record<string, any> = {};
+          Object.entries(response.mapping_suggestions).forEach(([widgetId, suggestions]) => {
+            initialMappings[widgetId] = {};
+            (suggestions as any[]).forEach((suggestion: any) => {
+              if (suggestion.suggested_column && suggestion.confidence > 0.7) {
+                initialMappings[widgetId][suggestion.field_name] = {
+                  dataset: suggestion.suggested_dataset,
+                  column: suggestion.suggested_column
+                };
+              }
+            });
           });
-        });
-        setCustomMappings(initialMappings);
+          setCustomMappings(initialMappings);
+        }
+        // If we have mappings from previous step, keep them
       } catch (error) {
         console.error('Error loading mappings:', error);
         toast({
@@ -227,9 +250,38 @@ export function ReviewMappingsStep({
             </div>
             <div>
               <p className="text-2xl font-bold text-green-600">
-                {Object.values(customMappings).filter(m => Object.keys(m).length > 0).length}
+                {(() => {
+                  // Count mappings from the passed data
+                  let mappedCount = 0;
+                  console.log('Counting mappings from previous step:', mappingsFromPrevStep);
+                  
+                  // The mappings from previous step should be in nested structure
+                  if (mappingsFromPrevStep && typeof mappingsFromPrevStep === 'object') {
+                    Object.entries(mappingsFromPrevStep).forEach(([widgetId, widgetMappings]) => {
+                      console.log(`Widget ${widgetId} mappings:`, widgetMappings);
+                      
+                      if (typeof widgetMappings === 'object' && widgetMappings) {
+                        // Check each field in the widget
+                        Object.entries(widgetMappings).forEach(([fieldName, mapping]: [string, any]) => {
+                          console.log(`  Field ${fieldName}:`, mapping);
+                          
+                          // Count if has both dataset and column
+                          if (mapping && mapping.dataset && mapping.column) {
+                            console.log(`    -> Counted! Dataset: ${mapping.dataset}, Column: ${mapping.column}`);
+                            mappedCount++;
+                          } else {
+                            console.log(`    -> Not counted. Missing dataset or column`);
+                          }
+                        });
+                      }
+                    });
+                  }
+                  
+                  console.log('Final mapped count:', mappedCount);
+                  return mappedCount;
+                })()}
               </p>
-              <p className="text-xs text-muted-foreground">Mapped</p>
+              <p className="text-xs text-muted-foreground">Mapped Fields</p>
             </div>
           </div>
         </CardContent>
@@ -247,7 +299,7 @@ export function ReviewMappingsStep({
           <div className="space-y-4">
             {mappingData.template_requirements.map((requirement) => {
               const widgetMappings = mappingData.mapping_suggestions[requirement.widget_id] || [];
-              const widgetCustomMappings = customMappings[requirement.widget_id] || {};
+              const widgetCustomMappings = mappingsFromPrevStep[requirement.widget_id] || customMappings[requirement.widget_id] || {};
               
               return (
                 <Card key={requirement.widget_id} className="p-4">

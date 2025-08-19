@@ -53,7 +53,11 @@ def initialize_study_task(
             # Get uploaded files if any
             uploaded_files = []
             if not skip_data_upload:
-                uploaded_files = study.metadata.get("pending_uploads", []) if study.metadata else []
+                # Check both places for uploaded files (initialization_steps takes precedence)
+                if study.initialization_steps and "pending_uploads" in study.initialization_steps:
+                    uploaded_files = study.initialization_steps.get("pending_uploads", [])
+                elif study.config and "uploaded_files" in study.config:
+                    uploaded_files = study.config.get("uploaded_files", [])
             
             # Create service and run initialization
             service = StudyInitializationService(db)

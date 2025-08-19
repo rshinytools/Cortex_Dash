@@ -23,6 +23,7 @@ import {
   Info,
   Edit,
   Trash2,
+  FlaskConical,
 } from 'lucide-react';
 import { dataUploadsApi } from '@/lib/api/data-uploads';
 import { pipelinesApi, PipelineConfig, PipelineExecution, PipelineStatus } from '@/lib/api/pipelines';

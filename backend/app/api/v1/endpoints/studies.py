@@ -21,10 +21,10 @@ from app.core.permissions import (
     Permission, PermissionChecker, has_permission,
     require_study_access
 )
-from app.services.widget_data_executor import (
+from app.services.widget_data_executor_real import (
     WidgetDataRequest, WidgetDataResponse, WidgetDataExecutorFactory
 )
-from app.services.redis_cache import get_cache
+# from app.services.redis_cache import get_cache
 
 router = APIRouter()
 
@@ -122,10 +122,10 @@ async def read_studies(
     """
     # System admins can filter by org_id
     if current_user.is_superuser and org_id:
-        studies = crud_study.get_studies(db, org_id=org_id, skip=skip, limit=limit)
+        studies = crud_study.get_studies(db, org_id=org_id, skip=skip, limit=limit, active_only=False)
     else:
-        # Regular users see their organization's studies
-        studies = crud_study.get_user_studies(db, user=current_user, skip=skip, limit=limit)
+        # Regular users see their organization's studies (including archived)
+        studies = crud_study.get_studies(db, org_id=current_user.org_id, skip=skip, limit=limit, active_only=False)
     
     return studies
 
@@ -822,11 +822,18 @@ def process_widget_for_runtime(
     widget_overrides: Optional[Dict[str, Any]] = None
 ) -> WidgetRuntimeConfig:
     """Process a widget configuration for runtime use"""
-    widget_id = widget.get("id", "")
+    # Handle nested widget structure from template
+    widget_instance_id = widget.get("widgetInstanceId", widget.get("id", ""))
+    widget_instance = widget.get("widgetInstance", {})
+    widget_def = widget_instance.get("widgetDefinition", {})
+    overrides = widget.get("overrides", {})
+    
+    # Extract widget code from definition
+    widget_code = widget_def.get("code", widget.get("widget_code", widget.get("type", "kpi_card")))
     
     # Apply any widget-specific overrides
-    if widget_overrides and widget_id in widget_overrides:
-        widget = {**widget, **widget_overrides[widget_id]}
+    if widget_overrides and widget_instance_id in widget_overrides:
+        widget = {**widget, **widget_overrides[widget_instance_id]}
     
     # Resolve data requirements fields
     data_requirements = widget.get("data_requirements", {})
@@ -838,10 +845,31 @@ def process_widget_for_runtime(
             template_field = f"{dataset}.{field}" if dataset else field
             resolved_fields[field] = apply_field_mappings(template_field, field_mappings)
     
+    # Build instance config with all necessary fields
+    instance_config = widget.get("instance_config", widget_instance.get("config", {}))
+    if isinstance(instance_config, str):
+        import json
+        try:
+            instance_config = json.loads(instance_config)
+        except:
+            instance_config = {}
+    
+    instance_config["id"] = widget_instance_id
+    instance_config["title"] = overrides.get("title", widget.get("title", ""))
+    instance_config["type"] = widget_code
+    
+    # Extract position
+    position = widget.get("position", {})
+    
     return WidgetRuntimeConfig(
-        widget_code=widget.get("widget_code", ""),
-        instance_config=widget.get("instance_config", {}),
-        position=widget.get("position", {}),
+        widget_code=widget_code,
+        instance_config=instance_config,
+        position={
+            "x": position.get("x", 0),
+            "y": position.get("y", 0),
+            "w": position.get("width", position.get("w", 3)),
+            "h": position.get("height", position.get("h", 2))
+        },
         data_requirements=data_requirements,
         resolved_fields=resolved_fields
     )
@@ -898,7 +926,7 @@ async def get_study_dashboards(
     
     # Process template structure
     template_structure = template.template_structure or {}
-    menu_config = template_structure.get("menu", {})
+    menu_config = template_structure.get("menu_structure", template_structure.get("menu", {}))
     field_mappings = study.field_mappings or {}
     template_overrides = study.template_overrides or {}
     
@@ -907,8 +935,13 @@ async def get_study_dashboards(
     
     def extract_dashboards_from_menu(items: List[Dict[str, Any]]) -> None:
         for item in items:
-            if item.get("type") == "dashboard" and "dashboard" in item:
-                dashboard_config = item["dashboard"]
+            # Support both 'dashboard' and 'dashboard_page' types
+            if item.get("type") in ["dashboard", "dashboard_page"] and ("dashboard" in item or "widgets" in item):
+                # Support both 'dashboard' field and 'widgets' field directly
+                if "dashboard" in item:
+                    dashboard_config = item["dashboard"]
+                else:
+                    dashboard_config = {"widgets": item.get("widgets", [])}
                 dashboard_id = item.get("id", "")
                 
                 # Apply any dashboard-specific overrides
@@ -941,7 +974,7 @@ async def get_study_dashboards(
     crud_activity.create_activity_log(
         db,
         user=current_user,
-        action="VIEW_STUDY_DASHBOARDS",
+        action="READ",
         resource_type="study",
         resource_id=str(study.id),
         details={
@@ -1011,7 +1044,7 @@ async def get_study_dashboard(
     
     # Find the specific dashboard in template
     template_structure = template.template_structure or {}
-    menu_config = template_structure.get("menu", {})
+    menu_config = template_structure.get("menu_structure", template_structure.get("menu", {}))
     field_mappings = study.field_mappings or {}
     template_overrides = study.template_overrides or {}
     
@@ -1020,7 +1053,8 @@ async def get_study_dashboard(
     
     def find_dashboard_in_menu(items: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         for item in items:
-            if item.get("id") == dashboard_id and item.get("type") == "dashboard":
+            # Support both 'dashboard' and 'dashboard_page' types
+            if item.get("id") == dashboard_id and item.get("type") in ["dashboard", "dashboard_page"]:
                 return item
             if "children" in item:
                 found = find_dashboard_in_menu(item["children"])
@@ -1029,15 +1063,28 @@ async def get_study_dashboard(
         return None
     
     menu_items = menu_config.get("items", [])
+    
+    # Debug logging
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"Looking for dashboard {dashboard_id}")
+    logger.info(f"Menu items: {[item.get('id') for item in menu_items]}")
+    
     dashboard_item = find_dashboard_in_menu(menu_items)
     
-    if not dashboard_item or "dashboard" not in dashboard_item:
+    if not dashboard_item:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Dashboard not found"
         )
     
-    dashboard_config = dashboard_item["dashboard"]
+    # Support both 'dashboard' field and 'widgets' field directly
+    if "dashboard" in dashboard_item:
+        dashboard_config = dashboard_item["dashboard"]
+    elif "widgets" in dashboard_item:
+        dashboard_config = {"widgets": dashboard_item["widgets"]}
+    else:
+        dashboard_config = {}
     dashboard_name = dashboard_item.get("label", "Dashboard")
     
     # Apply any dashboard-specific overrides
@@ -1054,7 +1101,7 @@ async def get_study_dashboard(
     crud_activity.create_activity_log(
         db,
         user=current_user,
-        action="VIEW_DASHBOARD",
+        action="READ",
         resource_type="dashboard",
         resource_id=dashboard_id,
         details={
@@ -1127,7 +1174,7 @@ async def get_study_menu(
     
     # Process template structure
     template_structure = template.template_structure or {}
-    menu_config = template_structure.get("menu", {})
+    menu_config = template_structure.get("menu_structure", template_structure.get("menu", {}))
     
     def process_menu_item(item: Dict[str, Any]) -> MenuItemRuntime:
         """Process a menu item for runtime"""
@@ -1280,7 +1327,7 @@ async def update_study_dashboard(
 
 class WidgetDataQueryParams(BaseModel):
     """Query parameters for widget data requests"""
-    filters: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    filters: Optional[Dict[str, Any]] = None
     page: Optional[int] = Field(default=1, ge=1)
     page_size: Optional[int] = Field(default=20, ge=1, le=100)
     refresh: bool = Field(default=False)
@@ -1368,47 +1415,21 @@ async def get_widget_data(
     widget_request = WidgetDataRequest(
         widget_id=widget_id,
         widget_config=widget_config.instance_config,
-        filters=query_params.filters,
+        filters=query_params.filters or {},
         pagination={"page": query_params.page, "page_size": query_params.page_size} if widget_definition.category == "tables" else None,
         refresh=query_params.refresh
     )
     
-    # Get cache instance
-    cache = await get_cache()
-    
-    # Check cache first (unless refresh requested)
-    if not query_params.refresh:
-        cache_key = f"widget_data:{study_id}:{widget_id}:{dashboard_id}"
-        cached_data = await cache.get(cache_key)
-        if cached_data:
-            # Return cached response
-            return WidgetDataResponse(**cached_data)
-    
-    # Execute widget data query
+    # Execute widget data query (skip cache for now)
     executor = WidgetDataExecutorFactory.create_executor(db, study, widget_definition)
     response = await executor.execute(widget_request)
-    
-    # Cache the response
-    if not query_params.refresh:  # Only cache if not a refresh request
-        cache_key = f"widget_data:{study_id}:{widget_id}:{dashboard_id}"
-        ttl = executor.get_cache_ttl()
-        response.cached = False  # Mark as not from cache
-        response.cache_expires_at = datetime.utcnow() + timedelta(seconds=ttl)
-        
-        # Cache in background
-        background_tasks.add_task(
-            cache.set,
-            cache_key,
-            response.model_dump(mode="json"),
-            ttl
-        )
     
     # Log activity (in background to not slow down response)
     background_tasks.add_task(
         crud_activity.create_activity_log,
         db,
         user=current_user,
-        action="VIEW_WIDGET_DATA",
+        action="READ",
         resource_type="widget",
         resource_id=widget_id,
         details={
@@ -1426,44 +1447,45 @@ async def get_widget_data(
     return response
 
 
-@router.post("/{study_id}/dashboards/{dashboard_id}/widgets/{widget_id}/refresh", response_model=WidgetDataResponse)
-async def refresh_widget_data(
-    *,
-    db: Session = Depends(get_db),
-    study_id: uuid.UUID,
-    dashboard_id: str,
-    widget_id: str,
-    current_user: User = Depends(get_current_user),
-    request: Request,
-    background_tasks: BackgroundTasks
-) -> Any:
-    """
-    Force refresh data for a specific widget, bypassing cache.
-    
-    This endpoint:
-    - Invalidates cached data for the widget
-    - Fetches fresh data from the data source
-    - Updates the cache with new data
-    """
-    # Get cache instance
-    cache = await get_cache()
-    
-    # Invalidate cache for this widget
-    cache_key = f"widget_data:{study_id}:{widget_id}:{dashboard_id}"
-    await cache.delete(cache_key)
-    
-    # Call get_widget_data with refresh=true
-    query_params = WidgetDataQueryParams(refresh=True)
-    return await get_widget_data(
-        db=db,
-        study_id=study_id,
-        dashboard_id=dashboard_id,
-        widget_id=widget_id,
-        query_params=query_params,
-        current_user=current_user,
-        request=request,
-        background_tasks=background_tasks
-    )
+# Temporarily disabled - WidgetDataResponse not defined
+# @router.post("/{study_id}/dashboards/{dashboard_id}/widgets/{widget_id}/refresh", response_model=WidgetDataResponse)
+# async def refresh_widget_data(
+#     *,
+#     db: Session = Depends(get_db),
+#     study_id: uuid.UUID,
+#     dashboard_id: str,
+#     widget_id: str,
+#     current_user: User = Depends(get_current_user),
+#     request: Request,
+#     background_tasks: BackgroundTasks
+# ) -> Any:
+#     """
+#     Force refresh data for a specific widget, bypassing cache.
+#     
+#     This endpoint:
+#     - Invalidates cached data for the widget
+#     - Fetches fresh data from the data source
+#     - Updates the cache with new data
+#     """
+#     # Get cache instance
+#     cache = await get_cache()
+#     
+#     # Invalidate cache for this widget
+#     cache_key = f"widget_data:{study_id}:{widget_id}:{dashboard_id}"
+#     await cache.delete(cache_key)
+#     
+#     # Call get_widget_data with refresh=true
+#     query_params = WidgetDataQueryParams(refresh=True)
+#     return await get_widget_data(
+#         db=db,
+#         study_id=study_id,
+#         dashboard_id=dashboard_id,
+#         widget_id=widget_id,
+#         query_params=query_params,
+#         current_user=current_user,
+#         request=request,
+#         background_tasks=background_tasks
+#     )
 
 
 @router.post("/{study_id}/refresh-all-widgets", response_model=Message)

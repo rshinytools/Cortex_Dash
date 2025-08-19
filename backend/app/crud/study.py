@@ -127,6 +127,66 @@ def delete_study(db: Session, study_id: uuid.UUID, hard_delete: bool = False) ->
     try:
         if hard_delete:
             # Hard delete - permanently remove from database
+            # First delete related data to avoid foreign key constraints
+            from app.models import (
+                StudyDataConfiguration, StudyDashboard,
+                ActivityLog, DataSourceUpload, DataSource
+            )
+            from app.models.data_mapping import WidgetDataMapping
+            from app.models.mapping_templates import MappingTemplateUsage, MappingTemplate
+            from app.models.rbac import UserRole
+            from app.models.pipeline import PipelineConfig
+            from sqlmodel import delete
+            
+            # Delete widget data mappings
+            for item in db.exec(select(WidgetDataMapping).where(WidgetDataMapping.study_id == study_id)).all():
+                db.delete(item)
+            
+            # Delete pipeline configs
+            for item in db.exec(select(PipelineConfig).where(PipelineConfig.study_id == study_id)).all():
+                db.delete(item)
+            
+            # Delete mapping template usage
+            for item in db.exec(select(MappingTemplateUsage).where(MappingTemplateUsage.study_id == study_id)).all():
+                db.delete(item)
+            
+            # Delete mapping templates associated with study
+            for item in db.exec(select(MappingTemplate).where(MappingTemplate.study_id == study_id)).all():
+                db.delete(item)
+            
+            # Delete user roles (study-specific roles)
+            for item in db.exec(select(UserRole).where(UserRole.study_id == study_id)).all():
+                db.delete(item)
+            
+            # Delete data source uploads
+            for item in db.exec(select(DataSourceUpload).where(DataSourceUpload.study_id == study_id)).all():
+                db.delete(item)
+            
+            # Note: Pipeline, DataMapping, FieldMapping are not imported as they don't exist in models
+            
+            # Delete data sources
+            for item in db.exec(select(DataSource).where(DataSource.study_id == study_id)).all():
+                db.delete(item)
+            
+            # Note: StudyMappingTemplate, StudyFieldMapping, StudyRoleAssignment tables don't exist
+            
+            # Delete study data configurations
+            for item in db.exec(select(StudyDataConfiguration).where(StudyDataConfiguration.study_id == study_id)).all():
+                db.delete(item)
+            
+            # Delete study dashboards  
+            for item in db.exec(select(StudyDashboard).where(StudyDashboard.study_id == study_id)).all():
+                db.delete(item)
+            
+            # Note: WidgetInstanceMapping doesn't have study_id, it's linked through widget_id
+            
+            # Delete activity logs for this study
+            for item in db.exec(select(ActivityLog).where(ActivityLog.study_id == study_id)).all():
+                db.delete(item)
+            
+            # Note: AuditLog table doesn't exist, only ActivityLog
+            
+            # Now delete the study itself
             db.delete(db_study)
             db.commit()
         else:

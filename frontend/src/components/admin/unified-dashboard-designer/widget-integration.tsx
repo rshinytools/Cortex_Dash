@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { WidgetConfigurationPanel } from '@/components/widgets/WidgetConfigurationPanel';
-import { WidgetRenderer } from '@/components/widgets/WidgetRenderer';
+import { WidgetRenderer } from '@/components/widgets/widget-renderer';
 import {
   BarChartIcon,
   TrendingUpIcon,

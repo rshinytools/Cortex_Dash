@@ -11,6 +11,7 @@ from datetime import datetime
 import pandas as pd
 import pyarrow.parquet as pq
 from pathlib import Path
+from app.models import Study
 
 logger = logging.getLogger(__name__)
 
@@ -166,7 +167,13 @@ class FieldMappingService:
         available_fields = {}
         
         # Get parquet files directory
-        parquet_dir = Path(f"/data/studies/{study_id}/parquet_data")
+        # Get organization ID from study
+        study = self.db.get(Study, study_id)
+        if not study:
+            return {}
+        
+        timestamp = datetime.now().strftime("%Y-%m-%d")
+        parquet_dir = Path(f"/data/{study.org_id}/studies/{study_id}/processed_data/{timestamp}")
         if not parquet_dir.exists():
             logger.warning(f"No parquet data found for study {study_id}")
             return available_fields

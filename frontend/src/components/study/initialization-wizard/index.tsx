@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 import { BasicInfoStep } from './steps/basic-info';
 import { TemplateSelectionStep } from './steps/template-selection';
 import { DataUploadStep } from './steps/data-upload';
-import { DataTransformationStep } from './steps/data-transformation';
+import { FieldMappingStep } from './steps/field-mapping';
 import { ReviewMappingsStep } from './steps/review-mappings';
 
 export interface WizardStep {
@@ -41,9 +41,9 @@ const wizardSteps: WizardStep[] = [
     component: DataUploadStep,
   },
   {
-    id: 'data_transformation',
-    name: 'Transform Data',
-    component: DataTransformationStep,
+    id: 'field_mapping',
+    name: 'Map Fields',
+    component: FieldMappingStep,
   },
   {
     id: 'review_mappings',
@@ -179,9 +179,13 @@ export function InitializationWizard({
       setIsLoading(true);
       const stepId = wizardSteps[currentStep].id;
       
+      console.log(`[Wizard] Step ${stepId} completed with data:`, stepData);
+      
       // Update wizard data
       const updatedData = { ...wizardData, [stepId]: stepData };
       setWizardData(updatedData);
+      
+      console.log('[Wizard] Updated wizard data:', updatedData);
       
       // Store in window for cross-component access (temporary solution)
       (window as any).__wizardData = updatedData;
@@ -191,15 +195,37 @@ export function InitializationWizard({
         case 'basic_info':
           // Create study only if we don't have one already
           if (!studyId) {
-            const createResponse = await studiesApi.startInitializationWizard({
-              name: stepData.name,
-              protocol_number: stepData.protocol_number,
-              description: stepData.description,
-              phase: stepData.phase,
-              therapeutic_area: stepData.therapeutic_area,
-              indication: stepData.indication,
-            });
-            setStudyId(createResponse.study_id);
+            try {
+              const createResponse = await studiesApi.startInitializationWizard({
+                name: stepData.name,
+                protocol_number: stepData.protocol_number,
+                description: stepData.description,
+                phase: stepData.phase,
+                therapeutic_area: stepData.therapeutic_area,
+                indication: stepData.indication,
+              });
+              setStudyId(createResponse.study_id);
+            } catch (error: any) {
+              console.error('Study creation error:', error);
+              
+              // Extract error message from response
+              const errorMessage = error.response?.data?.detail || error.message || 'Failed to create study';
+              
+              console.log('Showing toast with message:', errorMessage);
+              
+              // Show specific error message to user
+              toast({
+                title: 'Study Creation Failed',
+                description: errorMessage,
+                variant: 'destructive',
+              });
+              
+              // Mark that we've shown a toast to prevent duplicate
+              error.toastShown = true;
+              
+              // Re-throw to prevent continuing to next step
+              throw error;
+            }
           }
           break;
 
@@ -240,32 +266,27 @@ export function InitializationWizard({
           }
           break;
 
-        case 'data_transformation':
-          // Data transformation step - pipelines are executed within the component
-          // Save transformation step completion status
+        case 'field_mapping':
+          // Save field mappings
           if (studyId) {
             try {
-              await studiesApi.completeTransformationStep(studyId, {
-                skipped: stepData.skipped || false,
-                pipeline_ids: stepData.pipelines || [],
+              // Use flatMappings for backend, keep nested mappings for display
+              await studiesApi.saveFieldMappings(studyId, {
+                mappings: stepData.flatMappings || stepData.mappings,
+                accept_auto_mappings: stepData.acceptAutoMappings,
               });
               
-              if (stepData.pipelines && stepData.pipelines.length > 0) {
-                toast({
-                  title: 'Transformations Complete',
-                  description: `Successfully executed ${stepData.pipelines.length} pipeline(s)`,
-                });
-              } else if (stepData.skipped) {
-                toast({
-                  title: 'Transformation Skipped',
-                  description: 'Proceeding without data transformation',
-                });
-              }
+              console.log('Field mappings saved:', stepData);
+              
+              toast({
+                title: 'Mappings Saved',
+                description: 'Field mappings have been configured successfully',
+              });
             } catch (error) {
-              console.error('Failed to complete transformation step:', error);
+              console.error('Failed to save field mappings:', error);
               toast({
                 title: 'Error',
-                description: 'Failed to save transformation step. You can continue anyway.',
+                description: 'Failed to save field mappings. You can continue anyway.',
                 variant: 'destructive',
               });
               // Don't throw error to allow continuing
@@ -292,6 +313,8 @@ export function InitializationWizard({
               description: 'Study initialization is in progress',
             });
             
+            // Redirect to initialization progress page (outside study layout to avoid sidebar)
+            router.push(`/initialization/${studyId}`);
             onComplete?.(studyId);
             return;
           }
@@ -329,11 +352,16 @@ export function InitializationWizard({
       const stepId = wizardSteps[currentStep].id;
       setErrorSteps(prev => new Set(prev).add(stepId));
       
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to complete step',
-        variant: 'destructive',
-      });
+      // Only show toast if we haven't already shown a specific one
+      // (check if error has already been handled with a toast)
+      if (!error.toastShown) {
+        const errorMessage = error.response?.data?.detail || error.message || 'Failed to complete step';
+        toast({
+          title: 'Error',
+          description: errorMessage,
+          variant: 'destructive',
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -436,7 +464,18 @@ export function InitializationWizard({
       <Card className="p-6">
         <CurrentStepComponent
           studyId={studyId}
-          data={wizardData[wizardSteps[currentStep].id] || {}}
+          data={(() => {
+            const currentStepData = wizardData[wizardSteps[currentStep].id] || {};
+            const dataToPass = {
+              ...currentStepData,
+              // Pass relevant data from previous steps
+              templateId: wizardData.template_selection?.templateId,
+              uploadedFiles: wizardData.data_upload?.files,
+              fieldMappings: wizardData.field_mapping,
+            };
+            console.log(`[Wizard] Passing data to step ${wizardSteps[currentStep].id}:`, dataToPass);
+            return dataToPass;
+          })()}
           onComplete={handleStepComplete}
           isLoading={isLoading}
         />

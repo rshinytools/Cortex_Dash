@@ -17,7 +17,7 @@ from app.models.widget import WidgetDefinition, WidgetCategory
 from app.models.dashboard import DashboardTemplate, StudyDashboard
 from app.models.study import Study
 from app.core.config import settings
-from app.services.data_source_manager import get_data_source_manager, DataSourceType
+from app.services.data_source_manager import DataSourceManager
 from app.services.query_builder import QueryBuilder
 
 logger = logging.getLogger(__name__)
@@ -70,7 +70,7 @@ class BaseWidgetDataExecutor(ABC):
         self.study = study
         self.widget_definition = widget_definition
         self.field_mappings = study.field_mappings or {}
-        self.data_source_manager = get_data_source_manager()
+        self.data_source_manager = DataSourceManager()
         self.query_builder = QueryBuilder()
         
     @abstractmethod

@@ -3,12 +3,13 @@
 
 'use client';
 
-import React, { Suspense, useMemo, useCallback } from 'react';
+import React, { Suspense, useMemo, useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Download, AlertCircle, Loader2 } from 'lucide-react';
 import { WidgetRegistry } from './widget-registry';
 import { BaseWidgetProps, WidgetInstance, exportWidgetDataAsCSV, exportWidgetDataAsJSON, exportWidgetAsImage } from './base-widget';
+import { ensureWidgetLoaded } from './widget-loader';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -69,9 +70,23 @@ export const WidgetRenderer: React.FC<WidgetRendererProps> = React.memo(({
   onRefresh,
   viewMode = true
 }) => {
-  const WidgetComponent = useMemo(() => {
-    return WidgetRegistry.getComponent(instance.type);
-  }, [instance.type]);
+  const [isLoadingWidget, setIsLoadingWidget] = useState(false);
+  const [WidgetComponent, setWidgetComponent] = useState(() => 
+    WidgetRegistry.getComponent(instance.type)
+  );
+
+  // Attempt to load widget if not registered
+  useEffect(() => {
+    if (!WidgetComponent && !isLoadingWidget) {
+      setIsLoadingWidget(true);
+      ensureWidgetLoaded(instance.type).then((success) => {
+        if (success) {
+          setWidgetComponent(WidgetRegistry.getComponent(instance.type));
+        }
+        setIsLoadingWidget(false);
+      });
+    }
+  }, [instance.type, WidgetComponent, isLoadingWidget]);
 
   const handleExport = useCallback((format: 'png' | 'csv' | 'json') => {
     const filename = `${instance.title.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}`;
@@ -95,6 +110,16 @@ export const WidgetRenderer: React.FC<WidgetRendererProps> = React.memo(({
     }
   }, [instance.id, instance.title, data]);
 
+  if (isLoadingWidget) {
+    return (
+      <Card className="h-full">
+        <CardContent className="flex items-center justify-center h-full">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (!WidgetComponent) {
     return (
       <Card className="h-full">
@@ -111,14 +136,14 @@ export const WidgetRenderer: React.FC<WidgetRendererProps> = React.memo(({
     id: instance.id,
     title: instance.title,
     description: instance.description,
-    configuration: instance.configuration,
+    configuration: instance.config || instance.configuration || {},
     data,
     loading,
     error,
     onRefresh,
     onExport: handleExport,
-    height: instance.layout.h * 80, // Assuming 80px per grid unit
-    width: instance.layout.w * 100, // Assuming 100px per grid unit
+    height: (instance.h || instance.layout?.h || 2) * 80, // Assuming 80px per grid unit
+    width: (instance.w || instance.layout?.w || 3) * 100, // Assuming 100px per grid unit
   };
 
   const supportedFormats = WidgetComponent.supportedExportFormats || ['json'];

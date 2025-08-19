@@ -409,9 +409,16 @@ class FileConversionService:
             "warnings": []
         }
         
-        # Create target folder structure using proper pattern
-        target_path = get_study_data_path(org_id, study_id, results["timestamp"])
-        ensure_folder_exists(target_path)
+        # Use the folder where files are already uploaded (extract from first file path)
+        # Files are already in the correct location, we just need to convert them to parquet
+        if files and files[0].get("path"):
+            # Extract the existing path from the first file
+            first_file_path = Path(files[0]["path"])
+            target_path = first_file_path.parent  # Use the existing folder
+        else:
+            # Fallback to creating new path if no files
+            target_path = get_study_data_path(org_id, study_id, results["timestamp"])
+            ensure_folder_exists(target_path)
         
         # Track progress
         total_steps = len(files) * 3  # Extract, convert, schema for each file
@@ -457,11 +464,9 @@ class FileConversionService:
                     # Step 2: Convert to parquet
                     await update_progress(f"Converting {file_info['name']} to parquet...")
                     
-                    # Copy to target folder first
-                    target_file = target_path / file_path.name
-                    shutil.copy2(file_path, target_file)
-                    
-                    parquet_path = await self._convert_to_parquet_v2(target_file, target_path)
+                    # Files are already in the correct location (uploaded to source_data folder)
+                    # Just convert them in place
+                    parquet_path = await self._convert_to_parquet_v2(file_path, file_path.parent)
                     
                     if parquet_path:
                         # Step 3: Extract schema
@@ -470,7 +475,7 @@ class FileConversionService:
                         dataset_name = parquet_path.stem.lower()
                         results["datasets"][dataset_name] = schema_info
                         results["converted_files"].append({
-                            "original": str(target_file),
+                            "original": str(file_path),
                             "parquet": str(parquet_path),
                             "dataset": dataset_name
                         })
@@ -770,9 +775,9 @@ class FileConversionService:
                 # Get column statistics
                 col_info = {
                     "type": data_type,
-                    "parquet_type": str(field.type),
+                    "parquet_type": str(field.physical_type) if hasattr(field, 'physical_type') else str(field),
                     "pandas_dtype": pandas_dtype,
-                    "nullable": field.nullable,
+                    "nullable": True,  # Parquet field doesn't have nullable attribute
                     "null_count": int(df[col_name].isnull().sum()),
                     "unique_count": int(df[col_name].nunique())
                 }
@@ -780,7 +785,15 @@ class FileConversionService:
                 # Add sample values for categorical columns
                 if col_info["unique_count"] <= 20:
                     unique_values = df[col_name].dropna().unique().tolist()
-                    col_info["unique_values"] = [str(v) for v in unique_values[:20]]
+                    # Convert to string to handle datetime/Timestamp objects
+                    col_info["unique_values"] = []
+                    for v in unique_values[:20]:
+                        if pd.api.types.is_datetime64_any_dtype(type(v)):
+                            col_info["unique_values"].append(str(v))
+                        elif hasattr(v, 'isoformat'):  # Handle datetime objects
+                            col_info["unique_values"].append(v.isoformat())
+                        else:
+                            col_info["unique_values"].append(str(v))
                 
                 # Add statistics for numeric columns
                 if data_type == 'number':
@@ -795,6 +808,10 @@ class FileConversionService:
             
             # Add sample rows (first 5)
             sample_df = df.head(5).fillna('')
+            # Convert datetime columns to strings for JSON serialization
+            for col in sample_df.columns:
+                if pd.api.types.is_datetime64_any_dtype(sample_df[col]):
+                    sample_df[col] = sample_df[col].astype(str)
             schema_info["sample_data"] = sample_df.to_dict('records')
             
             # Check for metadata file

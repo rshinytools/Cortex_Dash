@@ -7,12 +7,13 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlmodel import Session, select
+from sqlalchemy.orm.attributes import flag_modified
 from pydantic import BaseModel, Field
 
 from app.api.deps import get_db, get_current_user
-from app.models import User, Study, StudyStatus, DashboardTemplate as UnifiedDashboardTemplate, Organization, StudyDataConfiguration, StudyPhase, PipelineConfig, PipelineExecution, PipelineStatus
+from app.models import User, Study, StudyStatus, DashboardTemplate, Organization, StudyDataConfiguration, StudyPhase, PipelineConfig, PipelineExecution, PipelineStatus
 from app.core.permissions import has_permission, Permission
 from app.services.file_processing_service import FileProcessingService
 from app.services.file_conversion_service import FileConversionService
@@ -164,9 +165,16 @@ async def start_initialization_wizard(
     ).first()
     
     if existing:
+        # Provide more helpful error message with the existing study info
+        error_msg = f"Protocol number '{study_info.protocol_number}' is already in use by study '{existing.name}'"
+        if existing.status == StudyStatus.ARCHIVED:
+            error_msg += " (archived). Please use a different protocol number."
+        else:
+            error_msg += f" ({existing.status.value.lower()}). Please use a different protocol number."
+        
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Study with this protocol number already exists"
+            status_code=status.HTTP_409_CONFLICT,
+            detail=error_msg
         )
     
     # Generate study code from name if not provided
@@ -410,8 +418,8 @@ async def get_available_templates(
     
     # Get all active templates (all created templates are published by default)
     templates = db.exec(
-        select(UnifiedDashboardTemplate).where(
-            UnifiedDashboardTemplate.is_active == True
+        select(DashboardTemplate).where(
+            DashboardTemplate.is_active == True
         )
     ).all()
     
@@ -519,7 +527,7 @@ async def select_template(
         )
     
     # Verify template exists and is active
-    template = db.get(UnifiedDashboardTemplate, request.template_id)
+    template = db.get(DashboardTemplate, request.template_id)
     if not template or not template.is_active:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -582,6 +590,95 @@ async def get_upload_status(
         uploaded_files=uploaded_files,
         is_complete=len(uploaded_files) > 0
     )
+
+
+@router.post("/wizard/{study_id}/upload")
+async def upload_wizard_files(
+    study_id: uuid.UUID,
+    files: List[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Upload files for the study initialization wizard"""
+    # Get study
+    study = db.get(Study, study_id)
+    if not study:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Study not found"
+        )
+    
+    # Check access
+    if study.org_id != current_user.org_id and not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
+    
+    # Create upload directory
+    timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+    upload_dir = Path(f"/data/studies/{study.org_id}/{study_id}/source_data/{timestamp}")
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    
+    uploaded_files = []
+    
+    for file in files:
+        try:
+            # Save file
+            file_path = upload_dir / file.filename
+            content = await file.read()
+            
+            with open(file_path, "wb") as f:
+                f.write(content)
+            
+            # Add to uploaded files list
+            uploaded_files.append({
+                "name": file.filename,
+                "path": str(file_path),
+                "size": len(content),
+                "type": file.filename.split('.')[-1].lower() if '.' in file.filename else 'unknown',
+                "uploaded_at": datetime.utcnow().isoformat()
+            })
+            
+        except Exception as e:
+            logger.error(f"Failed to save file {file.filename}: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to save file {file.filename}: {str(e)}"
+            )
+    
+    # Store uploaded files in initialization_steps
+    if not study.initialization_steps:
+        study.initialization_steps = {}
+    
+    # Add pending uploads
+    study.initialization_steps["pending_uploads"] = uploaded_files
+    
+    # Update wizard state
+    wizard_state = study.initialization_steps.get("wizard_state", {})
+    if "data" not in wizard_state:
+        wizard_state["data"] = {}
+    wizard_state["data"]["uploaded_files"] = uploaded_files
+    study.initialization_steps["wizard_state"] = wizard_state
+    
+    # Mark the JSON field as modified to ensure SQLAlchemy detects the change
+    flag_modified(study, "initialization_steps")
+    
+    logger.info(f"Saving uploaded files to study {study_id}: {len(uploaded_files)} files")
+    logger.info(f"initialization_steps after update: {study.initialization_steps.keys()}")
+    
+    db.add(study)
+    db.commit()
+    db.refresh(study)
+    
+    # Verify the save
+    logger.info(f"After commit - pending_uploads exists: {'pending_uploads' in study.initialization_steps}")
+    
+    return {
+        "message": "Files uploaded successfully",
+        "total_files": len(uploaded_files),
+        "files": uploaded_files
+    }
 
 
 @router.post("/wizard/{study_id}/complete-upload")
@@ -672,6 +769,7 @@ async def complete_upload_step(
     ).first()
     
     if not study_data_config:
+        logger.info(f"Creating new StudyDataConfiguration for study {study_id}")
         study_data_config = StudyDataConfiguration(
             study_id=study_id,
             dataset_schemas=conversion_results["datasets"],
@@ -679,31 +777,57 @@ async def complete_upload_step(
         )
         db.add(study_data_config)
     else:
+        logger.info(f"Updating existing StudyDataConfiguration for study {study_id}")
         study_data_config.dataset_schemas = conversion_results["datasets"]
         study_data_config.updated_at = datetime.utcnow()
         study_data_config.updated_by = current_user.id
+        db.add(study_data_config)
     
     # Store processing results
     study.initialization_steps["file_processing"] = conversion_results
     study.initialization_steps["data_folder"] = conversion_results.get("summary", {}).get("data_folder", "")
+    
+    # Force update flag for JSON fields
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(study, "initialization_steps")
+    
     db.add(study)
     db.commit()
     
+    # Verify the save was successful
+    db.refresh(study_data_config)
+    logger.info(f"StudyDataConfiguration saved with {len(study_data_config.dataset_schemas)} datasets")
+    
     # Generate mapping suggestions if we have datasets
     if conversion_results["datasets"] and study.dashboard_template_id:
-        template = db.get(UnifiedDashboardTemplate, study.dashboard_template_id)
+        template = db.get(DashboardTemplate, study.dashboard_template_id)
         if template and template.template_structure:
-            # Extract widget data requirements
+            # Extract widget data requirements from nested structure
             template_requirements = []
             dashboards = template.template_structure.get("dashboardTemplates", [])
             for dashboard in dashboards:
                 for widget in dashboard.get("widgets", []):
-                    if widget.get("dataConfiguration"):
+                    # Get widget instance and definition
+                    widget_instance = widget.get("widgetInstance", {})
+                    widget_def = widget_instance.get("widgetDefinition", {})
+                    
+                    # Parse data_contract from JSON string
+                    data_contract_str = widget_def.get("data_contract", "{}")
+                    try:
+                        import json as json_lib
+                        data_contract = json_lib.loads(data_contract_str)
+                    except:
+                        data_contract = {}
+                    
+                    # Check if widget has data requirements
+                    if data_contract and (data_contract.get("required_fields") or data_contract.get("optional_fields")):
                         template_requirements.append({
-                            "widget_id": widget["id"],
-                            "widget_title": widget.get("title", "Unknown Widget"),
-                            "widget_type": widget["type"],
-                            "data_config": widget["dataConfiguration"]
+                            "widget_id": widget.get("widgetInstanceId", widget_instance.get("id", "")),
+                            "widget_title": widget_def.get("name", "Unknown Widget"),
+                            "widget_type": widget_def.get("code", "unknown"),
+                            "data_config": data_contract,
+                            "required_fields": data_contract.get("required_fields", []),
+                            "optional_fields": data_contract.get("optional_fields", [])
                         })
             
             # Generate mapping suggestions
@@ -764,18 +888,33 @@ async def get_mapping_data(
     # Get template requirements
     template_requirements = []
     if study.dashboard_template_id:
-        template = db.get(UnifiedDashboardTemplate, study.dashboard_template_id)
+        template = db.get(DashboardTemplate, study.dashboard_template_id)
         if template and template.template_structure:
-            # Extract widget data requirements
+            # Extract widget data requirements from nested structure
             dashboards = template.template_structure.get("dashboardTemplates", [])
             for dashboard in dashboards:
                 for widget in dashboard.get("widgets", []):
-                    if widget.get("dataConfiguration"):
+                    # Get widget instance and definition
+                    widget_instance = widget.get("widgetInstance", {})
+                    widget_def = widget_instance.get("widgetDefinition", {})
+                    
+                    # Parse data_contract from JSON string
+                    data_contract_str = widget_def.get("data_contract", "{}")
+                    try:
+                        import json
+                        data_contract = json.loads(data_contract_str)
+                    except:
+                        data_contract = {}
+                    
+                    # Check if widget has data requirements
+                    if data_contract and (data_contract.get("required_fields") or data_contract.get("optional_fields")):
                         template_requirements.append({
-                            "widget_id": widget["id"],
-                            "widget_title": widget.get("title", "Unknown Widget"),
-                            "widget_type": widget["type"],
-                            "data_config": widget["dataConfiguration"]
+                            "widget_id": widget.get("widgetInstanceId", widget_instance.get("id", "")),
+                            "widget_title": widget_def.get("name", "Unknown Widget"),
+                            "widget_type": widget_def.get("code", "unknown"),
+                            "data_config": data_contract,
+                            "required_fields": data_contract.get("required_fields", []),
+                            "optional_fields": data_contract.get("optional_fields", [])
                         })
     
     # Generate mapping suggestions
@@ -843,8 +982,19 @@ async def complete_wizard(
     study.initialization_steps["wizard_state"] = wizard_state
     
     # Store mapping preferences
+    # Note: field_mappings expects Dict[str, str] so we need to flatten the nested structure
     if request.custom_mappings:
-        study.field_mappings = request.custom_mappings
+        flattened_mappings = {}
+        for widget_id, widget_mappings in request.custom_mappings.items():
+            if isinstance(widget_mappings, dict):
+                for field_name, mapping in widget_mappings.items():
+                    # Create a unique key for each mapping
+                    key = f"{widget_id}_{field_name}"
+                    # Store as string reference to the dataset.column
+                    if isinstance(mapping, dict) and 'dataset' in mapping and 'column' in mapping:
+                        value = f"{mapping['dataset']}.{mapping['column']}"
+                        flattened_mappings[key] = value
+        study.field_mappings = flattened_mappings
     
     study.initialization_steps["auto_mappings_accepted"] = request.accept_auto_mappings
     study.initialization_status = "wizard_completed"
@@ -1018,7 +1168,7 @@ async def get_suggested_transformations(
     
     # Get template and analyze widget requirements
     if study.dashboard_template_id:
-        template = db.get(UnifiedDashboardTemplate, study.dashboard_template_id)
+        template = db.get(DashboardTemplate, study.dashboard_template_id)
         if template and template.template_structure:
             # Extract unique data requirements from widgets
             widget_requirements = set()

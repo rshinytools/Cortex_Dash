@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.routes import items, login, private, users, utils
-from app.api.v1.endpoints import organizations, studies, pipelines, data_sources, transformations, data_catalog, data_uploads, pipeline_config, data_mapping, study_initialization, websocket, study_wizard, study_transformation
+from app.api.v1.endpoints import organizations, studies, pipelines, data_sources, transformations, data_catalog, data_uploads, pipeline_config, data_mapping, study_initialization, websocket, study_wizard, study_transformation, debug_study
 # Temporarily disabled endpoints
 # from app.api.v1.endpoints import data_versions, data_quality, data_archival, refresh_schedules
 # from app.api.v1.endpoints import dashboards, widgets, visualizations, advanced_visualizations
@@ -34,6 +34,7 @@ api_router.include_router(data_catalog.router, prefix="/data-catalog", tags=["da
 api_router.include_router(data_uploads.router, prefix="/data-uploads", tags=["data-uploads"])
 api_router.include_router(pipeline_config.router, prefix="/pipeline-config", tags=["pipeline-config"])
 api_router.include_router(data_mapping.router, prefix="/data-mapping", tags=["data-mapping"])
+api_router.include_router(debug_study.router, prefix="", tags=["debug"])
 
 # Phase 4: Data Management & Storage APIs - temporarily disabled
 # api_router.include_router(data_versions.router, prefix="/data-versions", tags=["data-versions"])
@@ -44,10 +45,12 @@ api_router.include_router(data_mapping.router, prefix="/data-mapping", tags=["da
 # Phase 5: Dashboard & Visualization APIs
 # api_router.include_router(dashboards.router, prefix="/dashboards", tags=["dashboards"])
 api_router.include_router(dashboard_templates.router, prefix="/dashboard-templates", tags=["dashboard-templates"])
-from app.api.v1.endpoints import widgets, widget_execution, mapping_templates
+from app.api.v1.endpoints import widgets, widget_execution, mapping_templates, widget_data, template_requirements
 api_router.include_router(widgets.router, prefix="/widgets", tags=["widgets"])
 api_router.include_router(widget_execution.router, prefix="/widget-execution", tags=["widget-execution"])
 api_router.include_router(mapping_templates.router, prefix="/mapping-templates", tags=["mapping-templates"])
+api_router.include_router(widget_data.router, prefix="/widget-data", tags=["widget-data"])
+api_router.include_router(template_requirements.router, tags=["template-requirements"])
 # api_router.include_router(visualizations.router, prefix="/visualizations", tags=["visualizations"])
 # api_router.include_router(advanced_visualizations.router, prefix="/advanced-visualizations", tags=["advanced-visualizations"])
 

@@ -162,8 +162,9 @@ async def upload_study_data(
             detail="Access denied to this study"
         )
     
-    # Create upload directory
-    upload_dir = Path(f"/data/studies/{study_id}/uploads/{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}")
+    # Create upload directory using organization-based structure
+    timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+    upload_dir = Path(f"/data/studies/{study.org_id}/{study_id}/source_data/{timestamp}")
     upload_dir.mkdir(parents=True, exist_ok=True)
     
     uploaded_files = []

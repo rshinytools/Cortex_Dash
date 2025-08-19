@@ -315,7 +315,7 @@ export function registerAllWidgets() {
 export { MetricWidget } from './MetricWidget';
 export { MetricsCard } from './MetricsCard';
 export { MetricsCardConfig } from './MetricsCardConfig';
-export { WidgetRenderer } from './WidgetRenderer';
+export { WidgetRenderer } from './widget-renderer';
 export type { 
   BaseWidgetProps, 
   WidgetComponent, 

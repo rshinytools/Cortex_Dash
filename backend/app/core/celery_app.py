@@ -12,6 +12,7 @@ celery_app = Celery(
         "app.clinical_modules.pipeline.tasks",
         "app.clinical_modules.data_sources.tasks",
         "app.clinical_modules.exports.tasks",
+        "app.tasks.study_initialization",
     ]
 )
 

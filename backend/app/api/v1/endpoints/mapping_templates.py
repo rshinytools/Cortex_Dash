@@ -19,7 +19,7 @@ from app.models.mapping_templates import (
     MappingTemplateUsage,
     TransformationType
 )
-from app.services.transformations.transformation_engine import TransformationEngine
+# from app.services.transformations.transformation_engine import TransformationEngine
 from app.core.config import settings
 
 router = APIRouter()
@@ -411,39 +411,40 @@ def apply_template(
     }
 
 
-@router.post("/test-transformation")
-def test_transformation(
-    *,
-    request: TestTransformationRequest,
-    current_user: User = Depends(deps.get_current_active_user)
-) -> Any:
-    """Test a transformation with sample data."""
-    
-    engine = TransformationEngine()
-    
-    try:
-        result = engine.apply_transformation(
-            data=request.sample_data,
-            transformation_type=request.transformation_type,
-            config=request.config,
-            source_fields=request.source_fields,
-            target_field=request.target_field,
-            on_error=request.on_error,
-            default_value=request.default_value
-        )
-        
-        return {
-            "success": True,
-            "result": result,
-            "target_field": request.target_field
-        }
-        
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e),
-            "result": request.sample_data
-        }
+# Temporarily disabled - TransformationEngine not implemented
+# @router.post("/test-transformation")
+# def test_transformation(
+#     *,
+#     request: TestTransformationRequest,
+#     current_user: User = Depends(deps.get_current_active_user)
+# ) -> Any:
+#     """Test a transformation with sample data."""
+#     
+#     engine = TransformationEngine()
+#     
+#     try:
+#         result = engine.apply_transformation(
+#             data=request.sample_data,
+#             transformation_type=request.transformation_type,
+#             config=request.config,
+#             source_fields=request.source_fields,
+#             target_field=request.target_field,
+#             on_error=request.on_error,
+#             default_value=request.default_value
+#         )
+#         
+#         return {
+#             "success": True,
+#             "result": result,
+#             "target_field": request.target_field
+#         }
+#         
+#     except Exception as e:
+#         return {
+#             "success": False,
+#             "error": str(e),
+#             "result": request.sample_data
+#         }
 
 
 @router.get("/{template_id}/versions")

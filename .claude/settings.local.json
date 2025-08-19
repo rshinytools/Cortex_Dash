@@ -106,9 +106,16 @@
       "Bash(docker build:*)",
       "Bash(.fresh_install_auto.bat)",
       "Bash(py:*)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(docker inspect:*)",
+      "Bash(./test_study_init.bat)",
+      "Bash(export TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTYyNTAyMjQsInN1YiI6IjRlMzEyMWZlLWI4YmUtNDBmMy1iMjNmLWQ5ZmFkOWFlYjYzOSJ9.6qTwXz6NBWucl-8FZ_FddIjl3k5CIQXcViIOb1le1lI\")",
+      "Bash(export TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTYyNjI5NDEsInN1YiI6IjRlMzEyMWZlLWI4YmUtNDBmMy1iMjNmLWQ5ZmFkOWFlYjYzOSJ9.dIfaycMyAYSQUCEVHgDM8J-gIMtq60jFW6nABQ4TbuU\")"
     ],
     "deny": [],
-    "defaultMode": "acceptEdits"
+    "defaultMode": "acceptEdits",
+    "additionalDirectories": [
+      "C:\\c\\Users\\amuly\\OneDrive\\AetherClinical"
+    ]
   }
 }

@@ -24,7 +24,7 @@ import {
   Loader2,
   AlertCircle
 } from "lucide-react"
-import { WidgetRenderer } from "@/components/widgets/WidgetRenderer"
+import { WidgetRenderer } from "@/components/widgets/widget-renderer"
 
 // Import react-grid-layout CSS
 import "react-grid-layout/css/styles.css"

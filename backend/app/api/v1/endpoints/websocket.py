@@ -11,6 +11,7 @@ from app.api.deps import get_db, get_current_user_ws
 from app.models import User, Study
 from app.core.websocket_manager import websocket_manager
 from app.core.permissions import has_permission_for_study
+from app.core.db import engine
 
 logger = logging.getLogger(__name__)
 
@@ -45,16 +46,26 @@ async def websocket_initialization_endpoint(
         
         user = await get_current_user_ws(token, db)
         if not user:
+            logger.error(f"WebSocket auth failed: No user found for token")
             await websocket.close(code=4001, reason="Invalid authentication")
             return
+        
+        logger.info(f"WebSocket auth: User {user.email} (superuser: {user.is_superuser})")
         
         # Check if user has access to the study
         study = db.get(Study, study_id)
         if not study:
+            logger.error(f"WebSocket: Study {study_id} not found")
             await websocket.close(code=4004, reason="Study not found")
             return
         
-        if not await has_permission_for_study(user, study, db):
+        logger.info(f"WebSocket: Study found - {study.name} (org: {study.org_id})")
+        
+        has_access = await has_permission_for_study(user, study, db)
+        logger.info(f"WebSocket: Permission check result: {has_access}")
+        
+        if not has_access:
+            logger.error(f"WebSocket: Access denied for user {user.email} to study {study_id}")
             await websocket.close(code=4003, reason="Access denied")
             return
         

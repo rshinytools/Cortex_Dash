@@ -5,7 +5,7 @@ import uuid
 from typing import Optional, List, Dict, Any
 from sqlmodel import Session, select
 
-from app.models import DashboardTemplate as UnifiedDashboardTemplate
+from app.models import DashboardTemplate
 
 
 class TemplateService:
@@ -14,15 +14,15 @@ class TemplateService:
     def __init__(self, db: Session):
         self.db = db
     
-    def get_template(self, template_id: uuid.UUID) -> Optional[UnifiedDashboardTemplate]:
+    def get_template(self, template_id: uuid.UUID) -> Optional[DashboardTemplate]:
         """Get a template by ID"""
-        return self.db.get(UnifiedDashboardTemplate, template_id)
+        return self.db.get(DashboardTemplate, template_id)
     
-    def list_templates(self, org_id: Optional[uuid.UUID] = None) -> List[UnifiedDashboardTemplate]:
+    def list_templates(self, org_id: Optional[uuid.UUID] = None) -> List[DashboardTemplate]:
         """List templates, optionally filtered by organization"""
-        query = select(UnifiedDashboardTemplate)
+        query = select(DashboardTemplate)
         if org_id:
-            query = query.where(UnifiedDashboardTemplate.org_id == org_id)
+            query = query.where(DashboardTemplate.org_id == org_id)
         
         return self.db.exec(query).all()
     

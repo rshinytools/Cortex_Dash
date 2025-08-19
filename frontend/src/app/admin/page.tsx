@@ -389,26 +389,6 @@ function AdminContent() {
       enabled: true
     },
     {
-      title: 'Data Mapping',
-      description: 'CDISC SDTM/ADaM mapping',
-      icon: GitBranch,
-      path: '/admin/data-mapping',
-      color: 'bg-yellow-500',
-      lightColor: 'bg-yellow-100',
-      stats: { count: '25', label: 'Mappings' },
-      enabled: true
-    },
-    {
-      title: 'Pipeline Config',
-      description: 'ETL pipeline management',
-      icon: Workflow,
-      path: '/admin/pipeline-config',
-      color: 'bg-red-500',
-      lightColor: 'bg-red-100',
-      stats: { count: '6', label: 'Pipelines' },
-      enabled: true
-    },
-    {
       title: 'Organizations',
       description: 'Multi-tenant management',
       icon: Building2,

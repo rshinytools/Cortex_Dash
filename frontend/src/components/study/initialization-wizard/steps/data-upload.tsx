@@ -16,7 +16,8 @@ import {
   ChevronRight,
   CheckCircle2,
   AlertCircle,
-  Loader2
+  Loader2,
+  FlaskConical
 } from 'lucide-react';
 import { studiesApi } from '@/lib/api/studies';
 import { formatBytes } from '@/lib/utils';

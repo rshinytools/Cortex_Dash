@@ -10,9 +10,10 @@ from pathlib import Path
 import json
 
 from sqlmodel import Session
+from sqlalchemy.orm.attributes import flag_modified
 from fastapi import HTTPException
 
-from app.models import Study, DashboardTemplate as UnifiedDashboardTemplate, User
+from app.models import Study, DashboardTemplate, User
 from app.core.db import engine
 from app.core.websocket_manager import websocket_manager
 from app.services.file_conversion_service import FileConversionService
@@ -111,7 +112,7 @@ class StudyInitializationService:
         
         try:
             # Get template
-            template = self.db.get(UnifiedDashboardTemplate, template_id)
+            template = self.db.get(DashboardTemplate, template_id)
             if not template:
                 raise ValueError("Template not found")
             
@@ -137,8 +138,9 @@ class StudyInitializationService:
         await self._update_step_status(study, "data_upload", "in_progress", 0)
         
         try:
-            # Create data directories
-            data_dir = Path(f"/data/studies/{study.id}/source_data")
+            # Create data directories with organization structure
+            timestamp = datetime.utcnow().strftime("%Y-%m-%d")
+            data_dir = Path(f"/data/{study.org_id}/studies/{study.id}/source_data/{timestamp}")
             data_dir.mkdir(parents=True, exist_ok=True)
             
             processed_files = []
@@ -165,9 +167,8 @@ class StudyInitializationService:
             
             # Save file metadata
             study.data_uploaded_at = datetime.utcnow()
-            if not hasattr(study, 'metadata') or study.metadata is None:
-                study.metadata = {}
-            study.metadata["uploaded_files"] = processed_files
+            study.config["uploaded_files"] = processed_files
+            flag_modified(study, "config")
             
             self.db.add(study)
             self.db.commit()
@@ -185,7 +186,7 @@ class StudyInitializationService:
         
         try:
             # Get uploaded files
-            uploaded_files = study.metadata.get("uploaded_files", [])
+            uploaded_files = study.config.get("uploaded_files", [])
             if not uploaded_files:
                 raise ValueError("No uploaded files found")
             
@@ -201,13 +202,15 @@ class StudyInitializationService:
             
             # Process conversions
             converted_files = await self.file_conversion_service.convert_study_files(
+                org_id=study.org_id,
                 study_id=study.id,
                 files=uploaded_files,
                 progress_callback=progress_callback
             )
             
             # Update metadata
-            study.metadata["converted_files"] = converted_files
+            study.config["converted_files"] = converted_files
+            flag_modified(study, "config")
             self.db.add(study)
             self.db.commit()
             
@@ -224,7 +227,7 @@ class StudyInitializationService:
         
         try:
             # Extract required fields from template
-            template = self.db.get(UnifiedDashboardTemplate, template_id)
+            template = self.db.get(DashboardTemplate, template_id)
             if not template:
                 raise ValueError("Template not found")
             

@@ -106,9 +106,10 @@ services:
 
   # Celery Worker
   celery-worker:
-    image: cortex-backend:prod
+    image: cortex_dash-backend
     container_name: cortex_dash-celery-worker-1
-    command: celery -A app.core.celery_app worker --loglevel=info
+    entrypoint: []
+    command: ["python", "-m", "celery", "-A", "app.core.celery_app", "worker", "--loglevel=info"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -128,15 +129,18 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - SECRET_KEY=your-secret-key-here-change-in-production
+      - FIRST_SUPERUSER=admin@sagarmatha.ai
+      - FIRST_SUPERUSER_PASSWORD=adadad123
     volumes:
       - ./data:/data
       - ./backend/app:/app/app
 
   # Celery Beat Scheduler
   celery-beat:
-    image: cortex-backend:prod
+    image: cortex_dash-backend
     container_name: cortex_dash-celery-beat-1
-    command: celery -A app.core.celery_app beat --loglevel=info
+    entrypoint: []
+    command: ["python", "-m", "celery", "-A", "app.core.celery_app", "beat", "--loglevel=info"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -156,13 +160,15 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - SECRET_KEY=your-secret-key-here-change-in-production
+      - FIRST_SUPERUSER=admin@sagarmatha.ai
+      - FIRST_SUPERUSER_PASSWORD=adadad123
     volumes:
       - ./data:/data
       - ./backend/app:/app/app
 
   # Flower - Celery Monitoring
   flower:
-    image: cortex-backend:prod
+    image: cortex_dash-backend
     container_name: cortex_dash-flower-1
     command: celery -A app.core.celery_app flower --port=5555
     ports:

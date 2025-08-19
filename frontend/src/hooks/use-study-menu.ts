@@ -25,7 +25,7 @@ const menuCache = new Map<string, { items: MenuItem[], timestamp: number }>()
 const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
 
 export function useStudyMenu(studyId: string): UseStudyMenuResult {
-  const { user } = useAuth()
+  const { user, token } = useAuth()
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -47,7 +47,7 @@ export function useStudyMenu(studyId: string): UseStudyMenuResult {
   }
 
   const fetchMenu = async () => {
-    if (!studyId || !user) {
+    if (!studyId || !user || !token) {
       setLoading(false)
       return
     }
@@ -65,11 +65,11 @@ export function useStudyMenu(studyId: string): UseStudyMenuResult {
       setError(null)
       
       // First, get the study to find its menu template
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-      const studyResponse = await fetch(`${baseUrl}/studies/${studyId}/`, {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
+      const studyResponse = await fetch(`${baseUrl}/studies/${studyId}`, {
         credentials: 'include',
         headers: {
-          'Authorization': `Bearer ${(user as any).access_token}`,
+          'Authorization': `Bearer ${token}`,
         },
       })
 
@@ -90,7 +90,7 @@ export function useStudyMenu(studyId: string): UseStudyMenuResult {
       const templateResponse = await fetch(`${baseUrl}/dashboard-templates/${study.dashboard_template_id}`, {
         credentials: 'include',
         headers: {
-          'Authorization': `Bearer ${(user as any).access_token}`,
+          'Authorization': `Bearer ${token}`,
         },
       })
 
@@ -134,7 +134,7 @@ export function useStudyMenu(studyId: string): UseStudyMenuResult {
 
   useEffect(() => {
     fetchMenu()
-  }, [studyId, user])
+  }, [studyId, user, token])
 
   return {
     menuItems,

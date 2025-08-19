@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch, AsyncMock
 from datetime import datetime
 from app.services.study_initialization_service import StudyInitializationService
 from app.models.study import Study
-from app.models.dashboard_templates import UnifiedDashboardTemplate
+from app.models.dashboard import DashboardTemplate
 
 
 @pytest.fixture
@@ -29,7 +29,7 @@ def mock_study():
 
 @pytest.fixture
 def mock_template():
-    template = Mock(spec=UnifiedDashboardTemplate)
+    template = Mock(spec=DashboardTemplate)
     template.id = "template123"
     template.name = "Test Template"
     template.template_structure = {

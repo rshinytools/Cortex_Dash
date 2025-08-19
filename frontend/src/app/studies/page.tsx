@@ -41,7 +41,6 @@ import {
   FlaskConical,
   MoreHorizontal,
   Edit,
-  Trash2,
   Power,
   PowerOff,
   Upload,
@@ -64,6 +63,7 @@ import {
 import { studiesApi } from '@/lib/api/studies';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { DeleteStudyDialog } from '@/components/study/delete-study-dialog';
 
 interface Study {
   id: string;
@@ -119,9 +119,6 @@ export default function StudiesPage() {
       
       if (statusFilter !== 'all') {
         filtered = filtered.filter(study => study.status === statusFilter);
-      } else {
-        // By default, don't show draft studies unless specifically filtered
-        filtered = filtered.filter(study => study.status !== StudyStatus.DRAFT);
       }
       
       if (initializationFilter !== 'all') {
@@ -136,12 +133,31 @@ export default function StudiesPage() {
     enabled: isAuthenticated && user?.role === UserRole.SYSTEM_ADMIN,
   });
 
+  const archiveStudy = useMutation({
+    mutationFn: (studyId: string) => studiesApi.deleteStudy(studyId, false),
+    onSuccess: () => {
+      toast({
+        title: 'Study archived',
+        description: 'The study has been archived successfully.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['studies'] });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Archive failed',
+        description: error instanceof Error ? error.message : 'An error occurred',
+        variant: 'destructive',
+      });
+    },
+  });
+
   const deleteStudy = useMutation({
-    mutationFn: (studyId: string) => studiesApi.deleteStudy(studyId),
+    mutationFn: (studyId: string) => studiesApi.deleteStudy(studyId, true),
     onSuccess: () => {
       toast({
         title: 'Study deleted',
-        description: 'The study has been deleted successfully.',
+        description: 'The study has been permanently deleted.',
+        variant: 'default',
       });
       queryClient.invalidateQueries({ queryKey: ['studies'] });
     },
@@ -575,7 +591,7 @@ export default function StudiesPage() {
                           </DropdownMenuItem>
                           {study.initialization_status && study.initialization_status !== 'completed' && (
                             <DropdownMenuItem 
-                              onClick={() => router.push(`/studies/${study.id}/initialization`)}
+                              onClick={() => router.push(`/initialization/${study.id}`)}
                             >
                               <Rocket className="mr-2 h-4 w-4" />
                               View Initialization
@@ -605,17 +621,14 @@ export default function StudiesPage() {
                               Activate Study
                             </DropdownMenuItem>
                           )}
-                          <DropdownMenuItem 
-                            className="text-destructive"
-                            onClick={() => {
-                              if (confirm(`Are you sure you want to delete ${study.name}? This action cannot be undone.`)) {
-                                deleteStudy.mutate(study.id);
-                              }
-                            }}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Study
-                          </DropdownMenuItem>
+                          <DeleteStudyDialog
+                            study={study}
+                            onArchive={(id) => archiveStudy.mutate(id)}
+                            onDelete={(id) => deleteStudy.mutate(id)}
+                            isArchiving={archiveStudy.isPending}
+                            isDeleting={deleteStudy.isPending}
+                            isSuperuser={user?.is_superuser}
+                          />
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

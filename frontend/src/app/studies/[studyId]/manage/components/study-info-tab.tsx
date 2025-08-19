@@ -10,6 +10,7 @@ import { BasicInfoStep } from '@/components/study/initialization-wizard/steps/ba
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { studiesApi } from '@/lib/api/studies';
+import { getTherapeuticAreaValue, getIndicationValue } from '@/lib/clinical-data';
 
 interface StudyInfoTabProps {
   study: any;
@@ -19,12 +20,18 @@ interface StudyInfoTabProps {
 export function StudyInfoTab({ study, onUpdate }: StudyInfoTabProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  // Convert therapeutic area and indication labels to values for the form
+  const therapeuticAreaValue = study.therapeutic_area ? 
+    getTherapeuticAreaValue(study.therapeutic_area) : '';
+  const indicationValue = study.indication && study.therapeutic_area ? 
+    getIndicationValue(study.therapeutic_area, study.indication) : '';
+
   const [studyData, setStudyData] = useState({
     name: study.name,
     protocol_number: study.protocol_number,
     phase: study.phase,
-    therapeutic_area: study.therapeutic_area,
-    indication: study.indication,
+    therapeutic_area: therapeuticAreaValue,
+    indication: indicationValue,
     sponsor: study.sponsor,
     cro: study.cro,
     start_date: study.start_date,

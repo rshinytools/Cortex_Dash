@@ -23,11 +23,12 @@ export default function StudyLayout({ children, params }: StudyLayoutProps) {
   const { studyId } = use(params)
   const pathname = usePathname()
   
-  // Check if we're on the dashboard page
+  // Check if we're on pages that should not have sidebar
   const isDashboard = pathname?.includes('/dashboard')
+  const isManage = pathname?.includes('/manage')
   
-  // If on dashboard, render children directly without sidebar
-  if (isDashboard) {
+  // If on dashboard or manage page, render children directly without sidebar
+  if (isDashboard || isManage) {
     return <>{children}</>;
   }
 

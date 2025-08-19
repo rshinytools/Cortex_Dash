@@ -44,25 +44,40 @@ const formSchema = z.object({
 });
 
 interface BasicInfoStepProps {
-  data: any;
-  onComplete: (data: any) => void;
+  data?: any;
+  onComplete?: (data: any) => void;
   isLoading?: boolean;
+  mode?: 'create' | 'edit';
+  initialData?: any;
+  onChange?: (data: any) => void;
+  hideNavigation?: boolean;
 }
 
-export function BasicInfoStep({ data, onComplete, isLoading }: BasicInfoStepProps) {
+export function BasicInfoStep({ 
+  data, 
+  onComplete, 
+  isLoading, 
+  mode = 'create',
+  initialData,
+  onChange,
+  hideNavigation = false
+}: BasicInfoStepProps) {
+  // Use initialData if provided (edit mode), otherwise use data (create mode)
+  const formData = mode === 'edit' ? initialData : data;
+  
   const [availableIndications, setAvailableIndications] = useState(
-    getIndicationsForArea(data.therapeutic_area || DEFAULT_THERAPEUTIC_AREA)
+    getIndicationsForArea(formData?.therapeutic_area || DEFAULT_THERAPEUTIC_AREA)
   );
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: data.name || '',
-      protocol_number: data.protocol_number || '',
-      description: data.description || '',
-      phase: data.phase || 'phase_3',
-      therapeutic_area: data.therapeutic_area || DEFAULT_THERAPEUTIC_AREA,
-      indication: data.indication || DEFAULT_INDICATION,
+      name: formData?.name || '',
+      protocol_number: formData?.protocol_number || '',
+      description: formData?.description || '',
+      phase: formData?.phase || 'phase_3',
+      therapeutic_area: formData?.therapeutic_area || DEFAULT_THERAPEUTIC_AREA,
+      indication: formData?.indication || DEFAULT_INDICATION,
     },
   });
 
@@ -89,7 +104,13 @@ export function BasicInfoStep({ data, onComplete, isLoading }: BasicInfoStepProp
       therapeutic_area: getTherapeuticAreaLabel(values.therapeutic_area || ''),
       indication: getIndicationLabel(values.therapeutic_area || '', values.indication || '')
     };
-    onComplete(submissionData);
+    
+    // In edit mode, call onChange instead of onComplete
+    if (mode === 'edit' && onChange) {
+      onChange(submissionData);
+    } else if (onComplete) {
+      onComplete(submissionData);
+    }
   };
 
   return (
@@ -239,12 +260,14 @@ export function BasicInfoStep({ data, onComplete, isLoading }: BasicInfoStepProp
             />
           </div>
 
-          <div className="flex justify-end pt-4 border-t">
-            <Button type="submit" disabled={isLoading}>
-              Next
-              <ChevronRight className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
+          {!hideNavigation && (
+            <div className="flex justify-end pt-4 border-t">
+              <Button type="submit" disabled={isLoading}>
+                Next
+                <ChevronRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </form>
       </Form>
     </div>

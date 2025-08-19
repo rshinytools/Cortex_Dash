@@ -33,10 +33,14 @@ interface UploadedFile {
 }
 
 interface DataUploadStepProps {
-  studyId: string | null;
-  data: { files?: UploadedFile[] };
-  onComplete: (data: { files: UploadedFile[] }) => void;
+  studyId?: string | null;
+  data?: { files?: UploadedFile[] };
+  onComplete?: (data: { files: UploadedFile[] }) => void;
   isLoading?: boolean;
+  mode?: 'create' | 'edit';
+  onUpload?: (files: File[]) => void;
+  hideNavigation?: boolean;
+  uploadMode?: 'replace' | 'append';
 }
 
 const ACCEPTED_FILE_TYPES = {
@@ -52,10 +56,14 @@ export function DataUploadStep({
   studyId, 
   data, 
   onComplete, 
-  isLoading 
+  isLoading,
+  mode = 'create',
+  onUpload,
+  hideNavigation = false,
+  uploadMode = 'replace'
 }: DataUploadStepProps) {
   const { toast } = useToast();
-  const [files, setFiles] = useState<UploadedFile[]>(data.files || []);
+  const [files, setFiles] = useState<UploadedFile[]>(data?.files || []);
   const [isUploading, setIsUploading] = useState(false);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -151,6 +159,26 @@ export function DataUploadStep({
   const handleSubmit = async () => {
     console.log('handleSubmit called, files:', files);
     
+    // In edit mode, call onUpload with the actual File objects
+    if (mode === 'edit' && onUpload) {
+      const fileObjects = files
+        .filter(f => f.file)
+        .map(f => f.file as File);
+      
+      if (fileObjects.length === 0) {
+        toast({
+          title: 'Error',
+          description: 'Please select files to upload',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      onUpload(fileObjects);
+      return;
+    }
+    
+    // Original create mode logic
     // Upload any pending files first
     const hasPendingFiles = files.some(f => f.status === 'pending');
     if (hasPendingFiles) {
@@ -179,9 +207,11 @@ export function DataUploadStep({
     }
     
     console.log('Calling onComplete with files:', files);
-    onComplete({ 
-      files
-    });
+    if (onComplete) {
+      onComplete({ 
+        files
+      });
+    }
   };
 
   const getFileIcon = (file: UploadedFile) => {
@@ -291,36 +321,61 @@ export function DataUploadStep({
       </Alert>
 
       {/* Actions */}
-      <div className="flex justify-between pt-4 border-t">
-        <div>
-          {files.length > 0 && !hasCompletedFiles && (
-            <Button
-              variant="outline"
-              onClick={uploadFiles}
-              disabled={isUploading}
-            >
-              {isUploading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Upload Files
-                </>
-              )}
-            </Button>
-          )}
+      {!hideNavigation && (
+        <div className="flex justify-between pt-4 border-t">
+          <div>
+            {files.length > 0 && !hasCompletedFiles && (
+              <Button
+                variant="outline"
+                onClick={uploadFiles}
+                disabled={isUploading}
+              >
+                {isUploading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload Files
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+          <Button 
+            onClick={handleSubmit} 
+            disabled={files.length === 0 || isUploading || isLoading || files.some(f => f.status === 'uploading')}
+          >
+            {isUploading ? 'Uploading...' : 'Next'}
+            <ChevronRight className="ml-2 h-4 w-4" />
+          </Button>
         </div>
-        <Button 
-          onClick={handleSubmit} 
-          disabled={files.length === 0 || isUploading || isLoading || files.some(f => f.status === 'uploading')}
-        >
-          {isUploading ? 'Uploading...' : 'Next'}
-          <ChevronRight className="ml-2 h-4 w-4" />
-        </Button>
-      </div>
+      )}
+      
+      {/* Edit Mode Actions */}
+      {hideNavigation && mode === 'edit' && files.length > 0 && (
+        <div className="flex justify-end pt-4">
+          <Button 
+            onClick={handleSubmit} 
+            disabled={files.length === 0 || isUploading}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            {isUploading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Uploading...
+              </>
+            ) : (
+              <>
+                <Upload className="mr-2 h-4 w-4" />
+                Upload {uploadMode === 'replace' ? 'and Replace' : 'and Append'} Data
+              </>
+            )}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

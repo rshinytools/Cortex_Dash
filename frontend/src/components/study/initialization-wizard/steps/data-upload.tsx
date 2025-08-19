@@ -370,7 +370,7 @@ export function DataUploadStep({
             ) : (
               <>
                 <Upload className="mr-2 h-4 w-4" />
-                Upload {uploadMode === 'replace' ? 'and Replace' : 'and Append'} Data
+                Upload New Version
               </>
             )}
           </Button>

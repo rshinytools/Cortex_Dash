@@ -6,8 +6,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { 
   Database, 
@@ -32,7 +30,6 @@ interface DataSourceTabProps {
 
 export function DataSourceTab({ study, onUpdate }: DataSourceTabProps) {
   const { toast } = useToast();
-  const [uploadMode, setUploadMode] = useState<'replace' | 'append'>('replace');
   const [isUploading, setIsUploading] = useState(false);
 
   // Mock data versions for demonstration
@@ -63,18 +60,18 @@ export function DataSourceTab({ study, onUpdate }: DataSourceTabProps) {
   const handleDataUpload = async (files: File[]) => {
     setIsUploading(true);
     try {
-      // Handle file upload with mode
       toast({
         title: 'Upload Started',
-        description: `Uploading data in ${uploadMode} mode...`,
+        description: 'Creating new data version...',
       });
       
-      // Simulate upload
+      // Simulate upload - In real implementation, this would upload to backend
+      // and create a new timestamped folder like /data/studies/{id}/source_data/2024-03-15_10-30-00/
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       toast({
         title: 'Success',
-        description: 'Data uploaded successfully. New version created.',
+        description: 'New data version created successfully.',
       });
       onUpdate();
     } catch (error) {
@@ -184,38 +181,16 @@ export function DataSourceTab({ study, onUpdate }: DataSourceTabProps) {
             Upload New Data
           </CardTitle>
           <CardDescription>
-            Upload new data files to create a new version
+            Upload new data files to create a new version. Each upload creates a timestamped version that can be rolled back if needed.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Upload Mode Selection */}
-          <div className="space-y-3">
-            <Label>Upload Mode</Label>
-            <RadioGroup value={uploadMode} onValueChange={(value: any) => setUploadMode(value)}>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="replace" id="replace" />
-                <Label htmlFor="replace" className="font-normal cursor-pointer">
-                  Replace - Create new version with complete data replacement
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="append" id="append" />
-                <Label htmlFor="append" className="font-normal cursor-pointer">
-                  Append - Create new version with existing + new data merged
-                </Label>
-              </div>
-            </RadioGroup>
-          </div>
-
+        <CardContent>
           {/* Upload Component */}
-          <div className="border-t pt-4">
-            <DataUploadStep
-              mode="edit"
-              onUpload={handleDataUpload}
-              hideNavigation={true}
-              uploadMode={uploadMode}
-            />
-          </div>
+          <DataUploadStep
+            mode="edit"
+            onUpload={handleDataUpload}
+            hideNavigation={true}
+          />
         </CardContent>
       </Card>
 

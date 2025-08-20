@@ -6,13 +6,15 @@ import time
 import logging
 import pandas as pd
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 from datetime import datetime
 from sqlmodel import Session
 from pydantic import BaseModel, Field
 
 from app.models.widget import WidgetDefinition
 from app.models.study import Study
+from app.services.filter_executor import FilterExecutor
+from app.services.filter_validator import FilterValidator
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +47,9 @@ class RealWidgetExecutor:
         self.db = db
         self.study = study
         self.widget_def = widget_def
+        self.filter_executor = FilterExecutor(db)
+        self.filter_validator = FilterValidator(db)
+        
         # Data is stored under org_id/studies/study_id/source_data/date/
         # First, try the most recent date
         base_path = Path(f"/data/{study.org_id}/studies/{study.id}/source_data")
@@ -159,6 +164,26 @@ class RealWidgetExecutor:
             df = pd.read_parquet(dataset_path)
             logger.info(f"Loaded dataset {dataset_name} with {len(df)} rows")
             
+            # Check for filter configuration
+            filter_config = self._get_filter_config(widget_id)
+            if filter_config and filter_config.get('expression'):
+                logger.info(f"Applying filter for widget {widget_id}: {filter_config['expression']}")
+                
+                # Apply the filter
+                filtered_result = await self._apply_widget_filter(
+                    df=df,
+                    expression=filter_config['expression'],
+                    dataset_name=dataset_name,
+                    widget_id=widget_id
+                )
+                
+                if filtered_result['success']:
+                    df = filtered_result['data']
+                    logger.info(f"Filter applied successfully. Rows after filtering: {len(df)}")
+                else:
+                    logger.warning(f"Filter failed, continuing without filter: {filtered_result.get('error')}")
+                    # Continue without filter rather than fail the widget
+            
             # Calculate the value based on aggregation type
             aggregation = field_mappings.get(f"{widget_id}_aggregation", "count_distinct")
             
@@ -199,6 +224,60 @@ class RealWidgetExecutor:
                 "value": 0,
                 "label": "Error",
                 "error": str(e)
+            }
+    
+    def _get_filter_config(self, widget_id: str) -> Optional[Dict[str, Any]]:
+        """Get filter configuration for a widget from study settings"""
+        try:
+            # Check if study has filter configurations
+            filters = self.study.field_mapping_filters or {}
+            return filters.get(widget_id)
+        except Exception as e:
+            logger.error(f"Error getting filter config: {str(e)}")
+            return None
+    
+    async def _apply_widget_filter(
+        self,
+        df: pd.DataFrame,
+        expression: str,
+        dataset_name: str,
+        widget_id: str
+    ) -> Dict[str, Any]:
+        """Apply filter to dataframe with error handling"""
+        try:
+            # Execute the filter
+            result = self.filter_executor.execute_filter(
+                study_id=str(self.study.id),
+                widget_id=widget_id,
+                filter_expression=expression,
+                dataset_path=self.data_path / f"{dataset_name}.parquet",
+                track_metrics=True
+            )
+            
+            if "error" in result:
+                return {
+                    "success": False,
+                    "error": result["error"],
+                    "data": df  # Return original data on error
+                }
+            
+            return {
+                "success": True,
+                "data": result["data"],
+                "metrics": {
+                    "original_count": result["original_count"],
+                    "filtered_count": result["row_count"],
+                    "reduction_percentage": result["reduction_percentage"],
+                    "execution_time_ms": result["execution_time_ms"]
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Filter execution failed: {str(e)}")
+            return {
+                "success": False,
+                "error": str(e),
+                "data": df  # Return original data on error
             }
 
 

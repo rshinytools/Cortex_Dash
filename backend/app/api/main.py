@@ -37,12 +37,13 @@ api_router.include_router(debug_study.router, prefix="", tags=["debug"])
 
 # Phase 5: Dashboard & Visualization APIs
 api_router.include_router(dashboard_templates.router, prefix="/dashboard-templates", tags=["dashboard-templates"])
-from app.api.v1.endpoints import widgets, widget_execution, mapping_templates, widget_data, template_requirements
+from app.api.v1.endpoints import widgets, widget_execution, mapping_templates, widget_data, template_requirements, widget_filters
 api_router.include_router(widgets.router, prefix="/widgets", tags=["widgets"])
 api_router.include_router(widget_execution.router, prefix="/widget-execution", tags=["widget-execution"])
 api_router.include_router(mapping_templates.router, prefix="/mapping-templates", tags=["mapping-templates"])
 api_router.include_router(widget_data.router, prefix="/widget-data", tags=["widget-data"])
 api_router.include_router(template_requirements.router, tags=["template-requirements"])
+api_router.include_router(widget_filters.router, prefix="", tags=["widget-filters"])
 
 # Phase 6: Reporting & Export APIs - removed (files deleted)
 

@@ -111,7 +111,9 @@
       "Bash(./test_study_init.bat)",
       "Bash(export TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTYyNTAyMjQsInN1YiI6IjRlMzEyMWZlLWI4YmUtNDBmMy1iMjNmLWQ5ZmFkOWFlYjYzOSJ9.6qTwXz6NBWucl-8FZ_FddIjl3k5CIQXcViIOb1le1lI\")",
       "Bash(export TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTYyNjI5NDEsInN1YiI6IjRlMzEyMWZlLWI4YmUtNDBmMy1iMjNmLWQ5ZmFkOWFlYjYzOSJ9.dIfaycMyAYSQUCEVHgDM8J-gIMtq60jFW6nABQ4TbuU\")",
-      "Bash(export TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTYzNDgwODksInN1YiI6IjRlMzEyMWZlLWI4YmUtNDBmMy1iMjNmLWQ5ZmFkOWFlYjYzOSJ9.ZkYjJrO4TkwbqnmrJMqrYRhBfKJVa4BP8_tZXboLpUc\")"
+      "Bash(export TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTYzNDgwODksInN1YiI6IjRlMzEyMWZlLWI4YmUtNDBmMy1iMjNmLWQ5ZmFkOWFlYjYzOSJ9.ZkYjJrO4TkwbqnmrJMqrYRhBfKJVa4BP8_tZXboLpUc\")",
+      "Bash(git pull:*)",
+      "Bash(git merge:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

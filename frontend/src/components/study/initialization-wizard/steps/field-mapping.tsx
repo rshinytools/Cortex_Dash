@@ -11,6 +11,19 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { studiesApi } from '@/lib/api/studies';
 import {
@@ -24,9 +37,12 @@ import {
   Sparkles,
   ArrowRight,
   FileSpreadsheet,
-  Columns
+  Columns,
+  Filter,
+  Plus
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { FilterBuilder } from '@/components/filters/FilterBuilder';
 
 interface FieldMappingStepProps {
   studyId: string | null;
@@ -36,6 +52,7 @@ interface FieldMappingStepProps {
   };
   onComplete: (data: {
     mappings: Record<string, any>;
+    filters?: Record<string, any>;
     acceptAutoMappings: boolean;
   }) => void;
   isLoading?: boolean;
@@ -62,6 +79,11 @@ interface FieldMapping {
   dataset: string;
   column: string;
   confidence?: number;
+  filter?: {
+    expression: string;
+    isValid: boolean;
+    validationMessage?: string;
+  };
 }
 
 export function FieldMappingStep({
@@ -80,6 +102,9 @@ export function FieldMappingStep({
   const [autoMappingSuggestions, setAutoMappingSuggestions] = useState<Record<string, any>>({});
   const [acceptAutoMappings, setAcceptAutoMappings] = useState(true);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+  const [activeFilterWidget, setActiveFilterWidget] = useState<{ widgetId: string; field: string } | null>(null);
+  const [widgetFilters, setWidgetFilters] = useState<Record<string, string>>({});
 
   useEffect(() => {
     loadMappingData();
@@ -297,9 +322,22 @@ export function FieldMappingStep({
     console.log('Field mapping complete. Mappings:', mappings);
     console.log('Accept auto mappings:', acceptAutoMappings);
 
+    // Prepare filters for backend
+    const filters: Record<string, any> = {};
+    Object.entries(widgetFilters).forEach(([key, expression]) => {
+      const [widgetId] = key.split('_');
+      if (expression) {
+        filters[widgetId] = {
+          expression,
+          enabled: true
+        };
+      }
+    });
+
     // Return both nested (for Review display) and flat (for backend) structures
     onComplete({
       mappings: mappings,  // Keep nested structure for display
+      filters: filters,  // Include filters
       flatMappings: (() => {
         // Create flat structure for backend
         const flat: Record<string, any> = {};
@@ -530,7 +568,44 @@ export function FieldMappingStep({
                               </SelectContent>
                             </Select>
                           </div>
+                          
+                          {/* Filter Button */}
+                          <div className="flex items-end">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setActiveFilterWidget({ widgetId: requirement.widget_id, field });
+                                      setFilterDialogOpen(true);
+                                    }}
+                                    disabled={!currentMapping?.dataset || !currentMapping?.column}
+                                    className="h-9"
+                                  >
+                                    <Filter className="h-4 w-4" />
+                                    {widgetFilters[`${requirement.widget_id}_${field}`] ? (
+                                      <Badge variant="secondary" className="ml-1">Active</Badge>
+                                    ) : null}
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Add filter condition (optional)</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
                         </div>
+                        
+                        {/* Show filter if exists */}
+                        {widgetFilters[`${requirement.widget_id}_${field}`] && (
+                          <div className="mt-2 p-2 bg-muted rounded-md">
+                            <p className="text-xs font-mono">
+                              Filter: {widgetFilters[`${requirement.widget_id}_${field}`]}
+                            </p>
+                          </div>
+                        )}
                         
                         {/* Show suggestion if available */}
                         {suggestion && acceptAutoMappings && (
@@ -603,6 +678,59 @@ export function FieldMappingStep({
           )}
         </Button>
       </div>
+
+      {/* Filter Dialog */}
+      <Dialog open={filterDialogOpen} onOpenChange={setFilterDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Configure Widget Filter</DialogTitle>
+            <DialogDescription>
+              Add an optional SQL WHERE clause to filter the data for this widget
+            </DialogDescription>
+          </DialogHeader>
+          
+          {activeFilterWidget && studyId && (
+            <FilterBuilder
+              studyId={studyId}
+              widgetId={activeFilterWidget.widgetId}
+              datasetName={mappings[activeFilterWidget.widgetId]?.[activeFilterWidget.field]?.dataset || ''}
+              columns={
+                datasetSchemas.find(
+                  s => s.dataset_name === mappings[activeFilterWidget.widgetId]?.[activeFilterWidget.field]?.dataset
+                )?.columns || []
+              }
+              currentFilter={widgetFilters[`${activeFilterWidget.widgetId}_${activeFilterWidget.field}`] || ''}
+              onSave={(filter) => {
+                setWidgetFilters(prev => ({
+                  ...prev,
+                  [`${activeFilterWidget.widgetId}_${activeFilterWidget.field}`]: filter
+                }));
+                
+                // Update the mapping with filter info
+                if (mappings[activeFilterWidget.widgetId]?.[activeFilterWidget.field]) {
+                  const updatedMappings = { ...mappings };
+                  updatedMappings[activeFilterWidget.widgetId][activeFilterWidget.field] = {
+                    ...updatedMappings[activeFilterWidget.widgetId][activeFilterWidget.field],
+                    filter: {
+                      expression: filter,
+                      isValid: true,
+                      validationMessage: undefined
+                    }
+                  };
+                  setMappings(updatedMappings);
+                }
+                
+                setFilterDialogOpen(false);
+                toast({
+                  title: "Filter Applied",
+                  description: "The filter has been applied to the widget",
+                });
+              }}
+              onCancel={() => setFilterDialogOpen(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

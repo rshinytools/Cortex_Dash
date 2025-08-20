@@ -62,6 +62,7 @@ export async function loadWidget(type: string): Promise<WidgetComponent | null> 
 
   try {
     // Dynamically import the widget
+    // eslint-disable-next-line @next/next/no-assign-module-variable
     const module = await loader();
     const component = module.default;
     

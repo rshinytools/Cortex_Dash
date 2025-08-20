@@ -1,10 +1,10 @@
 // ABOUTME: Data upload step for study initialization wizard
 // ABOUTME: Handles file uploads with drag-and-drop support
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -17,7 +17,10 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
-  FlaskConical
+  FlaskConical,
+  Clock,
+  FileText,
+  Database
 } from 'lucide-react';
 import { studiesApi } from '@/lib/api/studies';
 import { formatBytes } from '@/lib/utils';
@@ -65,6 +68,26 @@ export function DataUploadStep({
   const { toast } = useToast();
   const [files, setFiles] = useState<UploadedFile[]>(data?.files || []);
   const [isUploading, setIsUploading] = useState(false);
+  const [dataVersions, setDataVersions] = useState<any[]>([]);
+  const [isLoadingVersions, setIsLoadingVersions] = useState(false);
+
+  // Fetch data versions in edit mode
+  useEffect(() => {
+    if (mode === 'edit' && studyId) {
+      const fetchDataVersions = async () => {
+        try {
+          setIsLoadingVersions(true);
+          const response = await studiesApi.getDataVersions(studyId);
+          setDataVersions(response.versions || []);
+        } catch (error) {
+          console.error('Failed to fetch data versions:', error);
+        } finally {
+          setIsLoadingVersions(false);
+        }
+      };
+      fetchDataVersions();
+    }
+  }, [mode, studyId]);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const newFiles: UploadedFile[] = acceptedFiles.map(file => ({
@@ -237,6 +260,61 @@ export function DataUploadStep({
           Upload your clinical data files for processing
         </p>
       </div>
+
+      {/* Data Version History - Only show in edit mode */}
+      {mode === 'edit' && (
+        <Card className="bg-slate-950 border-slate-800">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Clock className="h-4 w-4" />
+              Data Version History
+            </CardTitle>
+            <CardDescription>
+              Previous data uploads for this study
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoadingVersions ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+              </div>
+            ) : dataVersions.length > 0 ? (
+              <div className="space-y-2">
+                {dataVersions.slice(0, 3).map((version) => (
+                  <div
+                    key={version.version}
+                    className="flex items-center justify-between p-3 rounded-lg border border-slate-800 bg-slate-900"
+                  >
+                    <div className="flex items-center gap-3">
+                      <FileText className="h-4 w-4 text-gray-400" />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium">{version.version}</p>
+                          {version.status === 'current' && (
+                            <Badge variant="success" className="text-xs">
+                              Current
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          {version.file_count} files • {version.size_readable} • {version.date}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <Alert className="bg-slate-900 border-slate-800">
+                <Database className="h-4 w-4" />
+                <AlertDescription>
+                  No previous data versions found. Upload new data files below.
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Dropzone */}
       <div

@@ -90,12 +90,10 @@ async def initialize_study(
             detail="Access denied to this study"
         )
     
-    # Check if already initialized
+    # Allow re-initialization for completed studies (for data updates)
+    # This is needed when users want to upload new data versions
     if study.initialization_status == "completed":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Study is already initialized"
-        )
+        logger.info(f"Re-initializing already completed study {study_id}")
     
     # Start initialization in background
     task = celery_app.send_task(

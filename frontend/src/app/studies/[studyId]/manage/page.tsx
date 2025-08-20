@@ -1,5 +1,5 @@
-// ABOUTME: Study Management Center - System admin interface for editing study configurations
-// ABOUTME: Provides tabbed interface for study info, data source, mappings, and template management
+// ABOUTME: Study Management Page - Uses initialization wizard flow for editing study configurations
+// ABOUTME: Allows system admins to update study details, template, data, and field mappings
 
 'use client';
 
@@ -7,17 +7,12 @@ import { use, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { useQuery } from '@tanstack/react-query';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
   ArrowLeft,
   Settings,
-  Database,
-  GitBranch,
-  Layout,
   Shield,
   Loader2,
   AlertCircle
@@ -25,12 +20,7 @@ import {
 import Link from 'next/link';
 import { studiesApi } from '@/lib/api/studies';
 import { useToast } from '@/hooks/use-toast';
-
-// Import tab components (to be created)
-import { StudyInfoTab } from './components/study-info-tab';
-import { DataSourceTab } from './components/data-source-tab';
-import { MappingsTab } from './components/mappings-tab';
-import { TemplateTab } from './components/template-tab';
+import { InitializationWizard } from '@/components/study/initialization-wizard';
 
 interface ManageStudyPageProps {
   params: Promise<{
@@ -43,7 +33,6 @@ export default function ManageStudyPage({ params }: ManageStudyPageProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const { studyId } = use(params);
-  const [activeTab, setActiveTab] = useState('info');
 
   // Check if user is system admin
   const isSystemAdmin = user?.is_superuser || user?.role === 'system_admin';
@@ -81,13 +70,11 @@ export default function ManageStudyPage({ params }: ManageStudyPageProps) {
             <Skeleton className="h-8 w-64 mb-2" />
             <Skeleton className="h-4 w-96" />
           </div>
-          <Card className="bg-white dark:bg-slate-900">
-            <CardContent className="p-12">
-              <div className="flex items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-              </div>
-            </CardContent>
-          </Card>
+          <div className="bg-white dark:bg-slate-900 rounded-lg p-12">
+            <div className="flex items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -125,6 +112,18 @@ export default function ManageStudyPage({ params }: ManageStudyPageProps) {
     );
   }
 
+  const handleComplete = () => {
+    toast({
+      title: 'Success',
+      description: 'Study configuration updated successfully.',
+    });
+    router.push(`/studies/${studyId}/dashboard`);
+  };
+
+  const handleCancel = () => {
+    router.push(`/studies/${studyId}/dashboard`);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
       {/* Header */}
@@ -132,10 +131,10 @@ export default function ManageStudyPage({ params }: ManageStudyPageProps) {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href={`/studies/${studyId}/dashboard`}>
+              <Link href="/studies">
                 <Button variant="ghost" size="sm">
                   <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Dashboard
+                  Back to Studies
                 </Button>
               </Link>
               <div>
@@ -158,68 +157,15 @@ export default function ManageStudyPage({ params }: ManageStudyPageProps) {
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Main Content - Initialization Wizard */}
       <div className="max-w-7xl mx-auto p-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 h-auto p-1 bg-white dark:bg-slate-900">
-            <TabsTrigger 
-              value="info" 
-              className="flex items-center gap-2 py-3 data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-slate-800"
-            >
-              <Settings className="h-4 w-4" />
-              <span>Study Info</span>
-            </TabsTrigger>
-            <TabsTrigger 
-              value="data" 
-              className="flex items-center gap-2 py-3 data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-slate-800"
-            >
-              <Database className="h-4 w-4" />
-              <span>Data Source</span>
-            </TabsTrigger>
-            <TabsTrigger 
-              value="mappings" 
-              className="flex items-center gap-2 py-3 data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-slate-800"
-            >
-              <GitBranch className="h-4 w-4" />
-              <span>Field Mappings</span>
-            </TabsTrigger>
-            <TabsTrigger 
-              value="template" 
-              className="flex items-center gap-2 py-3 data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-slate-800"
-            >
-              <Layout className="h-4 w-4" />
-              <span>Dashboard Template</span>
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="info">
-            <StudyInfoTab 
-              study={study} 
-              onUpdate={() => refetch()} 
-            />
-          </TabsContent>
-
-          <TabsContent value="data">
-            <DataSourceTab 
-              study={study} 
-              onUpdate={() => refetch()} 
-            />
-          </TabsContent>
-
-          <TabsContent value="mappings">
-            <MappingsTab 
-              study={study} 
-              onUpdate={() => refetch()} 
-            />
-          </TabsContent>
-
-          <TabsContent value="template">
-            <TemplateTab 
-              study={study} 
-              onUpdate={() => refetch()} 
-            />
-          </TabsContent>
-        </Tabs>
+        <InitializationWizard 
+          studyId={studyId}
+          existingStudy={study}
+          mode="edit"
+          onComplete={handleComplete}
+          onCancel={handleCancel}
+        />
       </div>
     </div>
   );

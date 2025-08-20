@@ -39,6 +39,8 @@ interface FieldMappingStepProps {
     acceptAutoMappings: boolean;
   }) => void;
   isLoading?: boolean;
+  mode?: 'create' | 'edit';
+  existingStudy?: any;
 }
 
 interface TemplateRequirement {
@@ -66,7 +68,9 @@ export function FieldMappingStep({
   studyId,
   data,
   onComplete,
-  isLoading
+  isLoading,
+  mode = 'create',
+  existingStudy
 }: FieldMappingStepProps) {
   const { toast } = useToast();
   const [isLoadingData, setIsLoadingData] = useState(true);
@@ -79,7 +83,7 @@ export function FieldMappingStep({
 
   useEffect(() => {
     loadMappingData();
-  }, [studyId]);
+  }, [studyId, mode, existingStudy]);
 
   const loadMappingData = async () => {
     if (!studyId) {
@@ -90,9 +94,12 @@ export function FieldMappingStep({
     try {
       setIsLoadingData(true);
       
+      console.log('[FieldMapping] Loading data for study:', studyId, 'mode:', mode);
+      console.log('[FieldMapping] Existing study data:', existingStudy);
+      
       // Get mapping data from the proper endpoint
       const mappingData = await studiesApi.getMappingData(studyId);
-      console.log('Mapping data received:', mappingData);
+      console.log('[FieldMapping] Mapping data received:', mappingData);
       
       // Extract dataset schemas
       if (mappingData?.dataset_schemas) {
@@ -102,7 +109,10 @@ export function FieldMappingStep({
           row_count: schema.row_count || 0,
           column_count: schema.column_count || Object.keys(schema.columns || {}).length
         }));
+        console.log('[FieldMapping] Dataset schemas extracted:', schemas);
         setDatasetSchemas(schemas);
+      } else {
+        console.log('[FieldMapping] No dataset schemas in response');
       }
       
       // Set template requirements with proper structure
@@ -120,8 +130,9 @@ export function FieldMappingStep({
       if (mappingData?.mapping_suggestions) {
         setAutoMappingSuggestions(mappingData.mapping_suggestions);
         
-        // Initialize mappings with auto-suggestions if accepted
-        if (acceptAutoMappings) {
+        // Only initialize mappings with auto-suggestions if we're in create mode and accepted
+        // In edit mode, we'll load existing mappings below
+        if (acceptAutoMappings && mode !== 'edit') {
           const initialMappings: Record<string, Record<string, FieldMapping>> = {};
           
           Object.entries(mappingData.mapping_suggestions).forEach(([widgetId, suggestions]: [string, any]) => {
@@ -152,6 +163,68 @@ export function FieldMappingStep({
           });
           
           setMappings(initialMappings);
+        }
+      }
+      
+      // In edit mode, also load existing field mappings
+      if (mode === 'edit' && existingStudy?.field_mappings) {
+        console.log('[FieldMapping] Loading existing mappings:', existingStudy.field_mappings);
+        console.log('[FieldMapping] Template requirements:', mappingData.template_requirements);
+        
+        // Convert from flattened format to nested format if needed
+        const existingMappings: Record<string, Record<string, FieldMapping>> = {};
+        
+        // For each template requirement, find its mapping
+        if (mappingData?.template_requirements) {
+          mappingData.template_requirements.forEach((req: any) => {
+            const widgetId = req.widget_id;
+            
+            // Look for direct widget ID mapping
+            if (existingStudy.field_mappings[widgetId]) {
+              const mapping = existingStudy.field_mappings[widgetId];
+              if (typeof mapping === 'string' && mapping.includes('.')) {
+                const [dataset, column] = mapping.split('.');
+                if (!existingMappings[widgetId]) {
+                  existingMappings[widgetId] = {};
+                }
+                // Map to the first required field (usually 'value_field')
+                const fieldName = req.required_fields?.[0] || 'value_field';
+                existingMappings[widgetId][fieldName] = {
+                  dataset,
+                  column,
+                  confidence: undefined
+                };
+                console.log(`[FieldMapping] Mapped widget ${widgetId} field ${fieldName} to ${dataset}.${column}`);
+              }
+            }
+            
+            // Also check for underscore-based mappings
+            req.required_fields?.forEach((field: string) => {
+              const mappingKey = `${widgetId}_${field}`;
+              if (existingStudy.field_mappings[mappingKey]) {
+                const mapping = existingStudy.field_mappings[mappingKey];
+                if (typeof mapping === 'string' && mapping.includes('.')) {
+                  const [dataset, column] = mapping.split('.');
+                  if (!existingMappings[widgetId]) {
+                    existingMappings[widgetId] = {};
+                  }
+                  existingMappings[widgetId][field] = {
+                    dataset,
+                    column,
+                    confidence: undefined
+                  };
+                  console.log(`[FieldMapping] Mapped widget ${widgetId} field ${field} to ${dataset}.${column} (from underscore key)`);
+                }
+              }
+            });
+          });
+        }
+        
+        if (Object.keys(existingMappings).length > 0) {
+          console.log('[FieldMapping] Setting existing mappings:', existingMappings);
+          setMappings(existingMappings);
+        } else {
+          console.log('[FieldMapping] No mappings found to set');
         }
       }
     } catch (error) {
@@ -284,6 +357,16 @@ export function FieldMappingStep({
           Connect your uploaded data fields to the dashboard widget requirements
         </p>
       </div>
+
+      {/* Debug info - remove after testing */}
+      {mode === 'edit' && existingStudy?.field_mappings && (
+        <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded text-xs">
+          <p className="font-bold mb-2">Debug: Existing Field Mappings</p>
+          <pre>{JSON.stringify(existingStudy.field_mappings, null, 2)}</pre>
+          <p className="font-bold mt-4 mb-2">Debug: Current Mappings State</p>
+          <pre>{JSON.stringify(mappings, null, 2)}</pre>
+        </div>
+      )}
 
       {/* Dataset Summary */}
       <Card>

@@ -147,7 +147,7 @@ export default function OrganizationsPage() {
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">Active Organizations</p>
                   <p className="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-1">
-                    {organizations?.filter(org => org.is_active).length || 0}
+                    {organizations?.filter(org => org.active).length || 0}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">Currently active</p>
                 </div>
@@ -164,7 +164,7 @@ export default function OrganizationsPage() {
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">Total Users</p>
                   <p className="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-1">
-                    {organizations?.reduce((sum, org) => sum + (org.user_count || 0), 0) || 0}
+                    {organizations?.reduce((sum, org) => sum + ((org as any).user_count || 0), 0) || 0}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">Across all orgs</p>
                 </div>
@@ -181,7 +181,7 @@ export default function OrganizationsPage() {
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">Total Studies</p>
                   <p className="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-1">
-                    {organizations?.reduce((sum, org) => sum + (org.study_count || 0), 0) || 0}
+                    {organizations?.reduce((sum, org) => sum + ((org as any).study_count || 0), 0) || 0}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">All studies</p>
                 </div>

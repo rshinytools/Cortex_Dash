@@ -615,9 +615,9 @@ async def upload_wizard_files(
             detail="Access denied"
         )
     
-    # Create upload directory
+    # Create upload directory with correct path structure
     timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
-    upload_dir = Path(f"/data/studies/{study.org_id}/{study_id}/source_data/{timestamp}")
+    upload_dir = Path(f"/data/{study.org_id}/studies/{study_id}/source_data/{timestamp}")
     upload_dir.mkdir(parents=True, exist_ok=True)
     
     uploaded_files = []
@@ -997,11 +997,20 @@ async def complete_wizard(
         study.field_mappings = flattened_mappings
     
     study.initialization_steps["auto_mappings_accepted"] = request.accept_auto_mappings
-    study.initialization_status = "wizard_completed"
+    
+    # For re-initialization of existing studies, maintain completed status
+    if study.initialization_status == "completed" and study.activated_at is not None:
+        # This is a re-initialization, keep status as completed
+        study.initialization_status = "completed"
+    else:
+        # First time initialization
+        study.initialization_status = "wizard_completed"
+    
     study.mappings_configured_at = datetime.utcnow()
     
-    # Change status from DRAFT to SETUP when wizard is completed
-    study.status = StudyStatus.SETUP
+    # Change status from DRAFT to SETUP when wizard is completed (only for new studies)
+    if study.status == StudyStatus.DRAFT:
+        study.status = StudyStatus.SETUP
     
     db.add(study)
     db.commit()

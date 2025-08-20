@@ -103,62 +103,94 @@ class RealWidgetExecutor:
             )
     
     async def _get_real_kpi_data(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Get real KPI data from Parquet files"""
+        """Get real KPI data from Parquet files using field mappings from database"""
         try:
             logger.info(f"Widget config received: {config}")
+            widget_id = config.get("id", "")
+            widget_title = config.get("title", "Unknown")
             
-            # Check which KPI type we need
-            # Try multiple fields to determine widget type
-            widget_title = (config.get("title", "") or 
-                          config.get("label", "") or 
-                          config.get("metric_type", "") or 
-                          "").lower()
+            # Get field mappings from the study
+            field_mappings = self.study.field_mappings or {}
+            logger.info(f"Field mappings available: {list(field_mappings.keys())}")
             
-            logger.info(f"Widget title extracted: {widget_title}")
+            # Look for mapping for this widget
+            # Try different mapping key formats
+            mapping_keys = [
+                widget_id,  # Direct widget ID
+                f"{widget_id}_value",  # Widget ID with _value suffix
+                f"{widget_id}_value_field",  # Widget ID with _value_field suffix
+                widget_title.lower().replace(" ", "_"),  # Title-based key
+            ]
             
-            if "enrolled" in widget_title or "enrollment" in widget_title or "subject" in widget_title:
-                # Count subjects from DM dataset (lowercase filename)
-                dm_path = self.data_path / "dm.parquet"
-                if dm_path.exists():
-                    df = pd.read_parquet(dm_path)
-                    value = len(df)
-                    return {
-                        "value": value,
-                        "label": "Subjects Enrolled",
-                        "trend": "+5%",
-                        "comparison": "vs last period"
-                    }
+            mapping_value = None
+            for key in mapping_keys:
+                if key in field_mappings:
+                    mapping_value = field_mappings[key]
+                    logger.info(f"Found mapping for key '{key}': {mapping_value}")
+                    break
             
-            elif "sae" in widget_title or "adverse" in widget_title:
-                # Count total rows from AE dataset - no filtering since mapping system doesn't support it yet
-                ae_path = self.data_path / "ae.parquet"
-                if ae_path.exists():
-                    df = pd.read_parquet(ae_path)
-                    # Just count total AE records for now
-                    # TODO: Add filtering support when field_mappings include filter conditions
-                    value = len(df)
-                    return {
-                        "value": value,
-                        "label": "Total Adverse Events",
-                        "trend": "-2%",
-                        "comparison": "vs last period"
-                    }
-            
-            # Default: return subject count
-            dm_path = self.data_path / "dm.parquet"
-            if dm_path.exists():
-                df = pd.read_parquet(dm_path)
+            if not mapping_value:
+                logger.warning(f"No field mapping found for widget {widget_id} ({widget_title})")
                 return {
-                    "value": len(df),
-                    "label": config.get("label", "Total Count"),
-                    "trend": "0%",
-                    "comparison": "no change"
+                    "value": 0,
+                    "label": widget_title,
+                    "error": "No field mapping configured"
                 }
             
+            # Parse the mapping (format: dataset.column)
+            if "." in mapping_value:
+                dataset_name, column_name = mapping_value.split(".", 1)
+            else:
+                # If no dot, assume it's just a dataset name
+                dataset_name = mapping_value
+                column_name = None
+            
+            # Load the dataset
+            dataset_path = self.data_path / f"{dataset_name}.parquet"
+            if not dataset_path.exists():
+                logger.error(f"Dataset file not found: {dataset_path}")
+                return {
+                    "value": 0,
+                    "label": widget_title,
+                    "error": f"Dataset {dataset_name} not found"
+                }
+            
+            # Read the parquet file
+            df = pd.read_parquet(dataset_path)
+            logger.info(f"Loaded dataset {dataset_name} with {len(df)} rows")
+            
+            # Calculate the value based on aggregation type
+            aggregation = field_mappings.get(f"{widget_id}_aggregation", "count_distinct")
+            
+            if column_name and column_name in df.columns:
+                if aggregation == "count_distinct":
+                    value = df[column_name].nunique()
+                elif aggregation == "count":
+                    value = len(df)
+                elif aggregation == "sum":
+                    value = df[column_name].sum()
+                elif aggregation == "mean":
+                    value = df[column_name].mean()
+                elif aggregation == "max":
+                    value = df[column_name].max()
+                elif aggregation == "min":
+                    value = df[column_name].min()
+                else:
+                    value = len(df)  # Default to count
+            else:
+                # No specific column, just count rows
+                value = len(df)
+            
+            logger.info(f"Calculated value: {value} using aggregation: {aggregation}")
+            
             return {
-                "value": 0,
-                "label": config.get("label", "No Data"),
-                "error": "Data file not found"
+                "value": value,
+                "label": widget_title,
+                "dataset": dataset_name,
+                "column": column_name,
+                "aggregation": aggregation,
+                "trend": "0%",  # Trend calculation would need historical data
+                "comparison": "current period"
             }
             
         except Exception as e:

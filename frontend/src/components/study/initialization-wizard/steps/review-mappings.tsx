@@ -77,13 +77,15 @@ interface ReviewMappingsStepProps {
     customMappings?: any;
   }) => void;
   isLoading?: boolean;
+  mode?: 'create' | 'edit';
 }
 
 export function ReviewMappingsStep({
   studyId,
   data,
   onComplete,
-  isLoading
+  isLoading,
+  mode = 'create'
 }: ReviewMappingsStepProps) {
   const { toast } = useToast();
   
@@ -518,7 +520,7 @@ export function ReviewMappingsStep({
           className="gap-2"
         >
           <Rocket className="h-4 w-4" />
-          Initialize Study
+          {mode === 'edit' ? 'Save and Update' : 'Initialize Study'}
         </Button>
       </div>
     </div>

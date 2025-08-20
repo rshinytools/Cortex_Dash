@@ -1779,3 +1779,98 @@ async def preview_data_source(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error previewing data: {str(e)}"
         )
+
+
+@router.get("/{study_id}/data-versions")
+async def get_data_versions(
+    *,
+    db: Session = Depends(get_db),
+    study_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    request: Request
+) -> Any:
+    """
+    Get all data versions for a study.
+    """
+    from pathlib import Path
+    import os
+    
+    # Get study and check access
+    study = crud_study.get_study(db, study_id=study_id)
+    if not study:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Study not found"
+        )
+    
+    # Check access
+    if not current_user.is_superuser and str(current_user.org_id) != str(study.org_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
+    
+    # Use correct path structure: /data/{org_id}/studies/{study_id}/source_data/
+    data_path = Path(f"/data/{study.org_id}/studies/{study_id}/source_data")
+    
+    versions = []
+    if data_path.exists():
+        # List all timestamped directories
+        for version_dir in sorted(data_path.iterdir(), reverse=True):
+            if version_dir.is_dir() and version_dir.name != ".gitkeep":
+                # Get file count and total size (only Parquet files)
+                file_count = 0
+                total_size = 0
+                for file_path in version_dir.rglob("*.parquet"):
+                    if file_path.is_file():
+                        file_count += 1
+                        total_size += file_path.stat().st_size
+                
+                # Parse timestamp from directory name 
+                # Supports formats: YYYY-MM-DD, YYYYMMDD_HHMMSS, YYYY-MM-DD_HH-MM-SS
+                try:
+                    timestamp_str = version_dir.name
+                    # Try different formats
+                    for fmt in ["%Y-%m-%d", "%Y%m%d_%H%M%S", "%Y-%m-%d_%H-%M-%S", "%Y%m%d"]:
+                        try:
+                            dt = datetime.strptime(timestamp_str, fmt)
+                            formatted_date = dt.strftime("%Y-%m-%d %H:%M:%S") if "_" in timestamp_str else dt.strftime("%Y-%m-%d")
+                            break
+                        except:
+                            continue
+                    else:
+                        formatted_date = version_dir.name
+                except:
+                    formatted_date = version_dir.name
+                
+                versions.append({
+                    "version": version_dir.name,
+                    "date": formatted_date,
+                    "file_count": file_count,
+                    "total_size": total_size,
+                    "size_readable": f"{total_size / (1024*1024):.2f} MB" if total_size > 0 else "0 MB",
+                    "status": "current" if versions == [] else "archived",  # First one is current
+                    "uploaded_by": "System"  # Could be enhanced to track actual user
+                })
+    
+    # Log activity
+    from app.models.activity_log import ActivityAction
+    crud_activity.create_activity_log(
+        db,
+        user=current_user,
+        action=ActivityAction.DATA_VIEWED,
+        resource_type="study",
+        resource_id=str(study.id),
+        details={
+            "study_name": study.name,
+            "version_count": len(versions),
+            "data_type": "data_versions"
+        },
+        ip_address=request.client.host,
+        user_agent=request.headers.get("user-agent")
+    )
+    
+    return {
+        "study_id": str(study.id),
+        "versions": versions
+    }

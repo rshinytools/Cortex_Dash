@@ -138,32 +138,52 @@ class StudyInitializationService:
         await self._update_step_status(study, "data_upload", "in_progress", 0)
         
         try:
-            # Create data directories with organization structure
-            timestamp = datetime.utcnow().strftime("%Y-%m-%d")
-            data_dir = Path(f"/data/{study.org_id}/studies/{study.id}/source_data/{timestamp}")
-            data_dir.mkdir(parents=True, exist_ok=True)
-            
             processed_files = []
             total_files = len(uploaded_files)
             
-            for idx, file_info in enumerate(uploaded_files):
-                # Process each file
-                file_path = Path(file_info["path"])
-                target_path = data_dir / file_path.name
-                
-                # Move/copy file to study directory
-                if file_path.exists():
-                    file_path.rename(target_path)
-                    processed_files.append({
-                        "name": file_path.name,
-                        "path": str(target_path),
-                        "size": target_path.stat().st_size,
-                        "type": file_info.get("type", "unknown")
-                    })
-                
-                # Update progress
-                progress = int((idx + 1) / total_files * 100)
-                await self._update_step_status(study, "data_upload", "in_progress", progress)
+            # Check if files are already in a versioned source_data folder
+            if uploaded_files and len(uploaded_files) > 0:
+                first_file_path = Path(uploaded_files[0]["path"])
+                # Check if already in source_data versioned folder
+                if "source_data" in str(first_file_path) and first_file_path.exists():
+                    # Files are already in the correct location (uploaded by wizard)
+                    logger.info(f"Files already in versioned folder, skipping move operation")
+                    for idx, file_info in enumerate(uploaded_files):
+                        file_path = Path(file_info["path"])
+                        if file_path.exists():
+                            processed_files.append({
+                                "name": file_path.name,
+                                "path": str(file_path),
+                                "size": file_path.stat().st_size,
+                                "type": file_info.get("type", "unknown")
+                            })
+                        # Update progress
+                        progress = int((idx + 1) / total_files * 100)
+                        await self._update_step_status(study, "data_upload", "in_progress", progress)
+                else:
+                    # Files need to be moved to versioned folder (legacy path)
+                    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                    data_dir = Path(f"/data/{study.org_id}/studies/{study.id}/source_data/{timestamp}")
+                    data_dir.mkdir(parents=True, exist_ok=True)
+                    
+                    for idx, file_info in enumerate(uploaded_files):
+                        # Process each file
+                        file_path = Path(file_info["path"])
+                        target_path = data_dir / file_path.name
+                        
+                        # Move/copy file to study directory
+                        if file_path.exists():
+                            file_path.rename(target_path)
+                            processed_files.append({
+                                "name": file_path.name,
+                                "path": str(target_path),
+                                "size": target_path.stat().st_size,
+                                "type": file_info.get("type", "unknown")
+                            })
+                        
+                        # Update progress
+                        progress = int((idx + 1) / total_files * 100)
+                        await self._update_step_status(study, "data_upload", "in_progress", progress)
             
             # Save file metadata
             study.data_uploaded_at = datetime.utcnow()
@@ -234,14 +254,21 @@ class StudyInitializationService:
             # Get widget data requirements
             widget_requirements = self._extract_widget_requirements(template.template_structure)
             
-            # Generate smart mappings
-            mappings = await self.field_mapping_service.generate_smart_mappings(
-                study_id=study.id,
-                widget_requirements=widget_requirements,
-                progress_callback=lambda p: asyncio.create_task(
-                    self._update_step_status(study, "field_mapping", "in_progress", p)
+            # Check if field mappings already exist (re-initialization scenario)
+            if study.field_mappings and len(study.field_mappings) > 0:
+                # Preserve existing mappings during re-initialization
+                logger.info(f"Preserving existing field mappings for study {study.id}")
+                mappings = study.field_mappings
+                await self._update_step_status(study, "field_mapping", "in_progress", 50)
+            else:
+                # Generate smart mappings for new initialization
+                mappings = await self.field_mapping_service.generate_smart_mappings(
+                    study_id=study.id,
+                    widget_requirements=widget_requirements,
+                    progress_callback=lambda p: asyncio.create_task(
+                        self._update_step_status(study, "field_mapping", "in_progress", p)
+                    )
                 )
-            )
             
             # Save mappings
             study.field_mappings = mappings

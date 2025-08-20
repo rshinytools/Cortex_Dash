@@ -110,12 +110,14 @@
       "Bash(docker inspect:*)",
       "Bash(./test_study_init.bat)",
       "Bash(export TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTYyNTAyMjQsInN1YiI6IjRlMzEyMWZlLWI4YmUtNDBmMy1iMjNmLWQ5ZmFkOWFlYjYzOSJ9.6qTwXz6NBWucl-8FZ_FddIjl3k5CIQXcViIOb1le1lI\")",
-      "Bash(export TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTYyNjI5NDEsInN1YiI6IjRlMzEyMWZlLWI4YmUtNDBmMy1iMjNmLWQ5ZmFkOWFlYjYzOSJ9.dIfaycMyAYSQUCEVHgDM8J-gIMtq60jFW6nABQ4TbuU\")"
+      "Bash(export TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTYyNjI5NDEsInN1YiI6IjRlMzEyMWZlLWI4YmUtNDBmMy1iMjNmLWQ5ZmFkOWFlYjYzOSJ9.dIfaycMyAYSQUCEVHgDM8J-gIMtq60jFW6nABQ4TbuU\")",
+      "Bash(export TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTYzNDgwODksInN1YiI6IjRlMzEyMWZlLWI4YmUtNDBmMy1iMjNmLWQ5ZmFkOWFlYjYzOSJ9.ZkYjJrO4TkwbqnmrJMqrYRhBfKJVa4BP8_tZXboLpUc\")"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [
-      "C:\\c\\Users\\amuly\\OneDrive\\AetherClinical"
+      "C:\\c\\Users\\amuly\\OneDrive\\AetherClinical",
+      "C:\\data\\4e3121fe-b8be-40f3-b23f-d9fad9aeb639\\studies\\521b4b98-87ec-4643-9103-eae78e2dad79"
     ]
   }
 }

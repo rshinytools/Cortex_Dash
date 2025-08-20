@@ -57,6 +57,8 @@ interface InitializationWizardProps {
   initialStep?: number;
   initialData?: any;
   organizationId?: string;
+  existingStudy?: any;
+  mode?: 'create' | 'edit';
   onComplete?: (studyId: string) => void;
   onCancel?: () => void;
 }
@@ -66,6 +68,8 @@ export function InitializationWizard({
   initialStep = 0,
   initialData,
   organizationId,
+  existingStudy,
+  mode = 'create',
   onComplete,
   onCancel,
 }: InitializationWizardProps) {
@@ -88,10 +92,53 @@ export function InitializationWizard({
   });
   const [errorSteps, setErrorSteps] = useState<Set<string>>(new Set());
 
-  // Load study data if resuming
+  // Load study data if resuming or editing
   useEffect(() => {
-    if (existingStudyId && !initialData) {
-      const loadStudyData = async () => {
+    const loadData = async () => {
+      console.log('[InitializationWizard] mode:', mode, 'existingStudy:', existingStudy);
+      
+      if (mode === 'edit' && existingStudy) {
+        // Import helper functions to convert labels back to values
+        const clinicalData = await import('@/lib/clinical-data');
+        const { getTherapeuticAreaValue, getIndicationValue } = clinicalData;
+        
+        // Edit mode: pre-populate from existing study
+        const baseData = {
+          basic_info: {
+            name: existingStudy.name,
+            protocol_number: existingStudy.protocol_number,
+            description: existingStudy.description,
+            phase: existingStudy.phase,
+            // Convert labels back to values for dropdowns
+            therapeutic_area: getTherapeuticAreaValue(existingStudy.therapeutic_area),
+            indication: getIndicationValue(existingStudy.therapeutic_area, existingStudy.indication),
+          },
+          template_selection: {
+            templateId: existingStudy.dashboard_template_id,
+          },
+          field_mapping: {
+            mappings: existingStudy.field_mappings || {},
+          },
+        };
+        
+        console.log('[InitializationWizard] Setting wizard data for edit mode:', baseData);
+        setWizardData(baseData);
+        // In edit mode, mark all steps as accessible
+        if (existingStudy.dashboard_template_id) {
+          const completed = new Set<string>();
+          completed.add('basic_info');
+          completed.add('template_selection');
+          if (existingStudy.data_uploaded_at) {
+            completed.add('data_upload');
+          }
+          if (existingStudy.field_mappings) {
+            completed.add('field_mapping');
+          }
+          setCompletedSteps(completed);
+        }
+        setIsLoadingStudy(false);
+      } else if (existingStudyId && !initialData) {
+        // Resume mode: load from wizard state
         try {
           const study = await studiesApi.getStudy(existingStudyId);
           const wizardState = await studiesApi.getWizardState(existingStudyId);
@@ -141,13 +188,13 @@ export function InitializationWizard({
         } finally {
           setIsLoadingStudy(false);
         }
-      };
-      
-      loadStudyData();
-    } else {
-      setIsLoadingStudy(false);
-    }
-  }, [existingStudyId, initialData, toast]);
+      } else {
+        setIsLoadingStudy(false);
+      }
+    };
+    
+    loadData();
+  }, [existingStudyId, initialData, existingStudy, mode, toast]);
 
   // Get current step component
   const CurrentStepComponent = wizardSteps[currentStep].component;
@@ -193,8 +240,34 @@ export function InitializationWizard({
       // Handle specific step logic
       switch (stepId) {
         case 'basic_info':
-          // Create study only if we don't have one already
-          if (!studyId) {
+          if (mode === 'edit' && studyId) {
+            // Update existing study
+            try {
+              await studiesApi.updateStudy(studyId, {
+                name: stepData.name,
+                protocol_number: stepData.protocol_number,
+                description: stepData.description,
+                phase: stepData.phase,
+                therapeutic_area: stepData.therapeutic_area,
+                indication: stepData.indication,
+              });
+              toast({
+                title: 'Study Updated',
+                description: 'Study information has been updated successfully',
+              });
+            } catch (error: any) {
+              console.error('Study update error:', error);
+              const errorMessage = error.response?.data?.detail || error.message || 'Failed to update study';
+              toast({
+                title: 'Update Failed',
+                description: errorMessage,
+                variant: 'destructive',
+              });
+              error.toastShown = true;
+              throw error;
+            }
+          } else if (!studyId) {
+            // Create new study
             try {
               const createResponse = await studiesApi.startInitializationWizard({
                 name: stepData.name,
@@ -297,26 +370,60 @@ export function InitializationWizard({
         case 'review_mappings':
           // Complete wizard
           if (studyId) {
-            const result = await studiesApi.completeWizard(studyId, {
-              accept_auto_mappings: stepData.acceptAutoMappings,
-              custom_mappings: stepData.customMappings,
-            });
-            
-            // Start actual initialization
-            await studiesApi.initializeStudyWithProgress(studyId, {
-              template_id: wizardData.template_selection.templateId,
-              skip_data_upload: false,
-            });
-            
-            toast({
-              title: 'Initialization Started',
-              description: 'Study initialization is in progress',
-            });
-            
-            // Redirect to initialization progress page (outside study layout to avoid sidebar)
-            router.push(`/initialization/${studyId}`);
-            onComplete?.(studyId);
-            return;
+            if (mode === 'edit') {
+              // In edit mode, save changes and re-initialize if new data was uploaded
+              const result = await studiesApi.completeWizard(studyId, {
+                accept_auto_mappings: stepData.acceptAutoMappings,
+                custom_mappings: stepData.customMappings,
+              });
+              
+              // Check if new data was uploaded (data_upload step exists in wizardData)
+              if (wizardData.data_upload && wizardData.data_upload.files && wizardData.data_upload.files.length > 0) {
+                // Re-initialize with new data
+                await studiesApi.initializeStudyWithProgress(studyId, {
+                  template_id: existingStudy?.dashboard_template_id || wizardData.template_selection?.templateId,
+                  skip_data_upload: false,
+                });
+                
+                toast({
+                  title: 'Re-initialization Started',
+                  description: 'Study is being updated with new data',
+                });
+                
+                // Redirect to initialization progress page
+                router.push(`/initialization/${studyId}`);
+              } else {
+                toast({
+                  title: 'Changes Saved',
+                  description: 'Study configuration has been updated successfully',
+                });
+              }
+              
+              onComplete?.(studyId);
+              return;
+            } else {
+              // In create mode, start initialization
+              const result = await studiesApi.completeWizard(studyId, {
+                accept_auto_mappings: stepData.acceptAutoMappings,
+                custom_mappings: stepData.customMappings,
+              });
+              
+              // Start actual initialization
+              await studiesApi.initializeStudyWithProgress(studyId, {
+                template_id: wizardData.template_selection.templateId,
+                skip_data_upload: false,
+              });
+              
+              toast({
+                title: 'Initialization Started',
+                description: 'Study initialization is in progress',
+              });
+              
+              // Redirect to initialization progress page (outside study layout to avoid sidebar)
+              router.push(`/initialization/${studyId}`);
+              onComplete?.(studyId);
+              return;
+            }
           }
           break;
       }
@@ -446,7 +553,7 @@ export function InitializationWizard({
                   hasError && 'text-red-600',
                   isPending && 'text-gray-400'
                 )}>
-                  {step.name}
+                  {step.id === 'review_mappings' && mode === 'edit' ? 'Review & Save' : step.name}
                 </p>
               </div>
               {index < wizardSteps.length - 1 && (
@@ -464,6 +571,8 @@ export function InitializationWizard({
       <Card className="p-6">
         <CurrentStepComponent
           studyId={studyId}
+          mode={mode}
+          existingStudy={existingStudy}
           data={(() => {
             const currentStepData = wizardData[wizardSteps[currentStep].id] || {};
             const dataToPass = {
@@ -476,6 +585,7 @@ export function InitializationWizard({
             console.log(`[Wizard] Passing data to step ${wizardSteps[currentStep].id}:`, dataToPass);
             return dataToPass;
           })()}
+          initialData={mode === 'edit' ? wizardData[wizardSteps[currentStep].id] : undefined}
           onComplete={handleStepComplete}
           isLoading={isLoading}
         />

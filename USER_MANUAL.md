@@ -130,21 +130,64 @@ The Unified Dashboard Designer is an advanced tool that allows you to create com
 
 ---
 
-## 5. Troubleshooting
+## 5. Widget Filtering System
 
-### 5.1. Can't Log In
+The Widget Filtering System allows you to apply SQL-like filters to your dashboard widgets to focus on specific subsets of data.
+
+### 5.1. Filter Syntax
+
+Filters use standard SQL WHERE clause syntax:
+
+*   **Comparison Operators:** `=`, `!=`, `<`, `<=`, `>`, `>=`
+*   **Logical Operators:** `AND`, `OR`, `NOT`
+*   **Special Operators:** `IN`, `NOT IN`, `LIKE`, `NOT LIKE`, `BETWEEN`, `IS NULL`, `IS NOT NULL`
+*   **Grouping:** Use parentheses `()` to group conditions
+
+### 5.2. Filter Examples
+
+Here are some common filter patterns:
+
+*   **Simple equality:** `AESER = 'Y'`
+*   **Multiple conditions:** `AESER = 'Y' AND AETERM IS NOT NULL`
+*   **Range filtering:** `AGE BETWEEN 18 AND 65`
+*   **List matching:** `COUNTRY IN ('USA', 'UK', 'CANADA')`
+*   **Pattern matching:** `AETERM LIKE '%headache%'`
+*   **Complex logic:** `(AESER = 'Y' AND AGE >= 65) OR (AESEV IN ('SEVERE', 'LIFE THREATENING'))`
+
+### 5.3. Performance Considerations
+
+*   Filters starting with wildcards (e.g., `LIKE '%pattern'`) may be slower on large datasets
+*   Complex filters with many OR conditions may impact performance
+*   The system automatically validates filters against the dataset schema before execution
+*   Filter execution metrics are tracked for performance monitoring
+
+### 5.4. Filter Validation
+
+Before a filter is applied, the system validates:
+
+*   **Column existence:** All referenced columns must exist in the dataset
+*   **Type compatibility:** Values are checked for type compatibility with columns
+*   **Syntax correctness:** The SQL expression must be syntactically valid
+
+Validation errors will be displayed, helping you correct the filter expression.
+
+---
+
+## 6. Troubleshooting
+
+### 6.1. Can't Log In
 
 *   **Check your password.** Make sure you're entering the correct password. If you've forgotten it, use the "Forgot password?" link to reset it.
 *   **Check your email address.** Make sure you're using the email address that you registered with.
 *   **Contact your administrator.** If you're still having trouble, contact your system administrator for assistance.
 
-### 5.2. Study Initialization Failed
+### 6.2. Study Initialization Failed
 
 *   **Check the error message.** The error message will usually provide a clue as to what went wrong.
 *   **Check your data files.** Make sure your data files are in the correct format and that they contain all the required fields.
 *   **Retry the initialization.** You can retry the initialization process from the point where it failed.
 
-### 5.3. Dashboard Not Loading
+### 6.3. Dashboard Not Loading
 
 *   **Check your internet connection.** Make sure you have a stable internet connection.
 *   **Clear your browser cache.** Sometimes, clearing your browser cache can resolve loading issues.

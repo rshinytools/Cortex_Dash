@@ -76,7 +76,7 @@ def check_study_access(
         )
     
     # Check if user belongs to the study's organization
-    if study.organization_id != current_user.organization_id and not current_user.is_superuser:
+    if study.org_id != current_user.org_id and not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not have access to this study"

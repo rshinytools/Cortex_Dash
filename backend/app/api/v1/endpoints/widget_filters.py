@@ -37,7 +37,6 @@ class FilterValidateResponse(BaseModel):
 
 class FilterApplyRequest(BaseModel):
     """Request model for applying filter to widget"""
-    widget_id: str
     expression: str
     enabled: bool = True
 
@@ -90,7 +89,7 @@ async def validate_widget_filter(
         )
     
     # Check user has access to study
-    if study.organization_id != current_user.organization_id:
+    if study.org_id != current_user.org_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to access this study"
@@ -136,7 +135,7 @@ async def test_widget_filter(
         )
     
     # Check user has access
-    if study.organization_id != current_user.organization_id:
+    if study.org_id != current_user.org_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to access this study"
@@ -144,8 +143,25 @@ async def test_widget_filter(
     
     # Build dataset path
     from pathlib import Path
-    org_id = study.organization_id
-    base_path = Path(f"/data/{org_id}/studies/{study_id}")
+    org_id = study.org_id
+    
+    # Try multiple possible data locations
+    possible_paths = [
+        Path(f"/data/{org_id}/studies/{study_id}/source_data"),  # Primary structure
+        Path(f"/data/studies/{org_id}/{study_id}/source_data"),  # Alternative structure
+    ]
+    
+    base_path = None
+    for path in possible_paths:
+        if path.exists():
+            base_path = path
+            break
+    
+    if not base_path:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No data directory found for this study"
+        )
     
     # Find latest data version
     data_versions = sorted([d for d in base_path.iterdir() if d.is_dir() and d.name.startswith("2")])
@@ -212,7 +228,7 @@ async def apply_widget_filter(
         )
     
     # Check user has access
-    if study.organization_id != current_user.organization_id:
+    if study.org_id != current_user.org_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to access this study"
@@ -285,7 +301,7 @@ async def get_widget_filter(
         )
     
     # Check user has access
-    if study.organization_id != current_user.organization_id:
+    if study.org_id != current_user.org_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to access this study"
@@ -327,7 +343,7 @@ async def get_all_study_filters(
         )
     
     # Check user has access
-    if study.organization_id != current_user.organization_id:
+    if study.org_id != current_user.org_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to access this study"
@@ -372,7 +388,7 @@ async def delete_widget_filter(
         )
     
     # Check user has access
-    if study.organization_id != current_user.organization_id:
+    if study.org_id != current_user.org_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to access this study"
@@ -433,7 +449,7 @@ async def get_filter_metrics(
         )
     
     # Check user has access
-    if study.organization_id != current_user.organization_id:
+    if study.org_id != current_user.org_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to access this study"

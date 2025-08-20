@@ -135,7 +135,7 @@ class PermissionChecker:
             return True
         
         # Check if user belongs to the organization
-        return self.user.organization_id == org_id
+        return self.user.org_id == org_id
     
     def check_study_access(self, study_id: UUID, permission: Optional[str] = None) -> bool:
         """Check if user has access to a study"""
@@ -150,7 +150,7 @@ class PermissionChecker:
             return False
         
         # Check organization access first
-        if not self.check_organization_access(study.organization_id):
+        if not self.check_organization_access(study.org_id):
             return False
         
         # Check specific study role if needed

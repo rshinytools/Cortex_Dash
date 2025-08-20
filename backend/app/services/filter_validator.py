@@ -171,30 +171,51 @@ class FilterValidator:
         """Get schema information for a dataset"""
         try:
             # Get the latest data version path
-            org_id = study.organization_id
+            org_id = study.org_id
             study_id = study.id
             
-            base_path = Path(f"/data/{org_id}/studies/{study_id}")
-            if not base_path.exists():
+            # Try multiple possible data locations
+            possible_paths = [
+                Path(f"/data/{org_id}/studies/{study_id}/source_data"),  # Primary structure
+                Path(f"/data/studies/{org_id}/{study_id}/source_data"),  # Alternative structure
+            ]
+            
+            base_path = None
+            for path in possible_paths:
+                self.logger.info(f"Checking path: {path}")
+                if path.exists():
+                    base_path = path
+                    self.logger.info(f"Found data at: {path}")
+                    break
+            
+            if not base_path:
+                self.logger.warning(f"No data path found for study {study_id}")
                 return None
             
             # Find the latest data version
             data_versions = [d for d in base_path.iterdir() if d.is_dir() and d.name.startswith("2")]
             if not data_versions:
+                self.logger.warning(f"No data versions found in {base_path}")
                 return None
             
             latest_version = sorted(data_versions)[-1]
             dataset_path = latest_version / f"{dataset_name}.parquet"
             
+            self.logger.info(f"Looking for dataset at: {dataset_path}")
             if not dataset_path.exists():
+                self.logger.warning(f"Dataset file not found: {dataset_path}")
+                # List available files for debugging
+                available_files = list(latest_version.glob("*.parquet"))
+                self.logger.info(f"Available parquet files: {[f.name for f in available_files]}")
                 return None
             
             # Read schema from parquet file
             parquet_file = pq.ParquetFile(dataset_path)
-            schema = parquet_file.schema
+            schema = parquet_file.schema_arrow
             
             columns = {}
-            for field in schema:
+            for i in range(len(schema)):
+                field = schema.field(i)
                 # Map PyArrow types to simple types
                 type_str = str(field.type)
                 simple_type = self._map_arrow_type(type_str)

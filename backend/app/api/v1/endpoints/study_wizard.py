@@ -821,9 +821,13 @@ async def complete_upload_step(
                     
                     # Check if widget has data requirements
                     if data_contract and (data_contract.get("required_fields") or data_contract.get("optional_fields")):
+                        # Get the actual widget title from the overrides
+                        widget_overrides = widget.get("overrides", {})
+                        widget_title = widget_overrides.get("title") or widget_def.get("name", "Unknown Widget")
+                        
                         template_requirements.append({
                             "widget_id": widget.get("widgetInstanceId", widget_instance.get("id", "")),
-                            "widget_title": widget_def.get("name", "Unknown Widget"),
+                            "widget_title": widget_title,
                             "widget_type": widget_def.get("code", "unknown"),
                             "data_config": data_contract,
                             "required_fields": data_contract.get("required_fields", []),
@@ -908,9 +912,13 @@ async def get_mapping_data(
                     
                     # Check if widget has data requirements
                     if data_contract and (data_contract.get("required_fields") or data_contract.get("optional_fields")):
+                        # Get the actual widget title from the overrides
+                        widget_overrides = widget.get("overrides", {})
+                        widget_title = widget_overrides.get("title") or widget_def.get("name", "Unknown Widget")
+                        
                         template_requirements.append({
                             "widget_id": widget.get("widgetInstanceId", widget_instance.get("id", "")),
-                            "widget_title": widget_def.get("name", "Unknown Widget"),
+                            "widget_title": widget_title,
                             "widget_type": widget_def.get("code", "unknown"),
                             "data_config": data_contract,
                             "required_fields": data_contract.get("required_fields", []),

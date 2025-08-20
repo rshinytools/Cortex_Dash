@@ -89,11 +89,12 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
       - NODE_ENV=development
       - NEXTAUTH_URL=http://localhost:3000
       - NEXTAUTH_SECRET=your-secret-key-here-change-in-production
-      - API_URL_INTERNAL=http://backend:8000/api/v1
+      - API_URL_INTERNAL=http://backend:8000
+      - DOCKER_ENV=true
       - WATCHPACK_POLLING=true  # Enable polling for file changes in Docker
     volumes:
       - ./frontend:/app

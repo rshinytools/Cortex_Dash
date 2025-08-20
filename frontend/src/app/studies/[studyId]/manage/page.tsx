@@ -117,11 +117,11 @@ export default function ManageStudyPage({ params }: ManageStudyPageProps) {
       title: 'Success',
       description: 'Study configuration updated successfully.',
     });
-    router.push(`/studies/${studyId}/dashboard`);
+    router.push('/studies');
   };
 
   const handleCancel = () => {
-    router.push(`/studies/${studyId}/dashboard`);
+    router.push('/studies');
   };
 
   return (

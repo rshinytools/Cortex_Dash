@@ -110,7 +110,7 @@ def execute_widget(
     
     # Check user has access to the study
     if not current_user.is_superuser:
-        if study.organization_id != current_user.organization_id:
+        if study.org_id != current_user.org_id:
             raise HTTPException(status_code=403, detail="Access denied to this study")
     
     # Get data mapping for this widget and study

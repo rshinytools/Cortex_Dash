@@ -48,7 +48,9 @@ def get_template_requirements(
                 
                 widget_id = widget_instance.get("id", "")
                 widget_code = widget_def.get("code", "")
-                widget_name = widget_def.get("name", "Unknown Widget")
+                # Get the actual widget title from the overrides
+                widget_overrides = widget_config.get("overrides", {})
+                widget_name = widget_overrides.get("title") or widget_def.get("name", "Unknown Widget")
                 widget_category = widget_def.get("category", "")
                 
                 # Extract required fields from data_contract

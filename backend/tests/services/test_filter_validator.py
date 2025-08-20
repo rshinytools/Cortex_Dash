@@ -27,7 +27,7 @@ class TestFilterValidator:
         """Create mock study"""
         study = Mock(spec=Study)
         study.id = "test-study-id"
-        study.organization_id = "test-org-id"
+        study.org_id = "test-org-id"
         study.field_mappings = {"widget1": "dm.USUBJID"}
         return study
     

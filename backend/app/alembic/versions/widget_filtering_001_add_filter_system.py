@@ -49,6 +49,13 @@ def upgrade() -> None:
         ['study_id', 'widget_id']
     )
     
+    # Add unique constraint for ON CONFLICT to work
+    op.create_unique_constraint(
+        'uq_validation_cache_study_widget',
+        'filter_validation_cache',
+        ['study_id', 'widget_id']
+    )
+    
     # Create filter metrics table for performance tracking
     op.create_table('filter_metrics',
         sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True, default=uuid.uuid4),

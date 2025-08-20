@@ -64,6 +64,7 @@ class StudyBase(SQLModel):
     # Template-based configuration
     dashboard_template_id: Optional[uuid.UUID] = Field(default=None, foreign_key="dashboard_templates.id")
     field_mappings: Dict[str, str] = Field(default_factory=dict, sa_column=Column(JSON))  # template_field -> study_field
+    field_mapping_filters: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))  # Widget filters
     template_overrides: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))  # Customizations to template
     
     # Data management

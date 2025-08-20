@@ -105,7 +105,7 @@ def list_mapping_templates(
         # Add organization scope for same org
         access_conditions.append(
             (MappingTemplate.scope == MappingTemplateScope.ORGANIZATION) &
-            (MappingTemplate.organization_id == current_user.organization_id)
+            (MappingTemplate.organization_id == current_user.org_id)
         )
         
         # Add user scope for own templates
@@ -179,7 +179,7 @@ def create_mapping_template(
     existing = db.exec(
         select(MappingTemplate).where(
             MappingTemplate.name == template_in.name,
-            MappingTemplate.organization_id == current_user.organization_id
+            MappingTemplate.organization_id == current_user.org_id
         )
     ).first()
     
@@ -192,7 +192,7 @@ def create_mapping_template(
     # Create template
     template = MappingTemplate(
         **template_in.dict(),
-        organization_id=current_user.organization_id if template_in.scope == MappingTemplateScope.ORGANIZATION else None,
+        organization_id=current_user.org_id if template_in.scope == MappingTemplateScope.ORGANIZATION else None,
         created_by=current_user.id
     )
     
@@ -502,7 +502,7 @@ def clone_template(
         name=new_name,
         description=f"Cloned from {original.name}",
         scope=MappingTemplateScope.USER,  # Clones start as user templates
-        organization_id=current_user.organization_id,
+        organization_id=current_user.org_id,
         created_by=current_user.id,
         widget_type=original.widget_type,
         source_system=original.source_system,
@@ -528,7 +528,7 @@ def _has_template_access(template: MappingTemplate, user: User) -> bool:
     if template.scope == MappingTemplateScope.SYSTEM:
         return True
     if template.scope == MappingTemplateScope.ORGANIZATION:
-        return template.organization_id == user.organization_id
+        return template.organization_id == user.org_id
     if template.scope == MappingTemplateScope.USER:
         return template.created_by == user.id
     return False
@@ -544,5 +544,5 @@ def _has_template_write_access(template: MappingTemplate, user: User) -> bool:
         return True
     if template.scope == MappingTemplateScope.ORGANIZATION:
         # Check if user is org admin
-        return template.organization_id == user.organization_id and user.role == "org_admin"
+        return template.organization_id == user.org_id and user.role == "org_admin"
     return False

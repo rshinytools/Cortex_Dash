@@ -151,6 +151,30 @@ export function FieldMappingStep({
         console.log('Template requirements loaded:', formattedRequirements);
       }
       
+      // Load existing widget filters
+      if (studyId) {
+        try {
+          const filtersResponse = await studiesApi.getAllWidgetFilters(studyId);
+          if (Array.isArray(filtersResponse)) {
+            const loadedFilters: Record<string, string> = {};
+            filtersResponse.forEach((filterConfig: any) => {
+              if (filterConfig?.widget_id && filterConfig?.expression) {
+                // Store filter for all possible field keys that might be used
+                // The field could be 'value', 'value_field', etc.
+                loadedFilters[`${filterConfig.widget_id}_value`] = filterConfig.expression;
+                loadedFilters[`${filterConfig.widget_id}_value_field`] = filterConfig.expression;
+                // Also store without field suffix for widgets that save without field
+                loadedFilters[filterConfig.widget_id] = filterConfig.expression;
+              }
+            });
+            setWidgetFilters(loadedFilters);
+            console.log('Loaded widget filters:', loadedFilters);
+          }
+        } catch (error) {
+          console.error('Failed to load widget filters:', error);
+        }
+      }
+      
       // Set auto-mapping suggestions
       if (mappingData?.mapping_suggestions) {
         setAutoMappingSuggestions(mappingData.mapping_suggestions);
@@ -700,7 +724,7 @@ export function FieldMappingStep({
                 )?.columns || []
               }
               currentFilter={widgetFilters[`${activeFilterWidget.widgetId}_${activeFilterWidget.field}`] || ''}
-              onSave={(filter) => {
+              onSave={async (filter) => {
                 setWidgetFilters(prev => ({
                   ...prev,
                   [`${activeFilterWidget.widgetId}_${activeFilterWidget.field}`]: filter
@@ -720,10 +744,22 @@ export function FieldMappingStep({
                   setMappings(updatedMappings);
                 }
                 
+                // Save filter to backend
+                if (studyId) {
+                  try {
+                    await studiesApi.saveWidgetFilter(studyId, activeFilterWidget.widgetId, {
+                      expression: filter,
+                      enabled: true
+                    });
+                  } catch (error) {
+                    console.error('Failed to save filter to backend:', error);
+                  }
+                }
+                
                 setFilterDialogOpen(false);
                 toast({
                   title: "Filter Applied",
-                  description: "The filter has been applied to the widget",
+                  description: "The filter has been applied and saved",
                 });
               }}
               onCancel={() => setFilterDialogOpen(false)}

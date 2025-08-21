@@ -12,7 +12,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { 
   AlertTriangle,
-  RefreshCw,
   Settings,
   Loader2,
   FileWarning,
@@ -28,7 +27,10 @@ import {
   Database,
   TrendingUp,
   AlertCircle,
-  FileSearch
+  FileSearch,
+  Search,
+  Bell,
+  Filter
 } from 'lucide-react';
 import { WidgetRenderer } from '@/components/widgets/widget-renderer';
 import { studiesApi } from '@/lib/api/studies';
@@ -40,6 +42,7 @@ import type { MenuItem } from '@/types/menu';
 import { MenuItemType } from '@/types/menu';
 import Link from 'next/link';
 import { Sun, Moon, ChevronDown } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 
 export default function StudyDashboardPage() {
   const params = useParams();
@@ -232,13 +235,7 @@ export default function StudyDashboardPage() {
     }
   }, [dashboardPages, selectedMenuId]);
 
-  const handleRefresh = () => {
-    setRefreshKey(prev => prev + 1);
-    toast({
-      title: "Dashboard refreshed",
-      description: "All widgets have been updated with latest data.",
-    });
-  };
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Get menu icon based on label
   const getMenuIcon = (label: string) => {
@@ -286,8 +283,8 @@ export default function StudyDashboardPage() {
           <button
             onClick={() => toggleGroup(item.id)}
             className={cn(
-              "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all",
-              "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50",
+              "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all",
+              "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-slate-800/50 dark:hover:to-slate-700/50",
               depth > 0 && "ml-4"
             )}
           >
@@ -317,10 +314,10 @@ export default function StudyDashboardPage() {
           }
         }}
         className={cn(
-          "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all mb-1",
+          "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all mb-1",
           selectedMenuId === item.id
-            ? "bg-blue-600/10 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 border-l-2 border-blue-600 dark:border-blue-400 pl-2.5"
-            : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/50",
+            ? "bg-gradient-to-r from-blue-500/10 to-indigo-500/10 dark:from-blue-600/20 dark:to-indigo-600/20 text-blue-600 dark:text-blue-400 border-l-3 border-blue-600 dark:border-blue-400 pl-2.5 shadow-sm"
+            : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-slate-800/50 dark:hover:to-slate-700/50",
           depth > 0 && "ml-6"
         )}
       >
@@ -339,10 +336,14 @@ export default function StudyDashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center">
         <div className="space-y-4 text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-500" />
-          <p className="text-gray-600 dark:text-slate-400">Loading dashboard...</p>
+          <div className="relative">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-2xl animate-pulse">
+              <Loader2 className="h-8 w-8 animate-spin text-white" />
+            </div>
+          </div>
+          <p className="text-gray-600 dark:text-slate-400 font-medium">Loading dashboard...</p>
         </div>
       </div>
     );
@@ -350,8 +351,8 @@ export default function StudyDashboardPage() {
 
   if (studyError || !study) {
     return (
-      <div className="min-h-screen bg-slate-950 p-6">
-        <Alert variant="destructive" className="max-w-2xl mx-auto">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-950 dark:to-slate-900 p-6">
+        <Alert variant="destructive" className="max-w-2xl mx-auto backdrop-blur-sm">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
             Study not found or you don't have access to view this study.
@@ -364,8 +365,8 @@ export default function StudyDashboardPage() {
   // Check if study is properly initialized
   if (study.status === 'DRAFT' || study.initialization_status !== 'completed') {
     return (
-      <div className="min-h-screen bg-slate-950 p-6">
-        <Card className="max-w-2xl mx-auto bg-slate-900 border-slate-800">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-950 dark:to-slate-900 p-6">
+        <Card className="max-w-2xl mx-auto bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-gray-200/50 dark:border-slate-700/50 shadow-xl">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-white">
               <FileWarning className="h-5 w-5 text-yellow-500" />
@@ -401,8 +402,8 @@ export default function StudyDashboardPage() {
   // Check if template is loaded
   if (!template || !dashboardConfig) {
     return (
-      <div className="min-h-screen bg-slate-950 p-6">
-        <Alert className="max-w-2xl mx-auto bg-slate-900 border-slate-800">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-950 dark:to-slate-900 p-6">
+        <Alert className="max-w-2xl mx-auto bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-gray-200/50 dark:border-slate-700/50">
           <AlertTriangle className="h-4 w-4 text-yellow-500" />
           <AlertDescription className="text-slate-400">
             No dashboard template configured for this study. Please contact your administrator.
@@ -415,8 +416,8 @@ export default function StudyDashboardPage() {
   // Check if there are any dashboard pages
   if (Object.keys(dashboardPages).length === 0) {
     return (
-      <div className="min-h-screen bg-slate-950 p-6">
-        <Card className="max-w-2xl mx-auto bg-slate-900 border-slate-800">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-950 dark:to-slate-900 p-6">
+        <Card className="max-w-2xl mx-auto bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-gray-200/50 dark:border-slate-700/50 shadow-xl">
           <CardHeader>
             <CardTitle className="text-white">Dashboard Configuration Needed</CardTitle>
             <CardDescription className="text-slate-400">
@@ -446,21 +447,24 @@ export default function StudyDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-950 dark:to-slate-900">
       {/* Sidebar */}
       <div className={cn(
-        "fixed left-0 top-0 h-full bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 transition-all duration-300 z-40",
+        "fixed left-0 top-0 h-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-r border-gray-200/50 dark:border-slate-700/50 transition-all duration-300 z-40 shadow-xl",
         sidebarOpen ? "w-64" : "w-0 overflow-hidden"
       )}>
         <div className="flex flex-col h-full">
           {/* Sidebar Header */}
-          <div className="p-4 border-b border-gray-200 dark:border-slate-800">
+          <div className="p-4 border-b border-gray-200/50 dark:border-slate-700/50">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                  <BarChart3 className="h-5 w-5 text-white" />
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <BarChart3 className="h-6 w-6 text-white" />
                 </div>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Clinical Dashboard</h2>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-white">Sagarmatha AI</h2>
+                  <p className="text-xs text-gray-500 dark:text-slate-400">Clinical Dashboard</p>
+                </div>
               </div>
               <Button
                 variant="ghost"
@@ -485,7 +489,7 @@ export default function StudyDashboardPage() {
 
 
           {/* Sidebar Footer */}
-          <div className="p-4 border-t border-gray-200 dark:border-slate-800">
+          <div className="p-4 border-t border-gray-200/50 dark:border-slate-700/50 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-slate-800/30 dark:to-slate-700/30">
             <div className="space-y-1">
               <p className="text-xs font-semibold text-gray-500 dark:text-slate-500">STUDY</p>
               <p className="text-sm text-gray-900 dark:text-white">{study?.name}</p>
@@ -503,8 +507,8 @@ export default function StudyDashboardPage() {
         sidebarOpen ? "ml-64" : "ml-0"
       )}>
         {/* Top Header Bar */}
-        <div className="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-b border-gray-200 dark:border-slate-800">
-          <div className="flex items-center justify-between px-6 py-4">
+        <div className="sticky top-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-gray-200/50 dark:border-slate-700/50 shadow-sm">
+          <div className="flex items-center justify-between px-6 py-3">
             <div className="flex items-center gap-4">
               {!sidebarOpen && (
                 <Button
@@ -517,42 +521,58 @@ export default function StudyDashboardPage() {
                 </Button>
               )}
               <div>
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                <h1 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-slate-200 bg-clip-text text-transparent">
                   {selectedDashboard?.label || 'Dashboard'}
                 </h1>
-                <p className="text-sm text-gray-600 dark:text-slate-400">
-                  EDC Data Extracted: 04APR2025
+                <p className="text-xs text-gray-500 dark:text-slate-400">
+                  Last Updated: 04 APR 2025 • Real-time Data
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              {/* Search Bar */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Search widgets, metrics..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 pr-4 w-64 h-9 bg-white/50 dark:bg-slate-800/50 border-gray-200/50 dark:border-slate-700/50 backdrop-blur-sm focus:bg-white dark:focus:bg-slate-800 transition-all"
+                />
+              </div>
+              
+              {/* Filter Button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/50 dark:hover:bg-slate-800/50"
+                aria-label="Filter"
+              >
+                <Filter className="h-4 w-4" />
+              </Button>
+              
+              {/* Notifications */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/50 dark:hover:bg-slate-800/50"
+                aria-label="Notifications"
+              >
+                <Bell className="h-4 w-4" />
+                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+              </Button>
+              
+              {/* Theme Toggle */}
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={toggleTheme}
-                className="text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800"
+                className="text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/50 dark:hover:bg-slate-800/50"
                 aria-label="Toggle theme"
               >
-                {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefresh}
-                className="border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-white"
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh
-              </Button>
-              <Link href="/studies">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-white"
-                >
-                  Exit Dashboard
-                </Button>
-              </Link>
             </div>
           </div>
         </div>

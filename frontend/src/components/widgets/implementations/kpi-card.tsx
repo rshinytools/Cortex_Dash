@@ -189,9 +189,9 @@ const KPICard: WidgetComponent<KPICardConfig> = ({
   const getColorClass = (): string => {
     if (configuration.color) {
       switch (configuration.color) {
-        case 'success': return 'text-green-600';
-        case 'warning': return 'text-yellow-600';
-        case 'danger': return 'text-red-600';
+        case 'success': return 'text-green-400';
+        case 'warning': return 'text-yellow-400';
+        case 'danger': return 'text-red-400';
         default: return '';
       }
     }
@@ -216,13 +216,13 @@ const KPICard: WidgetComponent<KPICardConfig> = ({
 
   if (loading) {
     return (
-      <Card className="h-full bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800">
+      <Card className="h-full bg-[#252b42] dark:bg-[#1a1f36] border-[#2a2f4a] shadow-lg">
         <CardHeader className="pb-2">
-          <Skeleton className="h-4 w-24 bg-gray-200 dark:bg-slate-800" />
+          <Skeleton className="h-4 w-24 bg-[#2a2f4a]" />
         </CardHeader>
         <CardContent>
-          <Skeleton className="h-8 w-32 mb-2 bg-gray-200 dark:bg-slate-800" />
-          <Skeleton className="h-3 w-20 bg-gray-200 dark:bg-slate-800" />
+          <Skeleton className="h-8 w-32 mb-2 bg-[#2a2f4a]" />
+          <Skeleton className="h-3 w-20 bg-[#2a2f4a]" />
         </CardContent>
       </Card>
     );
@@ -230,10 +230,10 @@ const KPICard: WidgetComponent<KPICardConfig> = ({
 
   if (error) {
     return (
-      <Card className="h-full bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800">
+      <Card className="h-full bg-[#252b42] dark:bg-[#1a1f36] border-[#2a2f4a] shadow-lg">
         <CardContent className="flex flex-col items-center justify-center h-full">
           <AlertCircle className="h-8 w-8 text-red-500 mb-2" />
-          <p className="text-sm text-gray-600 dark:text-slate-400">{error}</p>
+          <p className="text-sm text-gray-400">{error}</p>
         </CardContent>
       </Card>
     );
@@ -255,18 +255,18 @@ const KPICard: WidgetComponent<KPICardConfig> = ({
   // If no data, show message
   if (!displayData) {
     return (
-      <Card className="h-full bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800">
+      <Card className="h-full bg-[#252b42] dark:bg-[#1a1f36] border-[#2a2f4a] shadow-lg">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-gray-600 dark:text-slate-400">
+          <CardTitle className="text-sm font-medium text-gray-400">
             {title}
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col items-center justify-center h-[calc(100%-60px)]">
-          <AlertCircle className="h-6 w-6 text-gray-500 dark:text-slate-500 mb-2" />
-          <p className="text-sm text-gray-600 dark:text-slate-400 text-center">
+          <AlertCircle className="h-6 w-6 text-gray-500 mb-2" />
+          <p className="text-sm text-gray-400 text-center">
             No data mapping configured
           </p>
-          <p className="text-xs text-gray-500 dark:text-slate-500 text-center mt-1">
+          <p className="text-xs text-gray-500 text-center mt-1">
             Configure field mappings in study settings
           </p>
         </CardContent>
@@ -275,10 +275,10 @@ const KPICard: WidgetComponent<KPICardConfig> = ({
   }
 
   return (
-    <Card className="h-full relative overflow-hidden bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800">
+    <Card className="h-full relative overflow-hidden bg-[#252b42] dark:bg-[#1a1f36] border-[#2a2f4a] shadow-lg">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-medium text-gray-600 dark:text-slate-400">
+          <CardTitle className="text-sm font-medium text-gray-400">
             {title || displayData.label}
           </CardTitle>
           {displayData.metadata?.data_quality && (
@@ -295,12 +295,12 @@ const KPICard: WidgetComponent<KPICardConfig> = ({
         <div className="space-y-2">
           {/* Main Value */}
           <div className="flex items-baseline gap-2">
-            <span className={cn("text-2xl font-bold text-gray-900 dark:text-white", getColorClass())}>
+            <span className={cn("text-2xl font-bold text-white", getColorClass())}>
               {displayData.formatted_value || formatValue(displayData.value)}
             </span>
             {configuration.showTrend && displayData.trend && (
               <div className={cn(
-                "flex items-center gap-1 text-sm text-gray-500 dark:text-slate-500"
+                "flex items-center gap-1 text-sm text-gray-400"
               )}>
                 {getTrendIcon()}
                 <span>{displayData.trend.percentage?.toFixed(1) || displayData.trend}%</span>
@@ -310,14 +310,14 @@ const KPICard: WidgetComponent<KPICardConfig> = ({
 
           {/* Comparison */}
           {configuration.showComparison && displayData.comparison && (
-            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-slate-500">
+            <div className="flex items-center gap-2 text-sm text-gray-400">
               {configuration.comparisonType === 'target' && (
                 <>
                   <Target className="h-3 w-3" />
                   <span>Target: {formatValue(configuration.targetValue || 0)}</span>
                 </>
               )}
-              <span className="flex items-center gap-1 text-gray-500 dark:text-slate-500">
+              <span className="flex items-center gap-1 text-gray-400">
                 {displayData.comparison.direction === 'up' ? 
                   <ArrowUp className="h-3 w-3" /> : 
                   displayData.comparison.direction === 'down' ?
@@ -331,12 +331,12 @@ const KPICard: WidgetComponent<KPICardConfig> = ({
 
           {/* Description */}
           {description && (
-            <p className="text-xs text-gray-500 dark:text-slate-500">{description}</p>
+            <p className="text-xs text-gray-400">{description}</p>
           )}
 
           {/* Last Updated */}
           {displayData.metadata?.last_updated && (
-            <p className="text-xs text-gray-500 dark:text-slate-500">
+            <p className="text-xs text-gray-400">
               Updated: {new Date(displayData.metadata.last_updated).toLocaleString()}
             </p>
           )}

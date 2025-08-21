@@ -54,7 +54,7 @@ class FilterTestResponse(BaseModel):
     success: bool
     row_count: int
     original_count: int
-    execution_time_ms: int
+    execution_time_ms: float
     sample_data: Optional[List[Dict]] = None
     error: Optional[str] = None
 

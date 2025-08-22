@@ -89,11 +89,11 @@ export default function OrganizationDetailPage() {
   useEffect(() => {
     if (organization) {
       setFormData({
-        name: organization.name,
-        license_type: organization.license_type,
-        max_users: organization.max_users,
-        max_studies: organization.max_studies,
-        active: organization.active,
+        name: organization.name || '',
+        license_type: organization.license_type || 'trial',
+        max_users: organization.max_users || 10,
+        max_studies: organization.max_studies || 5,
+        active: organization.active !== undefined ? organization.active : true,
       });
     }
   }, [organization]);
@@ -362,8 +362,8 @@ export default function OrganizationDetailPage() {
                     <Input
                       id="max_users"
                       type="number"
-                      value={formData.max_users}
-                      onChange={(e) => handleInputChange('max_users', parseInt(e.target.value))}
+                      value={formData.max_users?.toString() || ''}
+                      onChange={(e) => handleInputChange('max_users', e.target.value ? parseInt(e.target.value) : 0)}
                       min="1"
                     />
                   </div>
@@ -373,8 +373,8 @@ export default function OrganizationDetailPage() {
                     <Input
                       id="max_studies"
                       type="number"
-                      value={formData.max_studies}
-                      onChange={(e) => handleInputChange('max_studies', parseInt(e.target.value))}
+                      value={formData.max_studies?.toString() || ''}
+                      onChange={(e) => handleInputChange('max_studies', e.target.value ? parseInt(e.target.value) : 0)}
                       min="1"
                     />
                   </div>

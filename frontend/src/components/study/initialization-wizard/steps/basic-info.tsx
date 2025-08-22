@@ -24,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Building2 } from 'lucide-react';
 import { 
   therapeuticAreas, 
   getIndicationsForArea, 
@@ -33,6 +33,10 @@ import {
   getTherapeuticAreaLabel,
   getIndicationLabel
 } from '@/lib/clinical-data';
+import { useQuery } from '@tanstack/react-query';
+import { organizationsApi } from '@/lib/api/organizations';
+import { useAuth } from '@/lib/auth-context';
+import { UserRole } from '@/types';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Study name is required'),
@@ -41,6 +45,7 @@ const formSchema = z.object({
   phase: z.string().optional(),
   therapeutic_area: z.string().optional(),
   indication: z.string().optional(),
+  org_id: z.string().min(1, 'Organization is required'),
 });
 
 interface BasicInfoStepProps {
@@ -64,10 +69,18 @@ export function BasicInfoStep({
 }: BasicInfoStepProps) {
   // Use initialData if provided (edit mode), otherwise use data (create mode)
   const formData = mode === 'edit' ? initialData : data;
+  const { user } = useAuth();
   
   const [availableIndications, setAvailableIndications] = useState(
     getIndicationsForArea(formData?.therapeutic_area || DEFAULT_THERAPEUTIC_AREA)
   );
+
+  // Fetch organizations list
+  const { data: organizations, isLoading: orgsLoading } = useQuery({
+    queryKey: ['organizations'],
+    queryFn: organizationsApi.getOrganizations,
+    enabled: user?.role === UserRole.SYSTEM_ADMIN,
+  });
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -78,6 +91,7 @@ export function BasicInfoStep({
       phase: formData?.phase || 'phase_3',
       therapeutic_area: formData?.therapeutic_area || DEFAULT_THERAPEUTIC_AREA,
       indication: formData?.indication || DEFAULT_INDICATION,
+      org_id: formData?.org_id || (user?.role !== UserRole.SYSTEM_ADMIN ? user?.org_id : ''),
     },
   });
 
@@ -124,6 +138,53 @@ export function BasicInfoStep({
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          {/* Organization selector - only show for system admins */}
+          {user?.role === UserRole.SYSTEM_ADMIN && (
+            <FormField
+              control={form.control}
+              name="org_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Organization *</FormLabel>
+                  <Select 
+                    onValueChange={field.onChange} 
+                    defaultValue={field.value}
+                    disabled={orgsLoading || mode === 'edit'}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={orgsLoading ? "Loading..." : "Select organization"}>
+                          {field.value && organizations ? (
+                            <div className="flex items-center gap-2">
+                              <Building2 className="h-4 w-4" />
+                              {organizations.find(org => org.id === field.value)?.name || 'Select organization'}
+                            </div>
+                          ) : (
+                            <span>Select organization</span>
+                          )}
+                        </SelectValue>
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {organizations?.map(org => (
+                        <SelectItem key={org.id} value={org.id}>
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4" />
+                            {org.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    The organization this study belongs to
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+
           <FormField
             control={form.control}
             name="name"

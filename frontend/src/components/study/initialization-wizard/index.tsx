@@ -276,6 +276,7 @@ export function InitializationWizard({
                 phase: stepData.phase,
                 therapeutic_area: stepData.therapeutic_area,
                 indication: stepData.indication,
+                org_id: stepData.org_id,
               });
               setStudyId(createResponse.study_id);
             } catch (error: any) {

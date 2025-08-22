@@ -51,6 +51,7 @@ class StudyBasicInfoRequest(BaseModel):
     phase: Optional[str] = None
     therapeutic_area: Optional[str] = None
     indication: Optional[str] = None
+    org_id: Optional[uuid.UUID] = None
 
 
 class TemplateSelectionRequest(BaseModel):
@@ -189,6 +190,20 @@ async def start_initialization_wizard(
             logger.warning(f"Invalid phase value: {study_info.phase}")
             phase_enum = None
     
+    # Determine which org_id to use
+    # System admins can specify org_id, others must use their own
+    if current_user.is_superuser and study_info.org_id:
+        # Verify the org exists
+        org = db.get(Organization, study_info.org_id)
+        if not org:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Specified organization not found"
+            )
+        target_org_id = study_info.org_id
+    else:
+        target_org_id = current_user.org_id
+    
     # Create study
     study = Study(
         name=study_info.name,
@@ -198,7 +213,7 @@ async def start_initialization_wizard(
         phase=phase_enum,
         therapeutic_area=study_info.therapeutic_area,
         indication=study_info.indication,
-        org_id=current_user.org_id,
+        org_id=target_org_id,
         created_by=current_user.id,
         status=StudyStatus.DRAFT,
         initialization_status="wizard_in_progress",

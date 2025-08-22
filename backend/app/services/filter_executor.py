@@ -87,21 +87,25 @@ class FilterExecutor:
                 # Convert AST to pandas query
                 pandas_query = self._ast_to_pandas_query(parse_result["ast"])
                 
-                # Execute the query
-                try:
-                    filtered_df = df.query(pandas_query)
-                except Exception as e:
-                    # Fallback to manual filtering if query fails
-                    self.logger.warning(f"Pandas query failed, using manual filtering: {e}")
-                    mask = self._evaluate_ast(parse_result["ast"], df)
-                    filtered_df = df[mask]
+                # Special case: handle "1=1" or "True" which means no filtering
+                if pandas_query in ["True", "1 == 1", "(1) == (1)"]:
+                    filtered_df = df
+                else:
+                    # Execute the query
+                    try:
+                        filtered_df = df.query(pandas_query)
+                    except Exception as e:
+                        # Fallback to manual filtering if query fails
+                        self.logger.warning(f"Pandas query failed, using manual filtering: {e}")
+                        mask = self._evaluate_ast(parse_result["ast"], df)
+                        filtered_df = df[mask]
             else:
                 filtered_df = df
             
             filtered_count = len(filtered_df)
             
             # Calculate execution time
-            execution_time_ms = int((time.time() - start_time) * 1000)
+            execution_time_ms = (time.time() - start_time) * 1000
             
             # Track metrics if requested
             if track_metrics:
@@ -125,7 +129,7 @@ class FilterExecutor:
             
         except Exception as e:
             self.logger.error(f"Failed to execute filter: {str(e)}")
-            execution_time_ms = int((time.time() - start_time) * 1000)
+            execution_time_ms = (time.time() - start_time) * 1000
             
             return {
                 "data": pd.DataFrame(),
@@ -185,7 +189,7 @@ class FilterExecutor:
             df = table.to_pandas()
             filtered_count = len(df)
             
-            execution_time_ms = int((time.time() - start_time) * 1000)
+            execution_time_ms = (time.time() - start_time) * 1000
             
             return {
                 "data": df,
@@ -198,7 +202,7 @@ class FilterExecutor:
             
         except Exception as e:
             self.logger.error(f"Failed to execute PyArrow filter: {str(e)}")
-            execution_time_ms = int((time.time() - start_time) * 1000)
+            execution_time_ms = (time.time() - start_time) * 1000
             
             return {
                 "data": pd.DataFrame(),
@@ -225,6 +229,8 @@ class FilterExecutor:
                 escaped = node.value.replace("'", "\\'")
                 return f"'{escaped}'"
             elif isinstance(node.value, bool):
+                return str(node.value)
+            elif isinstance(node.value, (int, float)):
                 return str(node.value)
             else:
                 return str(node.value)

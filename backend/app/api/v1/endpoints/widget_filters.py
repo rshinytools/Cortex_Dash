@@ -143,12 +143,25 @@ async def test_widget_filter(
     
     # Build dataset path
     from pathlib import Path
+    import os
+    from app.core.config import settings
+    
     org_id = study.org_id
     
-    # Try multiple possible data locations
+    # Get base data directory from environment or use default
+    # In Docker, DATA_PATH is set to /data, otherwise use local ./data
+    data_base = os.getenv("DATA_PATH")
+    if data_base:
+        # Use the environment variable as-is (should be /data in Docker)
+        data_base = data_base
+    else:
+        # Local development - use relative path
+        data_base = "./data"
+    
+    # Try multiple possible data structures
     possible_paths = [
-        Path(f"/data/{org_id}/studies/{study_id}/source_data"),  # Primary structure
-        Path(f"/data/studies/{org_id}/{study_id}/source_data"),  # Alternative structure
+        Path(data_base) / str(org_id) / "studies" / str(study_id) / "source_data",
+        Path(data_base) / "studies" / str(org_id) / str(study_id) / "source_data",
     ]
     
     base_path = None
@@ -160,7 +173,7 @@ async def test_widget_filter(
     if not base_path:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="No data directory found for this study"
+            detail=f"No data directory found for this study. Searched in: {[str(p) for p in possible_paths]}"
         )
     
     # Find latest data version
@@ -195,16 +208,64 @@ async def test_widget_filter(
     if "data" in result and result["data"] is not None and not result["data"].empty:
         # Convert first N rows to dict for response
         sample_df = result["data"].head(request.limit)
-        sample_data = sample_df.to_dict(orient="records")
+        # Convert to dict and ensure all values are JSON serializable
+        import numpy as np
+        import pandas as pd
+        
+        def convert_value(val):
+            """Convert numpy/pandas types to Python native types"""
+            if pd.isna(val):
+                return None
+            elif isinstance(val, (np.integer, np.int64, np.int32)):
+                return int(val)
+            elif isinstance(val, (np.floating, np.float64, np.float32)):
+                return float(val)
+            elif isinstance(val, np.ndarray):
+                return val.tolist()
+            elif isinstance(val, (pd.Timestamp, datetime)):
+                return val.isoformat() if hasattr(val, 'isoformat') else str(val)
+            else:
+                return val
+        
+        sample_data = []
+        for _, row in sample_df.iterrows():
+            sample_data.append({k: convert_value(v) for k, v in row.items()})
     
-    return FilterTestResponse(
-        success="error" not in result,
-        row_count=result.get("row_count", 0),
-        original_count=result.get("original_count", 0),
-        execution_time_ms=result.get("execution_time_ms", 0),
-        sample_data=sample_data,
-        error=result.get("error")
-    )
+    # Ensure proper type conversion for response
+    try:
+        row_count_val = result.get("row_count", 0)
+        original_count_val = result.get("original_count", 0)
+        execution_time_val = result.get("execution_time_ms", 0)
+        
+        # Convert numpy types to Python types if necessary
+        import numpy as np
+        if isinstance(row_count_val, (np.integer, np.int64, np.int32)):
+            row_count_val = int(row_count_val)
+        if isinstance(original_count_val, (np.integer, np.int64, np.int32)):
+            original_count_val = int(original_count_val)
+        if isinstance(execution_time_val, (np.floating, np.float64, np.float32)):
+            execution_time_val = float(execution_time_val)
+            
+        return FilterTestResponse(
+            success="error" not in result,
+            row_count=int(row_count_val),
+            original_count=int(original_count_val),
+            execution_time_ms=float(execution_time_val),
+            sample_data=sample_data,
+            error=result.get("error")
+        )
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error creating response: {e}, result types: row_count={type(result.get('row_count'))}, original_count={type(result.get('original_count'))}, execution_time_ms={type(result.get('execution_time_ms'))}")
+        return FilterTestResponse(
+            success=False,
+            row_count=0,
+            original_count=0,
+            execution_time_ms=0.0,
+            sample_data=None,
+            error=str(e)
+        )
 
 
 @router.put("/studies/{study_id}/widgets/{widget_id}/filter")

@@ -71,6 +71,7 @@ services:
       - SMTP_PORT=1025
       - SMTP_TLS=false
       - EMAILS_FROM_EMAIL=noreply@example.com
+      - DATA_PATH=/data
     volumes:
       - ./data:/data
       - ./backend/app:/app/app

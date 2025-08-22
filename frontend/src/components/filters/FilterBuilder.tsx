@@ -131,6 +131,7 @@ export function FilterBuilder({
   const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [showHelp, setShowHelp] = useState(false);
   const [activeTab, setActiveTab] = useState('builder');
+  const [showSampleData, setShowSampleData] = useState(false);
 
   // Validate filter expression
   const validateFilter = useCallback(async () => {
@@ -205,7 +206,15 @@ export function FilterBuilder({
 
       if (response.ok) {
         const result = await response.json();
-        setTestResult(result);
+        // Convert snake_case from backend to camelCase for frontend
+        setTestResult({
+          success: result.success,
+          rowCount: result.row_count || 0,
+          originalCount: result.original_count || 0,
+          executionTimeMs: result.execution_time_ms || 0,
+          sampleData: result.sample_data,
+          error: result.error
+        });
       } else {
         setTestResult({
           success: false,
@@ -335,8 +344,9 @@ export function FilterBuilder({
   };
 
   return (
-    <Card className={cn('w-full', className)}>
-      <CardHeader>
+    <>
+      <Card className={cn('w-full', className)}>
+        <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Filter className="h-5 w-5" />
@@ -603,32 +613,15 @@ export function FilterBuilder({
                 </div>
 
                 {testResult.sampleData && testResult.sampleData.length > 0 && (
-                  <div>
-                    <Label className="text-sm font-medium mb-2">Sample Data (First 10 rows)</Label>
-                    <div className="border rounded-lg overflow-auto max-h-[300px]">
-                      <table className="w-full text-sm">
-                        <thead className="bg-muted sticky top-0">
-                          <tr>
-                            {Object.keys(testResult.sampleData[0]).map((key) => (
-                              <th key={key} className="px-2 py-1 text-left font-medium">
-                                {key}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {testResult.sampleData.map((row, idx) => (
-                            <tr key={idx} className="border-t">
-                              {Object.values(row).map((value: any, vidx) => (
-                                <td key={vidx} className="px-2 py-1">
-                                  {value?.toString() || '-'}
-                                </td>
-                              ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                  <div className="flex justify-center">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowSampleData(true)}
+                      className="w-full max-w-sm"
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      Show Sample Data ({testResult.sampleData.length} rows)
+                    </Button>
                   </div>
                 )}
               </div>
@@ -756,5 +749,53 @@ export function FilterBuilder({
         </div>
       </CardContent>
     </Card>
+
+    {/* Sample Data Dialog */}
+    <Dialog open={showSampleData} onOpenChange={setShowSampleData}>
+      <DialogContent className="max-w-5xl max-h-[80vh]">
+        <DialogHeader>
+          <DialogTitle>Sample Data Preview</DialogTitle>
+          <DialogDescription>
+            Showing first {testResult?.sampleData?.length || 0} rows after applying the filter
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="overflow-auto max-h-[60vh]">
+          {testResult?.sampleData && testResult.sampleData.length > 0 && (
+            <div className="border rounded-lg">
+              <table className="w-full text-sm">
+                <thead className="bg-muted sticky top-0 z-10">
+                  <tr>
+                    {Object.keys(testResult.sampleData[0]).map((key) => (
+                      <th key={key} className="px-3 py-2 text-left font-medium border-b">
+                        {key}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {testResult.sampleData.map((row, idx) => (
+                    <tr key={idx} className="border-b hover:bg-muted/50">
+                      {Object.values(row).map((value: any, vidx) => (
+                        <td key={vidx} className="px-3 py-2 text-xs">
+                          {value?.toString() || '-'}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button onClick={() => setShowSampleData(false)}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

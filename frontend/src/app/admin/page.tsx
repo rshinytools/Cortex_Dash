@@ -489,14 +489,6 @@ function AdminContent() {
               </div>
               <div className="flex gap-3">
                 <Button 
-                  onClick={() => router.push('/dashboard')}
-                  variant="outline"
-                  className="hover:scale-105 transition-transform"
-                >
-                  <LayoutDashboard className="h-4 w-4 mr-2" />
-                  View Dashboard
-                </Button>
-                <Button 
                   onClick={() => router.push('/studies/new')}
                   className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white hover:scale-105 transition-transform"
                 >

@@ -32,6 +32,10 @@ class OrganizationUpdate(SQLModel):
     name: Optional[str] = Field(default=None, max_length=255)
     features: Optional[Dict[str, Any]] = None
     active: Optional[bool] = None
+    license_type: Optional[str] = Field(default=None, max_length=50)
+    max_users: Optional[int] = None
+    max_studies: Optional[int] = None
+    compliance_settings: Optional[Dict[str, Any]] = None
 
 
 class Organization(OrganizationBase, table=True):

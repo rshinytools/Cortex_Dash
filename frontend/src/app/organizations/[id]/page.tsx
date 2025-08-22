@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useParams } from 'next/navigation';
-import { ArrowLeft, Building2, Save, Shield, Users, FlaskConical, Calendar, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Building2, Save, Shield, Users, FlaskConical, Calendar, AlertCircle, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { DeleteOrganizationDialog } from '@/components/organization/delete-organization-dialog';
 
 export default function OrganizationDetailPage() {
   const router = useRouter();
@@ -49,6 +50,7 @@ export default function OrganizationDetailPage() {
     active: true,
   });
   const [hasChanges, setHasChanges] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Fetch organization data
   const { data: organization, isLoading, error } = useQuery({
@@ -85,6 +87,30 @@ export default function OrganizationDetailPage() {
     },
   });
 
+  // Delete organization mutation
+  const deleteMutation = useMutation({
+    mutationFn: ({ hardDelete, force }: { hardDelete: boolean; force: boolean }) => 
+      organizationsApi.deleteOrganization(orgId, hardDelete, force),
+    onSuccess: (_, { hardDelete }) => {
+      toast({
+        title: hardDelete ? 'Organization deleted' : 'Organization deactivated',
+        description: hardDelete 
+          ? 'The organization has been permanently deleted.'
+          : 'The organization has been deactivated successfully.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['organizations'] });
+      router.push('/organizations');
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Delete failed',
+        description: error.message || 'Failed to delete organization',
+        variant: 'destructive',
+      });
+      setShowDeleteDialog(false);
+    },
+  });
+
   // Initialize form data when organization loads
   useEffect(() => {
     if (organization) {
@@ -110,6 +136,11 @@ export default function OrganizationDetailPage() {
   // Handle save
   const handleSave = () => {
     updateMutation.mutate(formData);
+  };
+
+  // Handle delete
+  const handleDelete = (hardDelete: boolean, force: boolean) => {
+    deleteMutation.mutate({ hardDelete, force });
   };
 
   // Show loading state
@@ -398,26 +429,49 @@ export default function OrganizationDetailPage() {
               </div>
 
               {/* Actions */}
-              <div className="flex justify-end gap-4 pt-4 border-t">
+              <div className="flex justify-between gap-4 pt-4 border-t">
                 <Button
-                  variant="outline"
-                  onClick={() => router.push('/organizations')}
-                  disabled={updateMutation.isPending}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleSave}
-                  disabled={!hasChanges || updateMutation.isPending}
+                  variant="destructive"
+                  onClick={() => setShowDeleteDialog(true)}
+                  disabled={updateMutation.isPending || deleteMutation.isPending}
                   className="gap-2"
                 >
-                  <Save className="h-4 w-4" />
-                  {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+                  <Trash2 className="h-4 w-4" />
+                  Delete Organization
                 </Button>
+                <div className="flex gap-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => router.push('/organizations')}
+                    disabled={updateMutation.isPending}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleSave}
+                    disabled={!hasChanges || updateMutation.isPending}
+                    className="gap-2"
+                  >
+                    <Save className="h-4 w-4" />
+                    {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
         </motion.div>
+
+        {/* Delete Dialog */}
+        {organization && (
+          <DeleteOrganizationDialog
+            open={showDeleteDialog}
+            onOpenChange={setShowDeleteDialog}
+            organization={organization}
+            stats={stats}
+            onDelete={handleDelete}
+            isDeleting={deleteMutation.isPending}
+          />
+        )}
       </div>
     </div>
   );

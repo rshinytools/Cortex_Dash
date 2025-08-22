@@ -48,8 +48,13 @@ export const organizationsApi = {
   },
 
   // Delete organization
-  async deleteOrganization(orgId: string) {
-    await apiClient.delete(`/organizations/${orgId}/`);
+  async deleteOrganization(orgId: string, hardDelete: boolean = false, force: boolean = false) {
+    const params = new URLSearchParams();
+    if (hardDelete) params.append('hard_delete', 'true');
+    if (force) params.append('force', 'true');
+    
+    const response = await apiClient.delete(`/organizations/${orgId}/?${params.toString()}`);
+    return response.data;
   },
 
   // Get organization statistics

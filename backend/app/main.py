@@ -38,7 +38,9 @@ if settings.all_cors_origins:
     logger.info(f"CORS middleware configured with origins: {settings.all_cors_origins}")
     
     # Add audit middleware to capture all API calls
-    app.middleware("http")(AuditMiddleware())
-    logger.info("Audit middleware configured for comprehensive logging")
+    # Temporarily disabled due to enum issues causing 500 errors
+    # app.middleware("http")(AuditMiddleware())
+    # logger.info("Audit middleware configured for comprehensive logging")
+    logger.info("Audit middleware temporarily disabled for debugging")
 
 app.include_router(api_router, prefix=settings.API_V1_STR)

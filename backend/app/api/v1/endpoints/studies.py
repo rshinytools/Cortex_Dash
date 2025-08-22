@@ -11,7 +11,7 @@ import uuid
 from app.api.deps import get_db, get_current_user
 from app.models import (
     Study, StudyCreate, StudyUpdate, StudyPublic, StudyStatus,
-    User, Message, DashboardTemplate
+    User, Message, DashboardTemplate, Organization
 )
 from app.models.widget import WidgetDefinition
 from app.crud import study as crud_study
@@ -27,6 +27,17 @@ from app.services.widget_data_executor_real import (
 # from app.services.redis_cache import get_cache
 
 router = APIRouter()
+
+
+class OrganizationInfo(BaseModel):
+    """Basic organization info for study response"""
+    id: uuid.UUID
+    name: str
+
+
+class StudyWithOrganization(StudyPublic):
+    """Study response with organization data"""
+    organization: Optional[OrganizationInfo] = None
 
 
 class InitializeStudyRequest(BaseModel):
@@ -109,7 +120,7 @@ async def create_study(
     return study
 
 
-@router.get("/", response_model=List[StudyPublic])
+@router.get("/", response_model=List[StudyWithOrganization])
 async def read_studies(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -127,7 +138,22 @@ async def read_studies(
         # Regular users see their organization's studies (including archived)
         studies = crud_study.get_studies(db, org_id=current_user.org_id, skip=skip, limit=limit, active_only=False)
     
-    return studies
+    # Convert studies to StudyWithOrganization with organization data
+    result = []
+    for study in studies:
+        study_dict = StudyPublic.model_validate(study).model_dump()
+        
+        # Get organization data
+        org = db.get(Organization, study.org_id)
+        if org:
+            study_dict['organization'] = OrganizationInfo(
+                id=org.id,
+                name=org.name
+            )
+        
+        result.append(StudyWithOrganization(**study_dict))
+    
+    return result
 
 
 @router.get("/{study_id}", response_model=StudyPublic)

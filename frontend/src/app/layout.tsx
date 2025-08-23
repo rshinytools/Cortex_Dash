@@ -1,13 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { AuthProvider } from "@/lib/auth-context";
-import { RBACProvider } from "@/lib/rbac-context";
-import { QueryProvider } from "@/components/providers/query-provider";
-import { ThemeProvider } from "@/components/providers/theme-provider";
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from 'sonner';
-import { WidgetSystemInitializer } from "@/components/widgets/widget-system-initializer";
+import { RootProviders } from "@/components/providers/root-providers";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -24,24 +18,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <AuthProvider>
-            <RBACProvider>
-              <QueryProvider>
-                <WidgetSystemInitializer>
-                  {children}
-                </WidgetSystemInitializer>
-                <Toaster />
-                <Sonner />
-              </QueryProvider>
-            </RBACProvider>
-          </AuthProvider>
-        </ThemeProvider>
+        <RootProviders>
+          {children}
+        </RootProviders>
       </body>
     </html>
   );

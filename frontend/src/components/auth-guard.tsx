@@ -19,20 +19,10 @@ export function AuthGuard({ children, requiredRoles }: AuthGuardProps) {
   useEffect(() => {
     // Only redirect if we're done loading and definitely not authenticated
     if (!isLoading) {
-      console.log('AuthGuard check:', { 
-        isAuthenticated, 
-        user: user?.email, 
-        role: user?.role,
-        requiredRoles,
-        path: window.location.pathname 
-      });
-      
       if (!isAuthenticated) {
-        console.log('Not authenticated, redirecting to login');
         router.push('/login');
       } else if (requiredRoles && user && !requiredRoles.includes(user.role)) {
         // Check if user has required role
-        console.log('User lacks required role, redirecting to dashboard');
         router.push('/dashboard');
       }
     }

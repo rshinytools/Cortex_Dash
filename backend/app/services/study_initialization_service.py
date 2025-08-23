@@ -13,7 +13,7 @@ from sqlmodel import Session
 from sqlalchemy.orm.attributes import flag_modified
 from fastapi import HTTPException
 
-from app.models import Study, DashboardTemplate, User
+from app.models import Study, StudyStatus, DashboardTemplate, User
 from app.core.db import engine
 from app.core.websocket_manager import websocket_manager
 from app.services.file_conversion_service import FileConversionService
@@ -90,8 +90,10 @@ class StudyInitializationService:
                 "completed_at": datetime.utcnow().isoformat()
             })
             
-            # Update study activation
+            # Update study activation and status
             study.activated_at = datetime.utcnow()
+            study.status = StudyStatus.ACTIVE  # Change status to ACTIVE when initialization completes
+            study.is_active = True
             self.db.add(study)
             self.db.commit()
             self.db.refresh(study)

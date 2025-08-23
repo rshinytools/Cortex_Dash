@@ -33,6 +33,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Security: Store access token in memory only, not in localStorage
+// Using a global variable outside the component to persist across navigation
 let memoryToken: string | null = null;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -92,17 +93,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Check for existing session on mount
   useEffect(() => {
     const checkAuth = async () => {
+      console.log('Auth context: Checking authentication...');
       try {
         // Check if we have a stored user in sessionStorage first
         const storedUser = sessionStorage.getItem('auth_user');
+        console.log('Auth context: Stored user found:', !!storedUser);
         
         if (storedUser) {
           // Temporarily set user from session storage
-          setUser(JSON.parse(storedUser));
+          const userData = JSON.parse(storedUser);
+          console.log('Auth context: Setting user from session:', userData.email);
+          setUser(userData);
         }
         
         // Try to refresh token using httpOnly cookie
+        console.log('Auth context: Attempting token refresh...');
         const token = await refreshAccessToken();
+        console.log('Auth context: Token refresh result:', !!token);
         
         if (token) {
           // Fetch user data with the new token
@@ -115,11 +122,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           );
           
+          console.log('Auth context: User data fetched:', response.data.email);
           setUser(response.data);
           // Security: Store user data in sessionStorage instead of localStorage
           sessionStorage.setItem('auth_user', JSON.stringify(response.data));
         } else if (storedUser) {
           // Clear stale session data if refresh failed
+          console.log('Auth context: Token refresh failed, clearing session');
           sessionStorage.removeItem('auth_user');
           setUser(null);
         }

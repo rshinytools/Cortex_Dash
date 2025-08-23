@@ -74,7 +74,14 @@ export function useStudyMenu(studyId: string): UseStudyMenuResult {
       })
 
       if (!studyResponse.ok) {
-        throw new Error('Failed to fetch study information')
+        if (studyResponse.status === 401 || studyResponse.status === 403) {
+          // Token might be expired, clear cache and return silently
+          // The auth system should handle re-authentication
+          console.log('Authentication error fetching study menu, token may be expired')
+          setLoading(false)
+          return
+        }
+        throw new Error(`Failed to fetch study information: ${studyResponse.status}`)
       }
 
       const study = await studyResponse.json()
@@ -95,7 +102,13 @@ export function useStudyMenu(studyId: string): UseStudyMenuResult {
       })
 
       if (!templateResponse.ok) {
-        throw new Error('Failed to fetch dashboard template')
+        if (templateResponse.status === 401 || templateResponse.status === 403) {
+          // Token might be expired, clear cache and return silently
+          console.log('Authentication error fetching dashboard template, token may be expired')
+          setLoading(false)
+          return
+        }
+        throw new Error(`Failed to fetch dashboard template: ${templateResponse.status}`)
       }
 
       const dashboardTemplate = await templateResponse.json()

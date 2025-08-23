@@ -736,6 +736,12 @@ async def complete_upload_step(
             detail="No files uploaded. Please upload at least one data file."
         )
     
+    # IMPORTANT: Copy uploaded files to study config for initialization service
+    if not study.config:
+        study.config = {}
+    study.config["uploaded_files"] = uploaded_files
+    flag_modified(study, "config")
+    
     # Update wizard state
     wizard_state = study.initialization_steps.get("wizard_state", {})
     wizard_state["current_step"] = 4

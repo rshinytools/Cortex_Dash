@@ -677,6 +677,7 @@ async def upload_wizard_files(
     study.initialization_steps["wizard_state"] = wizard_state
     
     # Mark the JSON field as modified to ensure SQLAlchemy detects the change
+    from sqlalchemy.orm.attributes import flag_modified
     flag_modified(study, "initialization_steps")
     
     logger.info(f"Saving uploaded files to study {study_id}: {len(uploaded_files)} files")
@@ -740,6 +741,7 @@ async def complete_upload_step(
     if not study.config:
         study.config = {}
     study.config["uploaded_files"] = uploaded_files
+    from sqlalchemy.orm.attributes import flag_modified
     flag_modified(study, "config")
     
     # Update wizard state

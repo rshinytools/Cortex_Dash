@@ -59,7 +59,9 @@ export function useWebSocket(
       wsRef.current = ws;
 
       ws.onopen = () => {
-        console.log('WebSocket connected');
+        if (process.env.NODE_ENV === 'development') {
+          console.debug('WebSocket connected');
+        }
         setIsConnected(true);
         reconnectAttemptsRef.current = 0;
         onOpen?.();
@@ -75,8 +77,10 @@ export function useWebSocket(
         }
       };
 
-      ws.onclose = () => {
-        console.log('WebSocket disconnected');
+      ws.onclose = (event) => {
+        if (process.env.NODE_ENV === 'development') {
+          console.debug('WebSocket disconnected', { code: event.code, reason: event.reason });
+        }
         setIsConnected(false);
         wsRef.current = null;
         onClose?.();
@@ -88,9 +92,11 @@ export function useWebSocket(
           !reconnectTimeoutRef.current
         ) {
           reconnectAttemptsRef.current++;
-          console.log(
-            `Attempting to reconnect (${reconnectAttemptsRef.current}/${reconnectAttempts})...`
-          );
+          if (process.env.NODE_ENV === 'development') {
+            console.debug(
+              `Attempting to reconnect (${reconnectAttemptsRef.current}/${reconnectAttempts})...`
+            );
+          }
           
           reconnectTimeoutRef.current = setTimeout(() => {
             reconnectTimeoutRef.current = null;
@@ -100,16 +106,19 @@ export function useWebSocket(
       };
 
       ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
+        // WebSocket errors don't provide much detail, just log a simple message
+        // The actual error details will come through the onclose event
+        if (process.env.NODE_ENV === 'development') {
+          console.debug('WebSocket connection error detected');
+        }
         onError?.(error);
       };
     } catch (error) {
-      console.error('Failed to create WebSocket:', error);
-      toast({
-        title: 'Connection Error',
-        description: 'Failed to establish real-time connection',
-        variant: 'destructive',
-      });
+      if (process.env.NODE_ENV === 'development') {
+        console.debug('Failed to create WebSocket:', error);
+      }
+      // Don't show toast for WebSocket failures as they're not critical
+      // and will attempt to reconnect automatically
     }
   }, [url, token, onMessage, onOpen, onClose, onError, reconnect, reconnectInterval, reconnectAttempts]);
 
@@ -132,7 +141,9 @@ export function useWebSocket(
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(message));
     } else {
-      console.warn('WebSocket is not connected');
+      if (process.env.NODE_ENV === 'development') {
+        console.debug('WebSocket is not connected, message not sent');
+      }
     }
   }, []);
 

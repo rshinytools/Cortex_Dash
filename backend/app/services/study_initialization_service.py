@@ -91,12 +91,14 @@ class StudyInitializationService:
             })
             
             # Update study activation and status
+            logger.info(f"Setting study {study_id} status from {study.status} to ACTIVE")
             study.activated_at = datetime.utcnow()
             study.status = StudyStatus.ACTIVE  # Change status to ACTIVE when initialization completes
             study.is_active = True
             self.db.add(study)
             self.db.commit()
             self.db.refresh(study)
+            logger.info(f"Study {study_id} status after commit: {study.status}")
             
             return study
             

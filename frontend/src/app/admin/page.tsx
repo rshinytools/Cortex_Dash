@@ -921,9 +921,6 @@ function AdminContent() {
 }
 
 export default function AdminPage() {
-  return (
-    <AuthGuard requiredRoles={['system_admin', 'org_admin']}>
-      <AdminContent />
-    </AuthGuard>
-  );
+  // AuthGuard is already applied in admin/layout.tsx
+  return <AdminContent />;
 }

@@ -96,6 +96,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Check if we have a stored user in sessionStorage first
         const storedUser = sessionStorage.getItem('auth_user');
         
+        if (storedUser) {
+          // Temporarily set user from session storage
+          setUser(JSON.parse(storedUser));
+        }
+        
         // Try to refresh token using httpOnly cookie
         const token = await refreshAccessToken();
         
@@ -116,6 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else if (storedUser) {
           // Clear stale session data if refresh failed
           sessionStorage.removeItem('auth_user');
+          setUser(null);
         }
       } catch (error: any) {
         // Only log error if it's not a 401 (expected when no refresh token exists)
@@ -124,6 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         // Clear any stale session data
         sessionStorage.removeItem('auth_user');
+        setUser(null);
         // User needs to login again
       } finally {
         setIsLoading(false);
@@ -258,7 +265,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         logout,
         updateUser,
-        isAuthenticated: !!memoryToken && !!user,
+        isAuthenticated: !!user, // Check user instead of token since token is in memory
         getAccessToken,
       }}
     >

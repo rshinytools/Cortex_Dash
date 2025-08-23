@@ -422,9 +422,6 @@ function RBACContent() {
 }
 
 export default function RBACPage() {
-  return (
-    <AuthGuard requiredRoles={['system_admin']}>
-      <RBACContent />
-    </AuthGuard>
-  );
+  // AuthGuard is already applied in admin/layout.tsx
+  return <RBACContent />;
 }

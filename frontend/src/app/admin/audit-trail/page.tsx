@@ -554,9 +554,6 @@ function AuditTrailContent() {
 }
 
 export default function AuditTrailPage() {
-  return (
-    <AuthGuard requiredRoles={['system_admin', 'org_admin']}>
-      <AuditTrailContent />
-    </AuthGuard>
-  );
+  // AuthGuard is already applied in admin/layout.tsx
+  return <AuditTrailContent />;
 }

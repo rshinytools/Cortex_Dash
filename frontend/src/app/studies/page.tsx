@@ -505,7 +505,7 @@ export default function StudiesPage() {
                   <TableHead className="text-gray-700 dark:text-gray-300">Phase</TableHead>
                   <TableHead className="text-gray-700 dark:text-gray-300">Status</TableHead>
                   <TableHead className="text-gray-700 dark:text-gray-300">Initialization</TableHead>
-                  <TableHead className="text-gray-700 dark:text-gray-300">Start Date</TableHead>
+                  <TableHead className="text-gray-700 dark:text-gray-300">Activation Date</TableHead>
                   <TableHead className="text-right text-gray-700 dark:text-gray-300">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -537,7 +537,9 @@ export default function StudiesPage() {
                       {getInitializationStatus(study)}
                     </TableCell>
                     <TableCell className="text-gray-700 dark:text-gray-300">
-                      {study.start_date 
+                      {study.activated_at 
+                        ? format(new Date(study.activated_at), 'MMM d, yyyy')
+                        : study.start_date 
                         ? format(new Date(study.start_date), 'MMM d, yyyy')
                         : study.planned_start_date
                         ? format(new Date(study.planned_start_date), 'MMM d, yyyy')

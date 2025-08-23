@@ -67,6 +67,8 @@ interface AggregationSelectorProps {
   columnType?: string;
   columnName?: string;
   disabled?: boolean;
+  compact?: boolean;
+  showValidation?: boolean;
 }
 
 export function AggregationSelector({
@@ -74,7 +76,9 @@ export function AggregationSelector({
   onChange,
   columnType,
   columnName,
-  disabled = false
+  disabled = false,
+  compact = false,
+  showValidation = true
 }: AggregationSelectorProps) {
   // Determine if the column is numeric based on type
   const isNumericColumn = columnType ? 
@@ -101,6 +105,34 @@ export function AggregationSelector({
     }
   }, [isInvalidSelection, onChange]);
 
+  if (compact) {
+    // Compact mode - just the select dropdown
+    return (
+      <Select
+        value={value}
+        onValueChange={(val) => onChange(val as AggregationType)}
+        disabled={disabled}
+      >
+        <SelectTrigger className="w-full">
+          <SelectValue placeholder="Select aggregation" />
+        </SelectTrigger>
+        <SelectContent>
+          {availableOptions.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              <div className="flex items-center justify-between w-full">
+                <span>{option.label}</span>
+                {option.requiresNumeric && (
+                  <span className="text-xs text-muted-foreground ml-2">(numeric)</span>
+                )}
+              </div>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    );
+  }
+
+  // Full mode with label and validation
   return (
     <div className="space-y-2">
       <Label className="flex items-center gap-2">
@@ -139,7 +171,7 @@ export function AggregationSelector({
         </SelectContent>
       </Select>
 
-      {!isNumericColumn && columnName && (
+      {showValidation && !isNumericColumn && columnName && (
         <Alert className="mt-2">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
@@ -149,7 +181,7 @@ export function AggregationSelector({
         </Alert>
       )}
 
-      {columnType && (
+      {showValidation && columnType && (
         <p className="text-xs text-muted-foreground">
           Column type: {columnType} {isNumericColumn ? '(numeric)' : '(non-numeric)'}
         </p>

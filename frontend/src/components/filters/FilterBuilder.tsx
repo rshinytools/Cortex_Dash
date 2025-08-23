@@ -697,13 +697,13 @@ export function FilterBuilder({
               <div className="space-y-2 text-sm">
                 <p className="font-medium">Filter Syntax Examples:</p>
                 <ul className="list-disc list-inside space-y-1">
-                  <li>Simple comparison: <code>AGE >= 18</code></li>
-                  <li>Multiple conditions: <code>AGE >= 18 AND AESER = 'Y'</code></li>
+                  <li>Simple comparison: <code>AGE {'>'}= 18</code></li>
+                  <li>Multiple conditions: <code>AGE {'>'}= 18 AND AESER = 'Y'</code></li>
                   <li>List matching: <code>COUNTRY IN ('USA', 'UK')</code></li>
                   <li>Pattern matching: <code>AETERM LIKE '%headache%'</code></li>
                   <li>Null checking: <code>DISCONTINUED IS NULL</code></li>
                   <li>Range: <code>AGE BETWEEN 18 AND 65</code></li>
-                  <li>Complex: <code>(AESER = 'Y' AND AGE >= 65) OR AESEV = 'SEVERE'</code></li>
+                  <li>Complex: <code>(AESER = 'Y' AND AGE {'>'}= 65) OR AESEV = 'SEVERE'</code></li>
                 </ul>
               </div>
             </AlertDescription>

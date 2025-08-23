@@ -119,6 +119,20 @@ export function FieldMappingStep({
     loadMappingData();
   }, [studyId, mode, existingStudy]);
 
+  const isNumericColumn = (columnName: string, datasetName: string): boolean => {
+    if (!columnName || !datasetName) return false;
+    
+    const schema = datasetSchemas.find(s => s.dataset_name === datasetName);
+    if (!schema?.column_types) return false;
+    
+    const columnInfo = schema.column_types[columnName];
+    if (!columnInfo?.pandas_dtype) return false;
+    
+    // Check if pandas dtype indicates numeric
+    const numericTypes = ['int', 'integer', 'float', 'double', 'decimal', 'numeric', 'number', 'int64', 'float64'];
+    return numericTypes.some(type => columnInfo.pandas_dtype!.toLowerCase().includes(type));
+  };
+
   const loadMappingData = async () => {
     if (!studyId) {
       setIsLoadingData(false);
@@ -390,21 +404,28 @@ export function FieldMappingStep({
     });
 
     // Return both nested (for Review display) and flat (for backend) structures
-    onComplete({
+    const flatMappings = (() => {
+      // Create flat structure for backend
+      const flat: Record<string, any> = {};
+      Object.entries(mappings).forEach(([widgetId, widgetMappings]) => {
+        Object.entries(widgetMappings).forEach(([field, mapping]) => {
+          flat[`${widgetId}_${field}`] = mapping;
+        });
+      });
+      return flat;
+    })();
+    
+    // Include flatMappings in mappings for backward compatibility
+    const result = {
       mappings: mappings,  // Keep nested structure for display
       filters: filters,  // Include filters
-      flatMappings: (() => {
-        // Create flat structure for backend
-        const flat: Record<string, any> = {};
-        Object.entries(mappings).forEach(([widgetId, widgetMappings]) => {
-          Object.entries(widgetMappings).forEach(([field, mapping]) => {
-            flat[`${widgetId}_${field}`] = mapping;
-          });
-        });
-        return flat;
-      })(),
       acceptAutoMappings
-    });
+    };
+    
+    // Add flatMappings to mappings object for backend processing
+    (result as any).flatMappings = flatMappings;
+    
+    onComplete(result);
   };
 
   if (isLoadingData) {
@@ -571,63 +592,63 @@ export function FieldMappingStep({
                             {currentMapping?.confidence && getConfidenceBadge(currentMapping.confidence)}
                           </div>
                           
-                          <div className="grid grid-cols-4 gap-2">
-                            {/* Dataset Selection */}
-                            <div>
-                              <Label className="text-xs text-muted-foreground mb-1 block">
-                                Dataset
-                              </Label>
-                              <Select
-                                value={currentMapping?.dataset || ''}
-                                onValueChange={(value) => {
-                                  const firstColumn = datasetSchemas.find(d => d.dataset_name === value)?.columns[0] || '';
-                                  handleFieldMapping(requirement.widget_id, field, value, firstColumn);
-                                }}
-                              >
-                                <SelectTrigger className="w-full">
-                                  <SelectValue placeholder="Select dataset" />
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-12 gap-3 items-end">
+                              {/* Dataset Selection */}
+                              <div className="col-span-3">
+                                <Label className="text-xs text-muted-foreground mb-1 block">
+                                  Dataset
+                                </Label>
+                                <Select
+                                  value={currentMapping?.dataset || ''}
+                                  onValueChange={(value) => {
+                                    const firstColumn = datasetSchemas.find(d => d.dataset_name === value)?.columns[0] || '';
+                                    handleFieldMapping(requirement.widget_id, field, value, firstColumn);
+                                  }}
+                                >
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select dataset" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {datasetSchemas.map((schema) => (
+                                      <SelectItem key={schema.dataset_name} value={schema.dataset_name}>
+                                        {schema.dataset_name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              
+                              {/* Column Selection */}
+                              <div className="col-span-4">
+                                <Label className="text-xs text-muted-foreground mb-1 block">
+                                  Column
+                                </Label>
+                                <Select
+                                  value={currentMapping?.column || ''}
+                                  onValueChange={(value) => {
+                                    handleFieldMapping(requirement.widget_id, field, currentMapping?.dataset || '', value, currentMapping?.aggregation);
+                                  }}
+                                  disabled={!currentMapping?.dataset}
+                                >
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select column" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {datasetSchemas.map((schema) => (
-                                    <SelectItem key={schema.dataset_name} value={schema.dataset_name}>
-                                      {schema.dataset_name}
-                                    </SelectItem>
-                                  ))}
+                                  {datasetSchemas
+                                    .find(s => s.dataset_name === currentMapping?.dataset)
+                                    ?.columns.map((col) => (
+                                      <SelectItem key={col} value={col}>
+                                        {col}
+                                      </SelectItem>
+                                    ))}
                                 </SelectContent>
                               </Select>
                             </div>
                             
-                            {/* Column Selection */}
-                            <div>
-                              <Label className="text-xs text-muted-foreground mb-1 block">
-                                Column
-                              </Label>
-                              <Select
-                                value={currentMapping?.column || ''}
-                                onValueChange={(value) => {
-                                  handleFieldMapping(requirement.widget_id, field, currentMapping?.dataset || '', value, currentMapping?.aggregation);
-                                }}
-                                disabled={!currentMapping?.dataset}
-                              >
-                                <SelectTrigger className="w-full">
-                                  <SelectValue placeholder="Select column" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {datasetSchemas
-                                  .find(s => s.dataset_name === currentMapping?.dataset)
-                                  ?.columns.map((col) => (
-                                    <SelectItem key={col} value={col}>
-                                      {col}
-                                    </SelectItem>
-                                  ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          
-                          {/* Aggregation Selection - Only for KPI widgets */}
-                          <div>
+                            {/* Aggregation Selection - Only for KPI widgets */}
                             {requirement.widget_type === 'kpi_card' || requirement.widget_type === 'kpi_metric_card' ? (
-                              <>
+                              <div className="col-span-3">
                                 <Label className="text-xs text-muted-foreground mb-1 block">
                                   Aggregation
                                 </Label>
@@ -638,45 +659,61 @@ export function FieldMappingStep({
                                     currentMapping?.column && currentMapping?.dataset
                                       ? datasetSchemas
                                           .find(s => s.dataset_name === currentMapping.dataset)
-                                          ?.column_types?.[currentMapping.column]?.type
+                                          ?.column_types?.[currentMapping.column]?.pandas_dtype
                                       : undefined
                                   }
                                   columnName={currentMapping?.column}
                                   disabled={!currentMapping?.column}
+                                  compact={true}
+                                  showValidation={false}
                                 />
-                              </>
+                              </div>
                             ) : (
-                              <div /> 
+                              <div className="col-span-3" /> 
                             )}
+                            
+                            {/* Filter Button */}
+                            <div className="col-span-2">
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        setActiveFilterWidget({ widgetId: requirement.widget_id, field });
+                                        setFilterDialogOpen(true);
+                                      }}
+                                      disabled={!currentMapping?.dataset || !currentMapping?.column}
+                                      className="w-full h-9"
+                                    >
+                                      <Filter className="h-4 w-4" />
+                                      {widgetFilters[`${requirement.widget_id}_${field}`] ? (
+                                        <Badge variant="secondary" className="ml-1">Active</Badge>
+                                      ) : null}
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Add filter condition (optional)</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
                           </div>
                           
-                          {/* Filter Button */}
-                          <div className="flex items-end">
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {
-                                      setActiveFilterWidget({ widgetId: requirement.widget_id, field });
-                                      setFilterDialogOpen(true);
-                                    }}
-                                    disabled={!currentMapping?.dataset || !currentMapping?.column}
-                                    className="h-9"
-                                  >
-                                    <Filter className="h-4 w-4" />
-                                    {widgetFilters[`${requirement.widget_id}_${field}`] ? (
-                                      <Badge variant="secondary" className="ml-1">Active</Badge>
-                                    ) : null}
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Add filter condition (optional)</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          </div>
+                          {/* Show validation message below if needed */}
+                          {currentMapping?.column && 
+                           (requirement.widget_type === 'kpi_card' || requirement.widget_type === 'kpi_metric_card') &&
+                           !isNumericColumn(currentMapping?.column, currentMapping?.dataset) && 
+                           ['sum', 'avg', 'min', 'max'].includes(currentMapping?.aggregation || '') && (
+                            <Alert className="mt-2">
+                              <AlertCircle className="h-4 w-4" />
+                              <AlertDescription>
+                                Column <strong>{currentMapping.column}</strong> appears to be non-numeric.
+                                Only count operations are available for non-numeric columns.
+                              </AlertDescription>
+                            </Alert>
+                          )}
                         </div>
                         
                         {/* Show filter if exists */}

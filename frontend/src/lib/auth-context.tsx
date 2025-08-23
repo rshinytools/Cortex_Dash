@@ -5,9 +5,19 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { User, UserRole } from '@/types';
 import { setTokenGetter } from '@/lib/api/secure-client';
+
+// Create a silent axios instance that doesn't log errors to console
+const silentAxios = axios.create();
+silentAxios.interceptors.response.use(
+  response => response,
+  error => {
+    // Silently return the error without logging to console
+    return Promise.reject(error);
+  }
+);
 
 interface AuthContextType {
   user: User | null;
@@ -34,7 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Security: Refresh access token using httpOnly refresh token
   const refreshAccessToken = useCallback(async (): Promise<string | null> => {
     try {
-      const response = await axios.post(
+      const response = await silentAxios.post(
         'http://localhost:8000/api/v1/login/refresh-token',
         {},
         {
@@ -137,7 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       formData.append('username', email);
       formData.append('password', password);
       
-      const loginResponse = await axios.post(
+      const loginResponse = await silentAxios.post(
         'http://localhost:8000/api/v1/login/access-token',
         formData.toString(),
         {
@@ -184,8 +194,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         router.push('/dashboard');
       }
     } catch (error: any) {
-      console.error('Login failed:', error);
-      throw new Error(error.response?.data?.detail || 'Invalid credentials');
+      // Don't log authentication failures to console (they're expected for wrong credentials)
+      // The UI will handle displaying the error message
+      const errorMessage = error.response?.data?.detail || 'Invalid credentials';
+      throw new Error(errorMessage);
     }
   };
 

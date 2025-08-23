@@ -85,12 +85,14 @@ def login_access_token(
     )
     
     # Set refresh token as httpOnly cookie
+    # Security: Use secure=True only in production (HTTPS)
+    is_production = settings.ENVIRONMENT == "production"
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=True,  # Security: Use secure cookie in production
-        samesite="strict",  # Security: Prevent CSRF attacks
+        secure=is_production,  # Security: Secure cookie in production only
+        samesite="lax" if not is_production else "strict",  # Security: Lax in dev for localhost
         max_age=7 * 24 * 60 * 60,  # 7 days in seconds
         path="/"
     )
@@ -143,12 +145,14 @@ def refresh_access_token(
     )
     
     # Set new refresh token
+    # Security: Use secure=True only in production (HTTPS)
+    is_production = settings.ENVIRONMENT == "production"
     response.set_cookie(
         key="refresh_token",
         value=new_refresh_token,
         httponly=True,
-        secure=True,
-        samesite="strict",
+        secure=is_production,
+        samesite="lax" if not is_production else "strict",
         max_age=7 * 24 * 60 * 60,
         path="/"
     )

@@ -54,8 +54,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }, 25 * 60 * 1000); // 25 minutes
 
       return access_token;
-    } catch (error) {
-      console.error('Token refresh failed:', error);
+    } catch (error: any) {
+      // Only log error if it's not a 401 (expected when no refresh token exists)
+      if (error?.response?.status !== 401) {
+        console.error('Token refresh failed:', error);
+      }
       memoryToken = null;
       return null;
     }
@@ -80,6 +83,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        // Check if we have a stored user in sessionStorage first
+        const storedUser = sessionStorage.getItem('auth_user');
+        
         // Try to refresh token using httpOnly cookie
         const token = await refreshAccessToken();
         
@@ -97,9 +103,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(response.data);
           // Security: Store user data in sessionStorage instead of localStorage
           sessionStorage.setItem('auth_user', JSON.stringify(response.data));
+        } else if (storedUser) {
+          // Clear stale session data if refresh failed
+          sessionStorage.removeItem('auth_user');
         }
-      } catch (error) {
-        console.error('Session restoration failed:', error);
+      } catch (error: any) {
+        // Only log error if it's not a 401 (expected when no refresh token exists)
+        if (error?.response?.status !== 401) {
+          console.error('Session restoration failed:', error);
+        }
+        // Clear any stale session data
+        sessionStorage.removeItem('auth_user');
         // User needs to login again
       } finally {
         setIsLoading(false);

@@ -185,7 +185,9 @@ class RealWidgetExecutor:
                     # Continue without filter rather than fail the widget
             
             # Calculate the value based on aggregation type
+            # Check for aggregation stored with widget_id_aggregation key
             aggregation = field_mappings.get(f"{widget_id}_aggregation", "count_distinct")
+            logger.info(f"Using aggregation: {aggregation} for widget {widget_id}")
             
             if column_name and column_name in df.columns:
                 if aggregation == "count_distinct":
@@ -194,7 +196,7 @@ class RealWidgetExecutor:
                     value = len(df)
                 elif aggregation == "sum":
                     value = df[column_name].sum()
-                elif aggregation == "mean":
+                elif aggregation in ["mean", "avg", "average"]:
                     value = df[column_name].mean()
                 elif aggregation == "max":
                     value = df[column_name].max()
@@ -202,6 +204,12 @@ class RealWidgetExecutor:
                     value = df[column_name].min()
                 else:
                     value = len(df)  # Default to count
+                    
+                # Handle NaN and convert numpy types to Python types
+                if pd.isna(value):
+                    value = 0
+                elif hasattr(value, 'item'):  # numpy scalar
+                    value = value.item()
             else:
                 # No specific column, just count rows
                 value = len(df)

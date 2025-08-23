@@ -43,6 +43,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FilterBuilder } from '@/components/filters/FilterBuilder';
+import { AggregationSelector, AggregationType } from '../components/aggregation-selector';
 
 interface FieldMappingStepProps {
   studyId: string | null;
@@ -68,9 +69,16 @@ interface TemplateRequirement {
   data_requirements: any;
 }
 
+interface ColumnInfo {
+  name: string;
+  type: 'number' | 'string' | 'boolean' | 'datetime';
+  pandas_dtype?: string;
+}
+
 interface DatasetSchema {
   dataset_name: string;
   columns: string[];
+  column_types?: Record<string, ColumnInfo>;
   row_count: number;
   column_count: number;
 }
@@ -78,6 +86,7 @@ interface DatasetSchema {
 interface FieldMapping {
   dataset: string;
   column: string;
+  aggregation?: AggregationType;
   confidence?: number;
   filter?: {
     expression: string;
@@ -131,6 +140,14 @@ export function FieldMappingStep({
         const schemas: DatasetSchema[] = Object.entries(mappingData.dataset_schemas).map(([name, schema]: [string, any]) => ({
           dataset_name: name,
           columns: Object.keys(schema.columns || {}),
+          column_types: Object.entries(schema.columns || {}).reduce((acc, [colName, colInfo]: [string, any]) => {
+            acc[colName] = {
+              name: colName,
+              type: colInfo.type || 'string',
+              pandas_dtype: colInfo.pandas_dtype
+            };
+            return acc;
+          }, {} as Record<string, ColumnInfo>),
           row_count: schema.row_count || 0,
           column_count: schema.column_count || Object.keys(schema.columns || {}).length
         }));
@@ -288,7 +305,7 @@ export function FieldMappingStep({
     }
   };
 
-  const handleFieldMapping = (widgetId: string, field: string, dataset: string, column: string) => {
+  const handleFieldMapping = (widgetId: string, field: string, dataset: string, column: string, aggregation?: AggregationType) => {
     setMappings(prev => ({
       ...prev,
       [widgetId]: {
@@ -296,6 +313,7 @@ export function FieldMappingStep({
         [field]: {
           dataset,
           column,
+          aggregation: aggregation || 'count_distinct', // Default to count_distinct
           confidence: undefined // Clear confidence when manually mapped
         }
       }
@@ -303,6 +321,19 @@ export function FieldMappingStep({
     
     // Clear validation errors when user makes changes
     setValidationErrors([]);
+  };
+
+  const handleAggregationChange = (widgetId: string, field: string, aggregation: AggregationType) => {
+    setMappings(prev => ({
+      ...prev,
+      [widgetId]: {
+        ...prev[widgetId],
+        [field]: {
+          ...prev[widgetId]?.[field],
+          aggregation
+        }
+      }
+    }));
   };
 
   const getConfidenceBadge = (confidence?: number) => {
@@ -540,7 +571,7 @@ export function FieldMappingStep({
                             {currentMapping?.confidence && getConfidenceBadge(currentMapping.confidence)}
                           </div>
                           
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-4 gap-2">
                             {/* Dataset Selection */}
                             <div>
                               <Label className="text-xs text-muted-foreground mb-1 block">
@@ -574,7 +605,7 @@ export function FieldMappingStep({
                               <Select
                                 value={currentMapping?.column || ''}
                                 onValueChange={(value) => {
-                                  handleFieldMapping(requirement.widget_id, field, currentMapping?.dataset || '', value);
+                                  handleFieldMapping(requirement.widget_id, field, currentMapping?.dataset || '', value, currentMapping?.aggregation);
                                 }}
                                 disabled={!currentMapping?.dataset}
                               >
@@ -591,6 +622,32 @@ export function FieldMappingStep({
                                   ))}
                               </SelectContent>
                             </Select>
+                          </div>
+                          
+                          {/* Aggregation Selection - Only for KPI widgets */}
+                          <div>
+                            {requirement.widget_type === 'kpi_card' || requirement.widget_type === 'kpi_metric_card' ? (
+                              <>
+                                <Label className="text-xs text-muted-foreground mb-1 block">
+                                  Aggregation
+                                </Label>
+                                <AggregationSelector
+                                  value={currentMapping?.aggregation || 'count_distinct'}
+                                  onChange={(aggregation) => handleAggregationChange(requirement.widget_id, field, aggregation)}
+                                  columnType={
+                                    currentMapping?.column && currentMapping?.dataset
+                                      ? datasetSchemas
+                                          .find(s => s.dataset_name === currentMapping.dataset)
+                                          ?.column_types?.[currentMapping.column]?.type
+                                      : undefined
+                                  }
+                                  columnName={currentMapping?.column}
+                                  disabled={!currentMapping?.column}
+                                />
+                              </>
+                            ) : (
+                              <div /> 
+                            )}
                           </div>
                           
                           {/* Filter Button */}

@@ -1025,6 +1025,9 @@ async def complete_wizard(
                     if isinstance(mapping, dict) and 'dataset' in mapping and 'column' in mapping:
                         value = f"{mapping['dataset']}.{mapping['column']}"
                         flattened_mappings[key] = value
+                        # Also store aggregation if present
+                        if 'aggregation' in mapping:
+                            flattened_mappings[f"{widget_id}_aggregation"] = mapping['aggregation']
         study.field_mappings = flattened_mappings
     
     study.initialization_steps["auto_mappings_accepted"] = request.accept_auto_mappings

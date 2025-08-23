@@ -112,6 +112,7 @@ export function InitializationWizard({
             // Convert labels back to values for dropdowns
             therapeutic_area: getTherapeuticAreaValue(existingStudy.therapeutic_area),
             indication: getIndicationValue(existingStudy.therapeutic_area, existingStudy.indication),
+            org_id: existingStudy.org_id, // Include the organization ID
           },
           template_selection: {
             templateId: existingStudy.dashboard_template_id,

@@ -75,12 +75,21 @@ export function BasicInfoStep({
     getIndicationsForArea(formData?.therapeutic_area || DEFAULT_THERAPEUTIC_AREA)
   );
 
-  // Fetch organizations list
+  // Fetch organizations list - ALL users should be able to select organization
   const { data: organizations, isLoading: orgsLoading } = useQuery({
     queryKey: ['organizations'],
     queryFn: organizationsApi.getOrganizations,
-    enabled: user?.role === UserRole.SYSTEM_ADMIN,
+    enabled: true, // Enable for all users
   });
+
+  // Use the org_id from form data if available, otherwise empty
+  const defaultOrgId = formData?.org_id || '';
+  
+  // Debug logging
+  console.log('[BasicInfoStep] Mode:', mode);
+  console.log('[BasicInfoStep] FormData:', formData);
+  console.log('[BasicInfoStep] DefaultOrgId:', defaultOrgId);
+  console.log('[BasicInfoStep] Organizations:', organizations);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -91,9 +100,17 @@ export function BasicInfoStep({
       phase: formData?.phase || 'phase_3',
       therapeutic_area: formData?.therapeutic_area || DEFAULT_THERAPEUTIC_AREA,
       indication: formData?.indication || DEFAULT_INDICATION,
-      org_id: formData?.org_id || (user?.role !== UserRole.SYSTEM_ADMIN ? user?.org_id : ''),
+      org_id: defaultOrgId,
     },
   });
+
+  // Update form when formData changes (important for edit mode)
+  useEffect(() => {
+    if (formData?.org_id) {
+      console.log('[BasicInfoStep] Setting org_id to:', formData.org_id);
+      form.setValue('org_id', formData.org_id);
+    }
+  }, [formData?.org_id, form]);
 
   // Watch therapeutic area changes to update indications
   const therapeuticArea = form.watch('therapeutic_area');
@@ -138,52 +155,41 @@ export function BasicInfoStep({
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          {/* Organization selector - only show for system admins */}
-          {user?.role === UserRole.SYSTEM_ADMIN && (
-            <FormField
-              control={form.control}
-              name="org_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Organization *</FormLabel>
-                  <Select 
-                    onValueChange={field.onChange} 
-                    defaultValue={field.value}
-                    disabled={orgsLoading || mode === 'edit'}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder={orgsLoading ? "Loading..." : "Select organization"}>
-                          {field.value && organizations ? (
-                            <div className="flex items-center gap-2">
-                              <Building2 className="h-4 w-4" />
-                              {organizations.find(org => org.id === field.value)?.name || 'Select organization'}
-                            </div>
-                          ) : (
-                            <span>Select organization</span>
-                          )}
-                        </SelectValue>
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {organizations?.map(org => (
-                        <SelectItem key={org.id} value={org.id}>
-                          <div className="flex items-center gap-2">
-                            <Building2 className="h-4 w-4" />
-                            {org.name}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormDescription>
-                    The organization this study belongs to
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          )}
+          {/* Organization selector - show for all users */}
+          <FormField
+            control={form.control}
+            name="org_id"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Organization *</FormLabel>
+                <Select 
+                  onValueChange={field.onChange} 
+                  value={field.value}
+                  disabled={orgsLoading || mode === 'edit'}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder={orgsLoading ? "Loading..." : "Select organization"} />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {organizations?.map(org => (
+                      <SelectItem key={org.id} value={org.id}>
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4" />
+                          {org.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormDescription>
+                  The organization this study belongs to
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
           <FormField
             control={form.control}

@@ -185,6 +185,7 @@ class Study(StudyBase, table=True):
 
 class StudyPublic(StudyBase):
     id: uuid.UUID
+    org_id: uuid.UUID  # Include organization ID
     created_at: datetime
     status: StudyStatus
     subject_count: int

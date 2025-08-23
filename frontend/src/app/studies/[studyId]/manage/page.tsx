@@ -30,7 +30,7 @@ interface ManageStudyPageProps {
 
 export default function ManageStudyPage({ params }: ManageStudyPageProps) {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const { studyId } = use(params);
 
@@ -52,17 +52,17 @@ export default function ManageStudyPage({ params }: ManageStudyPageProps) {
   // Fetch study data
   const { 
     data: study, 
-    isLoading, 
+    isLoading: studyLoading, 
     error,
     refetch 
   } = useQuery({
     queryKey: ['study', studyId],
     queryFn: () => studiesApi.getStudy(studyId),
-    enabled: !!studyId && isSystemAdmin,
+    enabled: !!studyId && isSystemAdmin && !authLoading,
   });
 
-  // Loading state
-  if (isLoading) {
+  // Loading state (show while auth or study is loading)
+  if (authLoading || studyLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-slate-950 p-6">
         <div className="max-w-7xl mx-auto">
@@ -80,8 +80,8 @@ export default function ManageStudyPage({ params }: ManageStudyPageProps) {
     );
   }
 
-  // Error state
-  if (error || !study) {
+  // Error state - only show if there was an actual error, not just missing data
+  if (error) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-slate-950 p-6">
         <div className="max-w-7xl mx-auto">
@@ -110,6 +110,27 @@ export default function ManageStudyPage({ params }: ManageStudyPageProps) {
         </div>
       </div>
     );
+  }
+
+  // No study data after loading completed
+  if (!study && !authLoading && !studyLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-950 p-6">
+        <div className="max-w-7xl mx-auto">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Study not found. Please check the URL or contact support.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </div>
+    );
+  }
+
+  // If we still don't have study data at this point, return null to prevent errors
+  if (!study) {
+    return null;
   }
 
   const handleComplete = () => {

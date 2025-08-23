@@ -416,40 +416,44 @@ class FilterValidator:
         validated_columns: List[Dict[str, Any]]
     ):
         """Store validation result in cache table"""
-        try:
-            # Create cache entry
-            from sqlalchemy import text
-            
-            query = text("""
-                INSERT INTO filter_validation_cache 
-                (id, study_id, widget_id, filter_expression, dataset_name, 
-                 is_valid, validation_errors, validated_columns, created_at, last_validated)
-                VALUES 
-                (gen_random_uuid(), :study_id, :widget_id, :filter_expression, :dataset_name,
-                 :is_valid, :validation_errors, :validated_columns, NOW(), NOW())
-                ON CONFLICT (study_id, widget_id) DO UPDATE SET
-                    filter_expression = EXCLUDED.filter_expression,
-                    dataset_name = EXCLUDED.dataset_name,
-                    is_valid = EXCLUDED.is_valid,
-                    validation_errors = EXCLUDED.validation_errors,
-                    validated_columns = EXCLUDED.validated_columns,
-                    last_validated = NOW()
-            """)
-            
-            self.db.execute(query, {
-                "study_id": study_id,
-                "widget_id": widget_id,
-                "filter_expression": filter_expression,
-                "dataset_name": dataset_name,
-                "is_valid": is_valid,
-                "validation_errors": json.dumps(errors) if errors else None,
-                "validated_columns": json.dumps(validated_columns) if validated_columns else None
-            })
-            self.db.commit()
-            
-        except Exception as e:
-            self.logger.error(f"Failed to cache validation result: {str(e)}")
-            self.db.rollback()
+        # Temporarily disabled until filter_validation_cache table is created
+        # TODO: Create filter_validation_cache table in migrations
+        return
+        
+        # try:
+        #     # Create cache entry
+        #     from sqlalchemy import text
+        #     
+        #     query = text("""
+        #         INSERT INTO filter_validation_cache 
+        #         (id, study_id, widget_id, filter_expression, dataset_name, 
+        #          is_valid, validation_errors, validated_columns, created_at, last_validated)
+        #         VALUES 
+        #         (gen_random_uuid(), :study_id, :widget_id, :filter_expression, :dataset_name,
+        #          :is_valid, :validation_errors, :validated_columns, NOW(), NOW())
+        #         ON CONFLICT (study_id, widget_id) DO UPDATE SET
+        #             filter_expression = EXCLUDED.filter_expression,
+        #             dataset_name = EXCLUDED.dataset_name,
+        #             is_valid = EXCLUDED.is_valid,
+        #             validation_errors = EXCLUDED.validation_errors,
+        #             validated_columns = EXCLUDED.validated_columns,
+        #             last_validated = NOW()
+        #     """)
+        #     
+        #     self.db.execute(query, {
+        #         "study_id": study_id,
+        #         "widget_id": widget_id,
+        #         "filter_expression": filter_expression,
+        #         "dataset_name": dataset_name,
+        #         "is_valid": is_valid,
+        #         "validation_errors": json.dumps(errors) if errors else None,
+        #         "validated_columns": json.dumps(validated_columns) if validated_columns else None
+        #     })
+        #     self.db.commit()
+        #     
+        # except Exception as e:
+        #     self.logger.error(f"Failed to cache validation result: {str(e)}")
+        #     self.db.rollback()
     
     def _log_audit(
         self,
@@ -461,30 +465,34 @@ class FilterValidator:
         details: Dict[str, Any]
     ):
         """Log audit entry for filter operation"""
-        try:
-            from sqlalchemy import text
-            
-            query = text("""
-                INSERT INTO filter_audit_log 
-                (id, study_id, widget_id, action, new_expression, user_id, created_at, details)
-                VALUES 
-                (gen_random_uuid(), :study_id, :widget_id, :action, :expression, 
-                 :user_id, NOW(), :details)
-            """)
-            
-            self.db.execute(query, {
-                "study_id": study_id,
-                "widget_id": widget_id,
-                "action": action,
-                "expression": expression,
-                "user_id": user_id,
-                "details": json.dumps(details)
-            })
-            self.db.commit()
-            
-        except Exception as e:
-            self.logger.error(f"Failed to log audit entry: {str(e)}")
-            self.db.rollback()
+        # Temporarily disabled until filter_audit_log table is created
+        # TODO: Create filter_audit_log table in migrations
+        return
+        
+        # try:
+        #     from sqlalchemy import text
+        #     
+        #     query = text("""
+        #         INSERT INTO filter_audit_log 
+        #         (id, study_id, widget_id, action, new_expression, user_id, created_at, details)
+        #         VALUES 
+        #         (gen_random_uuid(), :study_id, :widget_id, :action, :expression, 
+        #          :user_id, NOW(), :details)
+        #     """)
+        #     
+        #     self.db.execute(query, {
+        #         "study_id": study_id,
+        #         "widget_id": widget_id,
+        #         "action": action,
+        #         "expression": expression,
+        #         "user_id": user_id,
+        #         "details": json.dumps(details)
+        #     })
+        #     self.db.commit()
+        #     
+        # except Exception as e:
+        #     self.logger.error(f"Failed to log audit entry: {str(e)}")
+        #     self.db.rollback()
     
     def get_cached_validation(
         self,

@@ -422,34 +422,38 @@ class FilterExecutor:
         rows_after: int
     ):
         """Track filter execution metrics"""
-        try:
-            from sqlalchemy import text
-            
-            reduction_pct = round((1 - rows_after/rows_before) * 100, 2) if rows_before > 0 else 0
-            
-            query = text("""
-                INSERT INTO filter_metrics 
-                (id, study_id, widget_id, filter_expression, execution_time_ms,
-                 rows_before, rows_after, reduction_percentage, executed_at)
-                VALUES 
-                (gen_random_uuid(), :study_id, :widget_id, :filter_expression, :execution_time_ms,
-                 :rows_before, :rows_after, :reduction_percentage, NOW())
-            """)
-            
-            self.db.execute(query, {
-                "study_id": study_id,
-                "widget_id": widget_id,
-                "filter_expression": filter_expression,
-                "execution_time_ms": execution_time_ms,
-                "rows_before": rows_before,
-                "rows_after": rows_after,
-                "reduction_percentage": reduction_pct
-            })
-            self.db.commit()
-            
-        except Exception as e:
-            self.logger.error(f"Failed to track execution metrics: {str(e)}")
-            self.db.rollback()
+        # Temporarily disabled until filter_metrics table is created
+        # TODO: Create filter_metrics table in migrations
+        return
+        
+        # try:
+        #     from sqlalchemy import text
+        #     
+        #     reduction_pct = round((1 - rows_after/rows_before) * 100, 2) if rows_before > 0 else 0
+        #     
+        #     query = text("""
+        #         INSERT INTO filter_metrics 
+        #         (id, study_id, widget_id, filter_expression, execution_time_ms,
+        #          rows_before, rows_after, reduction_percentage, executed_at)
+        #         VALUES 
+        #         (gen_random_uuid(), :study_id, :widget_id, :filter_expression, :execution_time_ms,
+        #          :rows_before, :rows_after, :reduction_percentage, NOW())
+        #     """)
+        #     
+        #     self.db.execute(query, {
+        #         "study_id": study_id,
+        #         "widget_id": widget_id,
+        #         "filter_expression": filter_expression,
+        #         "execution_time_ms": execution_time_ms,
+        #         "rows_before": rows_before,
+        #         "rows_after": rows_after,
+        #         "reduction_percentage": reduction_pct
+        #     })
+        #     self.db.commit()
+        #     
+        # except Exception as e:
+        #     self.logger.error(f"Failed to track execution metrics: {str(e)}")
+        #     self.db.rollback()
     
     def get_execution_metrics(
         self,

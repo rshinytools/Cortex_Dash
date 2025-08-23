@@ -319,25 +319,26 @@ async def apply_widget_filter(
     db.add(study)
     db.commit()
     
-    # Log audit
-    from sqlalchemy import text
-    audit_query = text("""
-        INSERT INTO filter_audit_log 
-        (id, study_id, widget_id, action, new_expression, user_id, created_at, details)
-        VALUES 
-        (gen_random_uuid(), :study_id, :widget_id, :action, :expression, 
-         :user_id, NOW(), :details)
-    """)
-    
-    db.execute(audit_query, {
-        "study_id": str(study_id),
-        "widget_id": widget_id,
-        "action": "UPDATE" if widget_id in filters else "DELETE",
-        "expression": request.expression if request.enabled else None,
-        "user_id": str(current_user.id),
-        "details": json.dumps({"enabled": request.enabled})
-    })
-    db.commit()
+    # Log audit - temporarily disabled until filter_audit_log table is created
+    # TODO: Create filter_audit_log table in migrations
+    # from sqlalchemy import text
+    # audit_query = text("""
+    #     INSERT INTO filter_audit_log 
+    #     (id, study_id, widget_id, action, new_expression, user_id, created_at, details)
+    #     VALUES 
+    #     (gen_random_uuid(), :study_id, :widget_id, :action, :expression, 
+    #      :user_id, NOW(), :details)
+    # """)
+    # 
+    # db.execute(audit_query, {
+    #     "study_id": str(study_id),
+    #     "widget_id": widget_id,
+    #     "action": "UPDATE" if widget_id in filters else "DELETE",
+    #     "expression": request.expression if request.enabled else None,
+    #     "user_id": str(current_user.id),
+    #     "details": json.dumps({"enabled": request.enabled})
+    # })
+    # db.commit()
     
     return {"message": "Filter updated successfully"}
 

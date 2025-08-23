@@ -959,6 +959,7 @@ async def get_mapping_data(
         "dataset_schemas": study_data_config.dataset_schemas,
         "template_requirements": template_requirements,
         "mapping_suggestions": mapping_suggestions,
+        "existing_mappings": study.field_mappings,  # Include existing mappings
         "total_datasets": len(study_data_config.dataset_schemas),
         "total_columns": sum(
             len(ds.get("columns", {})) 

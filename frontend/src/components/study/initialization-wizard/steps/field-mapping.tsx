@@ -247,8 +247,10 @@ export function FieldMappingStep({
       }
       
       // In edit mode, also load existing field mappings
-      if (mode === 'edit' && existingStudy?.field_mappings) {
-        console.log('[FieldMapping] Loading existing mappings:', existingStudy.field_mappings);
+      // Use mappingData.existing_mappings from API response, fallback to existingStudy.field_mappings
+      const existingFieldMappings = mappingData?.existing_mappings || existingStudy?.field_mappings;
+      if (mode === 'edit' && existingFieldMappings) {
+        console.log('[FieldMapping] Loading existing mappings:', existingFieldMappings);
         console.log('[FieldMapping] Template requirements:', mappingData.template_requirements);
         
         // Convert from flattened format to nested format if needed
@@ -260,8 +262,8 @@ export function FieldMappingStep({
             const widgetId = req.widget_id;
             
             // Look for direct widget ID mapping
-            if (existingStudy.field_mappings[widgetId]) {
-              const mapping = existingStudy.field_mappings[widgetId];
+            if (existingFieldMappings[widgetId]) {
+              const mapping = existingFieldMappings[widgetId];
               if (typeof mapping === 'string' && mapping.includes('.')) {
                 const [dataset, column] = mapping.split('.');
                 if (!existingMappings[widgetId]) {
@@ -272,17 +274,18 @@ export function FieldMappingStep({
                 existingMappings[widgetId][fieldName] = {
                   dataset,
                   column,
+                  aggregation: existingFieldMappings[`${widgetId}_aggregation`] || 'count_distinct',
                   confidence: undefined
                 };
-                console.log(`[FieldMapping] Mapped widget ${widgetId} field ${fieldName} to ${dataset}.${column}`);
+                console.log(`[FieldMapping] Mapped widget ${widgetId} field ${fieldName} to ${dataset}.${column} with aggregation ${existingFieldMappings[`${widgetId}_aggregation`] || 'count_distinct'}`);
               }
             }
             
             // Also check for underscore-based mappings
             req.required_fields?.forEach((field: string) => {
               const mappingKey = `${widgetId}_${field}`;
-              if (existingStudy.field_mappings[mappingKey]) {
-                const mapping = existingStudy.field_mappings[mappingKey];
+              if (existingFieldMappings[mappingKey]) {
+                const mapping = existingFieldMappings[mappingKey];
                 if (typeof mapping === 'string' && mapping.includes('.')) {
                   const [dataset, column] = mapping.split('.');
                   if (!existingMappings[widgetId]) {
@@ -291,9 +294,10 @@ export function FieldMappingStep({
                   existingMappings[widgetId][field] = {
                     dataset,
                     column,
+                    aggregation: existingFieldMappings[`${widgetId}_aggregation`] || 'count_distinct',
                     confidence: undefined
                   };
-                  console.log(`[FieldMapping] Mapped widget ${widgetId} field ${field} to ${dataset}.${column} (from underscore key)`);
+                  console.log(`[FieldMapping] Mapped widget ${widgetId} field ${field} to ${dataset}.${column} with aggregation ${existingFieldMappings[`${widgetId}_aggregation`] || 'count_distinct'} (from underscore key)`);
                 }
               }
             });
@@ -472,15 +476,6 @@ export function FieldMappingStep({
         </p>
       </div>
 
-      {/* Debug info - remove after testing */}
-      {mode === 'edit' && existingStudy?.field_mappings && (
-        <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded text-xs">
-          <p className="font-bold mb-2">Debug: Existing Field Mappings</p>
-          <pre>{JSON.stringify(existingStudy.field_mappings, null, 2)}</pre>
-          <p className="font-bold mt-4 mb-2">Debug: Current Mappings State</p>
-          <pre>{JSON.stringify(mappings, null, 2)}</pre>
-        </div>
-      )}
 
       {/* Dataset Summary */}
       <Card>

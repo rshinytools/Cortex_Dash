@@ -13,6 +13,7 @@ from app.models import (
     Study, StudyCreate, StudyUpdate, StudyPublic, StudyStatus,
     User, Message, DashboardTemplate, Organization
 )
+from app.models.activity_log import ActivityAction
 from app.models.widget import WidgetDefinition
 from app.crud import study as crud_study
 from app.crud import organization as crud_org
@@ -223,7 +224,7 @@ async def update_study(
     crud_activity.create_activity_log(
         db,
         user=current_user,
-        action="update_study",
+        action=ActivityAction.STUDY_UPDATED,
         resource_type="study",
         resource_id=str(study.id),
         details={"updated_fields": list(study_in.model_dump(exclude_unset=True).keys())},

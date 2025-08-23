@@ -99,7 +99,7 @@ export const studiesApi = {
 
   // Update study
   async updateStudy(studyId: string, data: StudyUpdate) {
-    const response = await apiClient.patch<Study>(`/studies/${studyId}/`, data);
+    const response = await apiClient.patch<Study>(`/studies/${studyId}`, data);
     return response.data;
   },
 

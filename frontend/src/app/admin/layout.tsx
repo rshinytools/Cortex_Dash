@@ -3,6 +3,7 @@
 
 'use client';
 
+import { useEffect } from 'react';
 import { AuthGuard } from '@/components/auth-guard';
 
 export default function AdminLayout({
@@ -10,6 +11,11 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  useEffect(() => {
+    console.log('Admin layout mounted');
+    return () => console.log('Admin layout unmounted');
+  }, []);
+  
   // Security: Protect all admin routes with authentication and role check
   return (
     <AuthGuard requiredRoles={['system_admin', 'org_admin']}>

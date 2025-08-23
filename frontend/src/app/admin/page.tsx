@@ -332,6 +332,16 @@ function AdminContent() {
 
   const adminModules = [
     {
+      title: 'Test Navigation',
+      description: 'Debug navigation issue',
+      icon: Shield,
+      path: '/admin/test',
+      color: 'bg-red-500',
+      lightColor: 'bg-red-100',
+      enabled: true,
+      badge: 'TEST'
+    },
+    {
       title: 'User Management',
       description: 'Manage users, roles, and permissions',
       icon: Users,

@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
+import { secureApiClient } from '@/lib/api/secure-client';
 import { apiClient } from '@/lib/api/client';
 import { widgetsApi } from '@/lib/api/widgets';
 
@@ -41,19 +41,13 @@ export function useWidgetData({
     try {
       setState(prev => ({ ...prev, loading: true, error: null }));
 
-      const token = localStorage.getItem('auth_token');
-      const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/widget-data/query`,
+      const response = await secureApiClient.post(
+        '/widget-data/query',
         {
           study_id: studyId,
           widget_type: widgetType,
           widget_config: widgetConfig,
           use_cache: useCache
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
         }
       );
 

@@ -27,7 +27,7 @@ import {
   Save,
   AlertCircle
 } from 'lucide-react';
-import axios from 'axios';
+import { secureApiClient } from '@/lib/api/secure-client';
 import { toast } from 'sonner';
 
 interface PermissionMatrix {
@@ -52,10 +52,7 @@ export function PermissionMatrix() {
   const fetchMatrix = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('auth_token');
-      const response = await axios.get('http://localhost:8000/api/v1/rbac/permission-matrix', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await secureApiClient.get('/rbac/permission-matrix');
       setMatrix(response.data);
       setEditedMatrix(response.data.matrix);
     } catch (error) {
@@ -80,7 +77,6 @@ export function PermissionMatrix() {
   const handleSave = async () => {
     try {
       setSaving(true);
-      const token = localStorage.getItem('auth_token');
       
       // Calculate changes for each role
       const updates = [];
@@ -108,10 +104,9 @@ export function PermissionMatrix() {
       
       // Update each role's permissions
       for (const update of updates) {
-        await axios.put(
-          `http://localhost:8000/api/v1/rbac/roles/${update.roleId}/permissions`,
-          { permissions: update.permissions },
-          { headers: { Authorization: `Bearer ${token}` } }
+        await secureApiClient.put(
+          `/rbac/roles/${update.roleId}/permissions`,
+          { permissions: update.permissions }
         );
       }
       

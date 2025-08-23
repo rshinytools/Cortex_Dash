@@ -48,10 +48,10 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { format } from 'date-fns';
-import axios from 'axios';
 import { motion } from 'framer-motion';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { UserMenu } from '@/components/user-menu';
+import { secureApiClient } from '@/lib/api/secure-client';
 
 interface AuditLog {
   id: string;
@@ -83,11 +83,9 @@ function AuditTrailContent() {
 
   const fetchAuditLogs = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
-      console.log('Fetching audit logs with token:', token ? 'Token exists' : 'No token');
+      console.log('Fetching audit logs...');
       
-      const response = await axios.get('http://localhost:8000/api/v1/audit-trail/', {
-        headers: { Authorization: `Bearer ${token}` }
+      const response = await secureApiClient.get('/audit-trail/', {
       });
       
       console.log('Audit logs response:', response.data);

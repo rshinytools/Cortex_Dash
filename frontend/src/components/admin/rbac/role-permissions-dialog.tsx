@@ -19,7 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Search, Shield, AlertCircle } from 'lucide-react';
-import axios from 'axios';
+import { secureApiClient } from '@/lib/api/secure-client';
 import { toast } from 'sonner';
 
 interface Permission {
@@ -70,10 +70,7 @@ export function RolePermissionsDialog({
   const fetchPermissions = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('auth_token');
-      const response = await axios.get('http://localhost:8000/api/v1/rbac/permissions', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await secureApiClient.get('/rbac/permissions');
       setPermissions(response.data);
     } catch (error) {
       console.error('Failed to fetch permissions:', error);
@@ -87,12 +84,8 @@ export function RolePermissionsDialog({
     if (!role) return;
     
     try {
-      const token = localStorage.getItem('auth_token');
-      const response = await axios.get(
-        `http://localhost:8000/api/v1/rbac/roles/${role.id}/permissions`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+      const response = await secureApiClient.get(
+        `/rbac/roles/${role.id}/permissions`
       );
       const permissionNames = response.data.map((p: Permission) => p.name);
       setRolePermissions(permissionNames);
@@ -118,15 +111,11 @@ export function RolePermissionsDialog({
 
     try {
       setSaving(true);
-      const token = localStorage.getItem('auth_token');
       
-      await axios.put(
-        `http://localhost:8000/api/v1/rbac/roles/${role.id}/permissions`,
+      await secureApiClient.put(
+        `/rbac/roles/${role.id}/permissions`,
         {
           permissions: Array.from(selectedPermissions),
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
         }
       );
 

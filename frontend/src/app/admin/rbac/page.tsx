@@ -32,12 +32,12 @@ import {
   UserCheck,
   ShieldCheck
 } from 'lucide-react';
-import axios from 'axios';
 import { RolePermissionsDialog } from '@/components/admin/rbac/role-permissions-dialog';
 import { PermissionMatrix } from '@/components/admin/rbac/permission-matrix';
 import { motion } from 'framer-motion';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { UserMenu } from '@/components/user-menu';
+import { secureApiClient } from '@/lib/api/secure-client';
 
 interface Permission {
   id: string;
@@ -69,12 +69,9 @@ function RBACContent() {
 
   const fetchData = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
-      const headers = { Authorization: `Bearer ${token}` };
-      
       const [rolesRes, permissionsRes] = await Promise.all([
-        axios.get('http://localhost:8000/api/v1/rbac/roles', { headers }),
-        axios.get('http://localhost:8000/api/v1/rbac/permissions', { headers })
+        secureApiClient.get('/rbac/roles'),
+        secureApiClient.get('/rbac/permissions')
       ]);
       
       setRoles(rolesRes.data);

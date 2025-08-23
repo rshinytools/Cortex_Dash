@@ -51,9 +51,9 @@ import {
 } from 'lucide-react';
 import { UserRole } from '@/types';
 import { motion } from 'framer-motion';
-import axios from 'axios';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { UserMenu } from '@/components/user-menu';
+import { secureApiClient } from '@/lib/api/secure-client';
 import {
   LineChart,
   Line,
@@ -144,18 +144,15 @@ function AdminContent() {
 
   const fetchMetrics = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
-      const headers = { Authorization: `Bearer ${token}` };
-      
-      // Fetch real metrics from various endpoints
+      // Fetch real metrics from various endpoints using secure client
       const [usersRes, orgsRes, auditRes, studiesRes, rolesRes, permissionsRes, templatesRes] = await Promise.all([
-        axios.get('http://localhost:8000/api/v1/users/', { headers }).catch(() => ({ data: { data: [], count: 0 } })),
-        axios.get('http://localhost:8000/api/v1/organizations/', { headers }).catch(() => ({ data: [] })),
-        axios.get('http://localhost:8000/api/v1/audit-trail/', { headers }).catch(() => ({ data: [] })),
-        axios.get('http://localhost:8000/api/v1/studies/', { headers }).catch(() => ({ data: [] })),
-        axios.get('http://localhost:8000/api/v1/rbac/roles', { headers }).catch(() => ({ data: [] })),
-        axios.get('http://localhost:8000/api/v1/rbac/permissions', { headers }).catch(() => ({ data: [] })),
-        axios.get('http://localhost:8000/api/v1/dashboard-templates/', { headers }).catch(() => ({ data: { data: [], count: 0 } }))
+        secureApiClient.get('/users/').catch(() => ({ data: { data: [], count: 0 } })),
+        secureApiClient.get('/organizations/').catch(() => ({ data: [] })),
+        secureApiClient.get('/audit-trail/').catch(() => ({ data: [] })),
+        secureApiClient.get('/studies/').catch(() => ({ data: [] })),
+        secureApiClient.get('/rbac/roles').catch(() => ({ data: [] })),
+        secureApiClient.get('/rbac/permissions').catch(() => ({ data: [] })),
+        secureApiClient.get('/dashboard-templates/').catch(() => ({ data: { data: [], count: 0 } }))
       ]);
 
       // Handle users response which returns {data: [...], count: number}
@@ -199,9 +196,7 @@ function AdminContent() {
 
   const fetchRecentActivity = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
-      const response = await axios.get('http://localhost:8000/api/v1/audit-trail/', {
-        headers: { Authorization: `Bearer ${token}` },
+      const response = await secureApiClient.get('/audit-trail/', {
         params: { limit: 10 }
       });
       

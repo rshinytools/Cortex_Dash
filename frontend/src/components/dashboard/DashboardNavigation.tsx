@@ -64,8 +64,14 @@ function NavItem({
         return;
       }
       
+      // Security: Validate target attribute against allowed values
+      const allowedTargets = ['_blank', '_self', '_parent', '_top'] as const;
+      const target = item.target && allowedTargets.includes(item.target as any) 
+        ? item.target 
+        : '_blank'; // Default to _blank if invalid or not provided
+      
       // Security: Add noopener,noreferrer to prevent tab-nabbing attacks
-      window.open(url, item.target || "_blank", 'noopener,noreferrer');
+      window.open(url, target, 'noopener,noreferrer');
     }
   };
 

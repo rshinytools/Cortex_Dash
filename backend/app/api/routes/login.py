@@ -1,8 +1,8 @@
 from datetime import timedelta
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app import crud
@@ -25,6 +25,7 @@ router = APIRouter(tags=["login"])
 def login_access_token(
     session: SessionDep, 
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    response: Response,
     request: Any = None
 ) -> Token:
     """
@@ -73,17 +74,93 @@ def login_access_token(
     session.commit()
     
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    return Token(
-        access_token=security.create_access_token(
-            user.id, expires_delta=access_token_expires
-        )
+    refresh_token_expires = timedelta(days=7)
+    
+    # Create tokens
+    access_token = security.create_access_token(
+        user.id, expires_delta=access_token_expires
     )
+    refresh_token = security.create_refresh_token(
+        user.id, expires_delta=refresh_token_expires
+    )
+    
+    # Set refresh token as httpOnly cookie
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=True,  # Security: Use secure cookie in production
+        samesite="strict",  # Security: Prevent CSRF attacks
+        max_age=7 * 24 * 60 * 60,  # 7 days in seconds
+        path="/"
+    )
+    
+    return Token(
+        access_token=access_token
+    )
+
+
+@router.post("/login/refresh-token")
+def refresh_access_token(
+    session: SessionDep,
+    response: Response,
+    request: Request
+) -> Token:
+    """
+    Refresh access token using httpOnly refresh token cookie
+    """
+    # Security: Get refresh token from httpOnly cookie
+    refresh_token = request.cookies.get("refresh_token")
+    
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="Refresh token not found")
+    
+    # Verify refresh token
+    user_id = security.verify_refresh_token(refresh_token)
+    
+    if not user_id:
+        # Security: Clear invalid refresh token
+        response.delete_cookie("refresh_token")
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+    
+    # Get user
+    user = crud.get_user(session=session, user_id=user_id)
+    
+    if not user or not user.is_active:
+        response.delete_cookie("refresh_token")
+        raise HTTPException(status_code=401, detail="User not found or inactive")
+    
+    # Create new access token
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = security.create_access_token(
+        user.id, expires_delta=access_token_expires
+    )
+    
+    # Optionally rotate refresh token for extra security
+    refresh_token_expires = timedelta(days=7)
+    new_refresh_token = security.create_refresh_token(
+        user.id, expires_delta=refresh_token_expires
+    )
+    
+    # Set new refresh token
+    response.set_cookie(
+        key="refresh_token",
+        value=new_refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="strict",
+        max_age=7 * 24 * 60 * 60,
+        path="/"
+    )
+    
+    return Token(access_token=access_token)
 
 
 @router.post("/logout")
 def logout(
     session: SessionDep,
     current_user: CurrentUser,
+    response: Response,
     request: Request
 ) -> Message:
     """
@@ -106,6 +183,9 @@ def logout(
     except Exception as e:
         # Log error but don't fail logout
         print(f"Failed to log logout activity: {e}")
+    
+    # Security: Clear refresh token cookie
+    response.delete_cookie("refresh_token")
     
     return Message(message="Logged out successfully")
 

@@ -55,7 +55,17 @@ function NavItem({
     } else if (isDashboardPage) {
       onSelectItem(item.id);
     } else if (item.type === MenuItemType.EXTERNAL && item.url) {
-      window.open(item.url, item.target || "_blank");
+      // Security: Validate URL to prevent javascript: and data: protocol attacks
+      const url = item.url;
+      const isValidUrl = /^https?:\/\//i.test(url);
+      
+      if (!isValidUrl) {
+        console.warn('Blocked potentially dangerous URL:', url);
+        return;
+      }
+      
+      // Security: Add noopener,noreferrer to prevent tab-nabbing attacks
+      window.open(url, item.target || "_blank", 'noopener,noreferrer');
     }
   };
 

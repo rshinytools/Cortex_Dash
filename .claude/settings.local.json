@@ -114,7 +114,11 @@
       "Bash(export TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTYzNDgwODksInN1YiI6IjRlMzEyMWZlLWI4YmUtNDBmMy1iMjNmLWQ5ZmFkOWFlYjYzOSJ9.ZkYjJrO4TkwbqnmrJMqrYRhBfKJVa4BP8_tZXboLpUc\")",
       "Bash(git pull:*)",
       "Bash(git merge:*)",
-      "Bash(docker volume:*)"
+      "Bash(docker volume:*)",
+      "Bash(for file in frontend/src/app/admin/*/page.tsx frontend/src/app/admin/*/*/page.tsx)",
+      "Bash(do if ! grep -q \"AuthGuard\" \"$file\")",
+      "Bash(then echo \"Missing AuthGuard: $file\")",
+      "Bash(fi)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

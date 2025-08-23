@@ -74,13 +74,13 @@ const nextConfig: NextConfig = {
             key: 'X-DNS-Prefetch-Control',
             value: 'on'
           },
-          {
-            // Note: HSTS (Strict-Transport-Security) should be set at the reverse proxy level
-            // for production deployments to ensure it's applied to all subdomains
-            // Example for development only (remove in production):
-            // key: 'Strict-Transport-Security',
-            // value: 'max-age=31536000; includeSubDomains; preload'
-          },
+          // Note: HSTS (Strict-Transport-Security) should be set at the reverse proxy level
+          // for production deployments to ensure it's applied to all subdomains
+          // Example for development only (remove in production):
+          // {
+          //   key: 'Strict-Transport-Security',
+          //   value: 'max-age=31536000; includeSubDomains; preload'
+          // },
           {
             // Additional security header for XSS protection in older browsers
             key: 'X-XSS-Protection',

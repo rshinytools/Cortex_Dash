@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { AuthGuard } from '@/components/auth-guard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -765,14 +766,12 @@ function AdminContent() {
           >
             {adminModules.map((module) => {
               const Icon = module.icon;
-              return (
-                <motion.div key={module.path} variants={itemVariants}>
-                  <Card 
-                    className={`border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer group ${
-                      module.enabled ? 'hover:-translate-y-2' : 'opacity-60 cursor-not-allowed'
-                    } bg-white dark:bg-gray-900`}
-                    onClick={() => module.enabled && router.push(module.path)}
-                  >
+              const cardElement = (
+                <Card 
+                  className={`border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer group ${
+                    module.enabled ? 'hover:-translate-y-2' : 'opacity-60 cursor-not-allowed'
+                  } bg-white dark:bg-gray-900`}
+                >
                     <CardHeader className="pb-4">
                       <div className="flex justify-between items-start">
                         <div className={`p-3 rounded-xl ${module.lightColor} dark:${module.color} dark:bg-opacity-20 group-hover:scale-110 transition-transform`}>
@@ -800,6 +799,17 @@ function AdminContent() {
                       </CardContent>
                     )}
                   </Card>
+              );
+              
+              return (
+                <motion.div key={module.path} variants={itemVariants}>
+                  {module.enabled ? (
+                    <Link href={module.path} className="block">
+                      {cardElement}
+                    </Link>
+                  ) : (
+                    cardElement
+                  )}
                 </motion.div>
               );
             })}
@@ -845,13 +855,14 @@ function AdminContent() {
                       </div>
                     )}
                   </div>
-                  <Button 
-                    variant="outline" 
-                    className="w-full mt-4"
-                    onClick={() => router.push('/admin/audit-trail')}
-                  >
-                    View All Activity
-                  </Button>
+                  <Link href="/admin/audit-trail" className="w-full mt-4 inline-block">
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                    >
+                      View All Activity
+                    </Button>
+                  </Link>
                 </CardContent>
               </Card>
             </motion.div>
@@ -870,46 +881,51 @@ function AdminContent() {
                   <CardDescription className="text-gray-600 dark:text-gray-400">Frequently used administrative tasks</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <Button 
-                    className="w-full justify-start" 
-                    variant="outline"
-                    onClick={() => router.push('/admin/users/new')}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add New User
-                  </Button>
-                  <Button 
-                    className="w-full justify-start" 
-                    variant="outline"
-                    onClick={() => router.push('/organizations/new')}
-                  >
-                    <Building2 className="h-4 w-4 mr-2" />
-                    Create Organization
-                  </Button>
-                  <Button 
-                    className="w-full justify-start" 
-                    variant="outline"
-                    onClick={() => router.push('/studies/new')}
-                  >
-                    <FlaskConical className="h-4 w-4 mr-2" />
-                    New Study
-                  </Button>
-                  <Button 
-                    className="w-full justify-start" 
-                    variant="outline"
-                    onClick={() => router.push('/admin/dashboard-templates/new')}
-                  >
-                    <LayoutDashboard className="h-4 w-4 mr-2" />
-                    Create Dashboard Template
-                  </Button>
-                  <Button 
-                    className="w-full justify-start" 
-                    variant="outline"
-                    onClick={() => router.push('/admin/audit-trail')}
-                  >
-                    <FileDown className="h-4 w-4 mr-2" />
-                    Export Audit Report
-                  </Button>
+                  <Link href="/admin/users/new" className="block">
+                    <Button 
+                      className="w-full justify-start" 
+                      variant="outline"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add New User
+                    </Button>
+                  </Link>
+                  <Link href="/organizations/new" className="block">
+                    <Button 
+                      className="w-full justify-start" 
+                      variant="outline"
+                    >
+                      <Building2 className="h-4 w-4 mr-2" />
+                      Create Organization
+                    </Button>
+                  </Link>
+                  <Link href="/studies/new" className="block">
+                    <Button 
+                      className="w-full justify-start" 
+                      variant="outline"
+                    >
+                      <FlaskConical className="h-4 w-4 mr-2" />
+                      New Study
+                    </Button>
+                  </Link>
+                  <Link href="/admin/dashboard-templates/new" className="block">
+                    <Button 
+                      className="w-full justify-start" 
+                      variant="outline"
+                    >
+                      <LayoutDashboard className="h-4 w-4 mr-2" />
+                      Create Dashboard Template
+                    </Button>
+                  </Link>
+                  <Link href="/admin/audit-trail" className="block">
+                    <Button 
+                      className="w-full justify-start" 
+                      variant="outline"
+                    >
+                      <FileDown className="h-4 w-4 mr-2" />
+                      Export Audit Report
+                    </Button>
+                  </Link>
                 </CardContent>
               </Card>
             </motion.div>

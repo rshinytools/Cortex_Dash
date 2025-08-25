@@ -22,6 +22,7 @@ import {
   Building2,
   Package,
   Menu,
+  Archive,
 } from 'lucide-react';
 import { UserRole } from '@/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -94,6 +95,12 @@ const navItems: NavItem[] = [
     href: '/admin/widgets',
     icon: Package,
     roles: [UserRole.SYSTEM_ADMIN], // System admin feature
+  },
+  {
+    title: 'Backup & Restore',
+    href: '/admin/backup',
+    icon: Archive,
+    roles: [UserRole.SYSTEM_ADMIN], // System admin only
   },
 ];
 

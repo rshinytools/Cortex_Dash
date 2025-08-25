@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Bell, LogOut, Settings, User } from 'lucide-react';
+import { Bell, LogOut, User } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import Link from 'next/link';
 
@@ -66,12 +66,6 @@ export function Header() {
                 <Link href="/profile" className="cursor-pointer">
                   <User className="mr-2 h-4 w-4" />
                   <span>Profile</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/settings" className="cursor-pointer">
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Settings</span>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />

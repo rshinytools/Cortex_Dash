@@ -1,0 +1,104 @@
+// ABOUTME: API configuration for dynamic backend URL resolution
+// ABOUTME: Handles different environments (local, Docker, production)
+
+/**
+ * Get the backend API base URL based on the environment
+ * Priority:
+ * 1. Environment variable (NEXT_PUBLIC_API_URL)
+ * 2. Window location for relative deployments
+ * 3. Default to backend service in Docker network
+ */
+export function getApiUrl(): string {
+  // Check for explicit API URL from environment
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+
+  // Server-side rendering in Docker
+  if (typeof window === 'undefined') {
+    // When running in Docker, use the backend service name
+    if (process.env.DOCKER_ENV === 'true') {
+      return 'http://backend:8000';
+    }
+    // Default for server-side
+    return 'http://localhost:8000';
+  }
+
+  // Client-side: Use relative path or construct from window location
+  // This allows the frontend to work regardless of where it's deployed
+  const protocol = window.location.protocol;
+  const hostname = window.location.hostname;
+  
+  // If we're on localhost, use port 8000 for backend
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return `${protocol}//${hostname}:8000`;
+  }
+  
+  // For production deployments, assume backend is on same host
+  // but different port or path
+  if (process.env.NEXT_PUBLIC_BACKEND_PORT) {
+    return `${protocol}//${hostname}:${process.env.NEXT_PUBLIC_BACKEND_PORT}`;
+  }
+  
+  // Default: assume backend is on /api path of same host
+  return `${protocol}//${hostname}/api`;
+}
+
+/**
+ * Make an API request with proper URL resolution
+ */
+export async function apiRequest(
+  path: string,
+  options: RequestInit = {}
+): Promise<Response> {
+  const baseUrl = getApiUrl();
+  // Build the full URL - just append the path directly
+  const url = `${baseUrl}/api/v1${path}`;
+  
+  // Add default headers
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+  
+  // Add auth token if available
+  if (typeof window !== 'undefined') {
+    // Check both possible token keys for compatibility
+    const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+  }
+  
+  return fetch(url, {
+    ...options,
+    headers,
+  });
+}
+
+/**
+ * API client with common methods
+ */
+export const api = {
+  get: (path: string, options?: RequestInit) => 
+    apiRequest(path, { ...options, method: 'GET' }),
+    
+  post: (path: string, data?: any, options?: RequestInit) =>
+    apiRequest(path, {
+      ...options,
+      method: 'POST',
+      body: data ? JSON.stringify(data) : undefined,
+    }),
+    
+  put: (path: string, data?: any, options?: RequestInit) =>
+    apiRequest(path, {
+      ...options,
+      method: 'PUT',
+      body: data ? JSON.stringify(data) : undefined,
+    }),
+    
+  delete: (path: string, options?: RequestInit) =>
+    apiRequest(path, { ...options, method: 'DELETE' }),
+};
+
+export default api;

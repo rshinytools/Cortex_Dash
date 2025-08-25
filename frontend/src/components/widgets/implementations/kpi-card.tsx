@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { BaseWidgetProps, WidgetComponent } from '../base-widget';
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api/client';
+import { secureApiClient } from '@/lib/api/secure-client';
 import { useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';
 
@@ -126,7 +126,7 @@ const KPICard: WidgetComponent<KPICardConfig> = ({
       
       // Call the actual backend endpoint
       // Format: /studies/{study_id}/dashboards/{dashboard_id}/widgets/{widget_id}/data
-      const response = await apiClient.get(
+      const response = await secureApiClient.get(
         `/studies/${studyId}/dashboards/${dashboardId}/widgets/${id}/data`
       );
       

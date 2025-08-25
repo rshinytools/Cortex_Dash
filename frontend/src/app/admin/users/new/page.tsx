@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { UserRole } from '@/types';
-import { apiClient } from '@/lib/api/client';
+import { secureApiClient } from '@/lib/api/secure-client';
 import { organizationsApi } from '@/lib/api/organizations';
 import { UserMenu } from '@/components/user-menu';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
@@ -59,7 +59,7 @@ export default function NewUserPage() {
 
   const createUser = useMutation({
     mutationFn: async (data: UserCreateData) => {
-      const response = await apiClient.post('/users/', data);
+      const response = await secureApiClient.post('/users/', data);
       return response.data;
     },
     onSuccess: () => {

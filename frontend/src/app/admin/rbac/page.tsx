@@ -6,7 +6,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { AuthGuard } from '@/components/auth-guard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -137,7 +136,10 @@ function RBACContent() {
             <Button
               variant="link"
               className="p-0 h-auto font-normal"
-              onClick={() => router.push('/admin')}
+              onClick={(e) => {
+                e.preventDefault();
+                router.push('/admin');
+              }}
             >
               Admin
             </Button>

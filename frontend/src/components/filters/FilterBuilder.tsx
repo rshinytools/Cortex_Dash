@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
-import { api } from '@/lib/api-config';
+import { secureApiClient } from '@/lib/api/secure-client';
 import {
   Select,
   SelectContent,
@@ -142,7 +142,7 @@ export function FilterBuilder({
 
     setIsValidating(true);
     try {
-      const response = await api.post(
+      const response = await secureApiClient.post(
         `/studies/${studyId}/widgets/${widgetId}/filter/validate`,
         {
           widget_id: widgetId,
@@ -151,28 +151,14 @@ export function FilterBuilder({
         }
       );
 
-      if (response.ok) {
-        const result = await response.json();
-        setValidationResult({
-          isValid: result.is_valid || false,
-          errors: result.errors || [],
-          warnings: result.warnings || [],
-          validatedColumns: result.validated_columns || [],
-          complexity: result.complexity
-        });
-      } else {
-        const errorData = await response.json().catch(() => null);
-        const errorMessage = errorData?.detail || `Validation failed (${response.status})`;
-        
-        console.error('Validation response error:', errorData);
-        
-        setValidationResult({
-          isValid: false,
-          errors: [errorMessage],
-          warnings: [],
-          validatedColumns: [],
-        });
-      }
+      const result = response.data;
+      setValidationResult({
+        isValid: result.is_valid || false,
+        errors: result.errors || [],
+        warnings: result.warnings || [],
+        validatedColumns: result.validated_columns || [],
+        complexity: result.complexity
+      });
     } catch (error) {
       console.error('Validation error:', error);
       setValidationResult({
@@ -194,7 +180,7 @@ export function FilterBuilder({
 
     setIsTesting(true);
     try {
-      const response = await api.post(
+      const response = await secureApiClient.post(
         `/studies/${studyId}/widgets/${widgetId}/filter/test`,
         {
           widget_id: widgetId,
@@ -204,26 +190,16 @@ export function FilterBuilder({
         }
       );
 
-      if (response.ok) {
-        const result = await response.json();
-        // Convert snake_case from backend to camelCase for frontend
-        setTestResult({
-          success: result.success,
-          rowCount: result.row_count || 0,
-          originalCount: result.original_count || 0,
-          executionTimeMs: result.execution_time_ms || 0,
-          sampleData: result.sample_data,
-          error: result.error
-        });
-      } else {
-        setTestResult({
-          success: false,
-          rowCount: 0,
-          originalCount: 0,
-          executionTimeMs: 0,
-          error: 'Failed to test filter',
-        });
-      }
+      const result = response.data;
+      // Convert snake_case from backend to camelCase for frontend
+      setTestResult({
+        success: result.success,
+        rowCount: result.row_count || 0,
+        originalCount: result.original_count || 0,
+        executionTimeMs: result.execution_time_ms || 0,
+        sampleData: result.sample_data,
+        error: result.error
+      });
     } catch (error) {
       console.error('Test error:', error);
       setTestResult({

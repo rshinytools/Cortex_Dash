@@ -13,7 +13,6 @@ import {
   FileText,
   FolderOpen,
   LayoutDashboard,
-  Settings,
   Shield,
   Users,
   Activity,
@@ -95,12 +94,6 @@ const navItems: NavItem[] = [
     href: '/admin/widgets',
     icon: Package,
     roles: [UserRole.SYSTEM_ADMIN], // System admin feature
-  },
-  {
-    title: 'Settings',
-    href: '/settings',
-    icon: Settings,
-    roles: [UserRole.SYSTEM_ADMIN, UserRole.ORG_ADMIN],
   },
 ];
 

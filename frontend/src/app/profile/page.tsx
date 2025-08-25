@@ -13,6 +13,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { 
   User,
@@ -23,15 +31,24 @@ import {
   Edit2,
   Save,
   X,
-  ArrowLeft
+  ArrowLeft,
+  Lock,
+  Eye,
+  EyeOff
 } from 'lucide-react';
-import { apiClient } from '@/lib/api/client';
+import { secureApiClient } from '@/lib/api/secure-client';
 import { format } from 'date-fns';
 import { UserRole } from '@/types';
 
 interface ProfileUpdateData {
   full_name?: string;
   email?: string;
+}
+
+interface PasswordChangeData {
+  current_password: string;
+  new_password: string;
+  confirm_password: string;
 }
 
 export default function ProfilePage() {
@@ -44,12 +61,22 @@ export default function ProfilePage() {
     full_name: '',
     email: '',
   });
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [passwordData, setPasswordData] = useState<PasswordChangeData>({
+    current_password: '',
+    new_password: '',
+    confirm_password: '',
+  });
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
 
   // Fetch current user data from the server
   const { data: currentUser, refetch: refetchUser } = useQuery({
     queryKey: ['currentUser'],
     queryFn: async () => {
-      const response = await apiClient.get('/users/me');
+      const response = await secureApiClient.get('/users/me');
       return response.data;
     },
     enabled: !!user,
@@ -65,9 +92,85 @@ export default function ProfilePage() {
     }
   }, [currentUser]);
 
+  const changePassword = useMutation({
+    mutationFn: async (data: { current_password: string; new_password: string }) => {
+      const response = await secureApiClient.patch('/users/me/password', data);
+      return response.data;
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Password changed',
+        description: 'Your password has been changed successfully.',
+      });
+      setShowPasswordDialog(false);
+      // Reset password form
+      setPasswordData({
+        current_password: '',
+        new_password: '',
+        confirm_password: '',
+      });
+      setPasswordErrors([]);
+    },
+    onError: (error: any) => {
+      const errorMessage = error.response?.data?.detail || 'Failed to change password';
+      toast({
+        title: 'Password change failed',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const validatePassword = (password: string): string[] => {
+    const errors: string[] = [];
+    if (password.length < 8) {
+      errors.push('Password must be at least 8 characters');
+    }
+    if (password.length > 40) {
+      errors.push('Password must be less than 40 characters');
+    }
+    if (!/[a-z]/.test(password)) {
+      errors.push('Password must contain at least one lowercase letter');
+    }
+    if (!/[A-Z]/.test(password)) {
+      errors.push('Password must contain at least one uppercase letter');
+    }
+    if (!/[0-9]/.test(password)) {
+      errors.push('Password must contain at least one number');
+    }
+    return errors;
+  };
+
+  const handlePasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validate passwords
+    const errors = validatePassword(passwordData.new_password);
+    if (errors.length > 0) {
+      setPasswordErrors(errors);
+      return;
+    }
+    
+    if (passwordData.new_password !== passwordData.confirm_password) {
+      setPasswordErrors(['Passwords do not match']);
+      return;
+    }
+    
+    if (passwordData.current_password === passwordData.new_password) {
+      setPasswordErrors(['New password must be different from current password']);
+      return;
+    }
+    
+    setPasswordErrors([]);
+    changePassword.mutate({
+      current_password: passwordData.current_password,
+      new_password: passwordData.new_password,
+    });
+  };
+
   const updateProfile = useMutation({
     mutationFn: async (data: ProfileUpdateData) => {
-      const response = await apiClient.patch('/users/me', data);
+      const response = await secureApiClient.patch('/users/me', data);
       return response.data;
     },
     onSuccess: async (updatedUser) => {
@@ -328,12 +431,148 @@ export default function ProfilePage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button variant="outline">
+            <Button 
+              variant="outline"
+              onClick={() => setShowPasswordDialog(true)}
+            >
+              <Lock className="h-4 w-4 mr-2" />
               Change Password
             </Button>
           </CardContent>
         </Card>
       </div>
+
+      {/* Change Password Dialog */}
+      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Change Password</DialogTitle>
+            <DialogDescription>
+              Enter your current password and choose a new password.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handlePasswordSubmit}>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="current_password">Current Password</Label>
+                <div className="relative">
+                  <Input
+                    id="current_password"
+                    type={showCurrentPassword ? 'text' : 'password'}
+                    value={passwordData.current_password}
+                    onChange={(e) => setPasswordData({ ...passwordData, current_password: e.target.value })}
+                    placeholder="Enter current password"
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  >
+                    {showCurrentPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new_password">New Password</Label>
+                <div className="relative">
+                  <Input
+                    id="new_password"
+                    type={showNewPassword ? 'text' : 'password'}
+                    value={passwordData.new_password}
+                    onChange={(e) => {
+                      setPasswordData({ ...passwordData, new_password: e.target.value });
+                      if (passwordErrors.length > 0) {
+                        setPasswordErrors(validatePassword(e.target.value));
+                      }
+                    }}
+                    placeholder="Enter new password"
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                  >
+                    {showNewPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm_password">Confirm New Password</Label>
+                <div className="relative">
+                  <Input
+                    id="confirm_password"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={passwordData.confirm_password}
+                    onChange={(e) => setPasswordData({ ...passwordData, confirm_password: e.target.value })}
+                    placeholder="Confirm new password"
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+              {passwordErrors.length > 0 && (
+                <div className="rounded-md bg-destructive/15 p-3">
+                  <ul className="list-disc list-inside text-sm text-destructive">
+                    {passwordErrors.map((error, index) => (
+                      <li key={index}>{error}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <div className="text-xs text-muted-foreground">
+                Password must be 8-40 characters and contain uppercase, lowercase, and numbers.
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setShowPasswordDialog(false);
+                  setPasswordData({
+                    current_password: '',
+                    new_password: '',
+                    confirm_password: '',
+                  });
+                  setPasswordErrors([]);
+                }}
+                disabled={changePassword.isPending}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={changePassword.isPending}>
+                {changePassword.isPending ? 'Changing...' : 'Change Password'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

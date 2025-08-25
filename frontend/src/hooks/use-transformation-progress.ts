@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api/client';
+import { secureApiClient } from '@/lib/api/secure-client';
 import { useToast } from '@/hooks/use-toast';
 
 export interface PipelineExecution {
@@ -71,10 +71,10 @@ export function useTransformationProgress({
     queryFn: async () => {
       if (!executionId) {
         // Get latest execution
-        const response = await apiClient.get(`/studies/${studyId}/pipeline/executions/latest`);
+        const response = await secureApiClient.get(`/studies/${studyId}/pipeline/executions/latest`);
         return response.data;
       }
-      const response = await apiClient.get(`/studies/${studyId}/pipeline/executions/${executionId}`);
+      const response = await secureApiClient.get(`/studies/${studyId}/pipeline/executions/${executionId}`);
       return response.data;
     },
     enabled: !!studyId && (!enableWebSocket || !isConnected),
@@ -84,7 +84,7 @@ export function useTransformationProgress({
   // Mutation to retry failed pipelines
   const retryPipeline = useMutation({
     mutationFn: async (pipelineId: string) => {
-      const response = await apiClient.post(
+      const response = await secureApiClient.post(
         `/studies/${studyId}/pipeline/executions/${executionId || execution?.id}/retry`,
         { pipeline_id: pipelineId }
       );
@@ -109,7 +109,7 @@ export function useTransformationProgress({
   // Mutation to cancel execution
   const cancelExecution = useMutation({
     mutationFn: async () => {
-      const response = await apiClient.post(
+      const response = await secureApiClient.post(
         `/studies/${studyId}/pipeline/executions/${executionId || execution?.id}/cancel`
       );
       return response.data;

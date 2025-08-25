@@ -4,7 +4,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { secureApiClient } from '@/lib/api/secure-client';
-import { apiClient } from '@/lib/api/client';
 import { widgetsApi } from '@/lib/api/widgets';
 
 // ============= Main Widget Data Hook =============
@@ -220,14 +219,8 @@ export function useKPIData(studyId: string, kpiType: string, refreshInterval = 3
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem('auth_token');
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/widget-data/kpi/${studyId}/${kpiType}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+      const response = await secureApiClient.get(
+        `/widget-data/kpi/${studyId}/${kpiType}`
       );
 
       setData(response.data);
@@ -267,14 +260,10 @@ export function useDatasetPreview(studyId: string, datasetName: string, limit = 
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem('auth_token');
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/widget-data/preview/${studyId}/${datasetName}`,
+      const response = await secureApiClient.get(
+        `/widget-data/preview/${studyId}/${datasetName}`,
         {
-          params: { limit },
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
+          params: { limit }
         }
       );
 
@@ -306,18 +295,12 @@ export function useAutoMapping(studyId: string, datasetName: string, targetWidge
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem('auth_token');
-      const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/widget-data/auto-map`,
+      const response = await secureApiClient.post(
+        `/widget-data/auto-map`,
         {
           study_id: studyId,
           dataset_name: datasetName,
           target_widget: targetWidget
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
         }
       );
 

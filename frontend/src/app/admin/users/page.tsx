@@ -5,7 +5,6 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { AuthGuard } from '@/components/auth-guard';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,7 +42,7 @@ import {
   Building2
 } from 'lucide-react';
 import { UserRole } from '@/types';
-import { apiClient } from '@/lib/api/client';
+import { secureApiClient } from '@/lib/api/secure-client';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { UserMenu } from '@/components/user-menu';
@@ -77,7 +76,7 @@ function UsersContent() {
   const { data: usersResponse, isLoading } = useQuery({
     queryKey: ['users'],
     queryFn: async () => {
-      const response = await apiClient.get<{ data: User[]; count: number }>('/users/');
+      const response = await secureApiClient.get<{ data: User[]; count: number }>('/users/');
       return response.data;
     },
     enabled: canAccessPage,
@@ -87,7 +86,7 @@ function UsersContent() {
 
   const toggleUserStatus = useMutation({
     mutationFn: async ({ userId, isActive }: { userId: string; isActive: boolean }) => {
-      const response = await apiClient.patch(`/users/${userId}/`, {
+      const response = await secureApiClient.patch(`/users/${userId}/`, {
         is_active: !isActive,
       });
       return response.data;
@@ -172,7 +171,10 @@ function UsersContent() {
             <Button
               variant="link"
               className="p-0 h-auto font-normal"
-              onClick={() => router.push('/admin')}
+              onClick={(e) => {
+                e.preventDefault();
+                router.push('/admin');
+              }}
             >
               Admin
             </Button>

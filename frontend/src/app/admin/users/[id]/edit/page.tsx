@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, Save, User } from 'lucide-react';
 import { UserRole } from '@/types';
-import { apiClient } from '@/lib/api/client';
+import { secureApiClient } from '@/lib/api/secure-client';
 import { useToast } from '@/hooks/use-toast';
 import { organizationsApi } from '@/lib/api/organizations';
 
@@ -45,7 +45,7 @@ export default function EditUserPage() {
   const { data: user, isLoading } = useQuery({
     queryKey: ['user', userId],
     queryFn: async () => {
-      const response = await apiClient.get(`/users/${userId}`);
+      const response = await secureApiClient.get(`/users/${userId}`);
       return response.data;
     },
     enabled: !!userId && canAccessPage,
@@ -75,7 +75,7 @@ export default function EditUserPage() {
   // Update user mutation
   const updateUser = useMutation({
     mutationFn: async (data: UserUpdateData) => {
-      const response = await apiClient.patch(`/users/${userId}`, data);
+      const response = await secureApiClient.patch(`/users/${userId}`, data);
       return response.data;
     },
     onSuccess: () => {

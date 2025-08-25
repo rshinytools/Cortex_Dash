@@ -49,7 +49,7 @@ import {
   AlertCircle,
   Rocket
 } from 'lucide-react';
-import { apiClient } from '@/lib/api/client';
+import { secureApiClient } from '@/lib/api/secure-client';
 import { UserRole, StudyStatus, StudyPhase } from '@/types';
 import { format } from 'date-fns';
 import { UserMenu } from '@/components/user-menu';
@@ -105,7 +105,7 @@ export default function StudiesPage() {
   const { data: studies, isLoading } = useQuery({
     queryKey: ['studies', searchTerm, statusFilter, initializationFilter],
     queryFn: async () => {
-      const response = await apiClient.get<Study[]>('/studies/');
+      const response = await secureApiClient.get<Study[]>('/studies/');
       let filtered = response.data;
       
       // Apply filters

@@ -118,7 +118,8 @@
       "Bash(for file in frontend/src/app/admin/*/page.tsx frontend/src/app/admin/*/*/page.tsx)",
       "Bash(do if ! grep -q \"AuthGuard\" \"$file\")",
       "Bash(then echo \"Missing AuthGuard: $file\")",
-      "Bash(fi)"
+      "Bash(fi)",
+      "Bash(export TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTY4NDQzODIsInN1YiI6IjkwZWJiNDIzLTk4NzgtNGI4Yi04NGMyLWMxZWRmMTQ4YWZkZSJ9.bPp_JPJiYiy2XmYFhMUUtXgjlPBIhxShU0fx-PX-JPE\")"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

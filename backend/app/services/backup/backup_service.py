@@ -15,6 +15,7 @@ import tempfile
 
 from sqlmodel import Session, select
 from sqlalchemy.dialects import postgresql
+from sqlalchemy import text
 
 from app.core.db import engine
 from app.core.config import settings
@@ -231,7 +232,7 @@ class BackupService:
             """
             
             result = session.execute(
-                query,
+                text(query),
                 {
                     "filename": filename,
                     "size_mb": size_mb,
@@ -265,7 +266,7 @@ class BackupService:
                 LIMIT :limit
             """
             
-            result = session.execute(query, {"limit": limit})
+            result = session.execute(text(query), {"limit": limit})
             
             backups = []
             for row in result:
@@ -296,7 +297,7 @@ class BackupService:
                 WHERE id = :backup_id
             """
             
-            result = session.execute(query, {"backup_id": backup_id})
+            result = session.execute(text(query), {"backup_id": backup_id})
             row = result.fetchone()
             
             if not row:

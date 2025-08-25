@@ -332,16 +332,6 @@ function AdminContent() {
 
   const adminModules = [
     {
-      title: 'Test Navigation',
-      description: 'Debug navigation issue',
-      icon: Shield,
-      path: '/admin/test',
-      color: 'bg-red-500',
-      lightColor: 'bg-red-100',
-      enabled: true,
-      badge: 'TEST'
-    },
-    {
       title: 'User Management',
       description: 'Manage users, roles, and permissions',
       icon: Users,
@@ -412,6 +402,16 @@ function AdminContent() {
       color: 'bg-cyan-500',
       lightColor: 'bg-cyan-100',
       stats: { count: metrics.activeStudies, label: 'Studies' },
+      enabled: true
+    },
+    {
+      title: 'Backup & Restore',
+      description: 'System backup and recovery',
+      icon: Database,
+      path: '/admin/backup',
+      color: 'bg-amber-500',
+      lightColor: 'bg-amber-100',
+      badge: 'Enterprise',
       enabled: true
     }
   ];
@@ -925,6 +925,15 @@ function AdminContent() {
                     >
                       <LayoutDashboard className="h-4 w-4 mr-2" />
                       Create Dashboard Template
+                    </Button>
+                  </Link>
+                  <Link href="/admin/backup" className="block">
+                    <Button 
+                      className="w-full justify-start" 
+                      variant="outline"
+                    >
+                      <Database className="h-4 w-4 mr-2" />
+                      Backup & Restore
                     </Button>
                   </Link>
                   <Link href="/admin/audit-trail" className="block">

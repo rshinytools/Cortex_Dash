@@ -63,6 +63,7 @@ import {
   Pause,
   Trash2,
   Info,
+  ChevronLeft,
   ChevronRight,
   Activity,
   BarChart3,
@@ -466,6 +467,18 @@ export default function BackupPage() {
   return (
     <AuthGuard requiredPermission="SYSTEM_ADMIN">
       <div className="container mx-auto py-10">
+        {/* Back Navigation */}
+        <div className="mb-6">
+          <Button
+            variant="ghost"
+            onClick={() => router.push('/admin')}
+            className="mb-4"
+          >
+            <ChevronLeft className="mr-2 h-4 w-4" />
+            Back to Admin Dashboard
+          </Button>
+        </div>
+
         <div className="mb-8">
           <h1 className="text-3xl font-bold">Backup & Restore</h1>
           <p className="text-muted-foreground">

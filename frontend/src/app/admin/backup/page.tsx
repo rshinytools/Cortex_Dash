@@ -144,7 +144,7 @@ export default function BackupPage() {
   useEffect(() => {
     loadData();
     
-    // Connect WebSocket for real-time progress
+    // Connect WebSocket for real-time progress (if available)
     const websocket = connectBackupWebSocket((data) => {
       if (data.type === 'progress') {
         setActiveBackups(prev => new Map(prev).set(data.backup_id, data.progress));
@@ -158,11 +158,13 @@ export default function BackupPage() {
       }
     });
     
-    setWs(websocket);
-    
-    return () => {
-      websocket.close();
-    };
+    if (websocket) {
+      setWs(websocket);
+      
+      return () => {
+        websocket.close();
+      };
+    }
   }, []);
 
   const loadData = async () => {

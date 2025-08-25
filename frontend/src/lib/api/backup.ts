@@ -115,7 +115,7 @@ export interface BackupStatistics {
 export const backupApi = {
   // List all backups
   async listBackups(limit = 50): Promise<Backup[]> {
-    const response = await secureApiClient.get('/api/v1/backups', {
+    const response = await secureApiClient.get('/backups', {
       params: { limit }
     });
     return response.data;
@@ -123,13 +123,13 @@ export const backupApi = {
 
   // Get specific backup
   async getBackup(backupId: string): Promise<Backup> {
-    const response = await secureApiClient.get(`/api/v1/backup/${backupId}`);
+    const response = await secureApiClient.get(`/backup/${backupId}`);
     return response.data;
   },
 
   // Create new backup
   async createBackup(request: CreateBackupRequest): Promise<CreateBackupResponse> {
-    const response = await secureApiClient.post('/api/v1/backup', request);
+    const response = await secureApiClient.post('/backup', request);
     return response.data;
   },
 
@@ -139,7 +139,7 @@ export const backupApi = {
     request: RestoreBackupRequest
   ): Promise<RestoreBackupResponse> {
     const response = await secureApiClient.post(
-      `/api/v1/restore/${backupId}`,
+      `/restore/${backupId}`,
       request
     );
     return response.data;
@@ -148,7 +148,7 @@ export const backupApi = {
   // Download backup file
   async downloadBackup(backupId: string): Promise<Blob> {
     const response = await secureApiClient.get(
-      `/api/v1/backup/${backupId}/download`,
+      `/backup/${backupId}/download`,
       {
         responseType: 'blob'
       }
@@ -163,19 +163,19 @@ export const backupApi = {
     message: string;
   }> {
     const response = await secureApiClient.post(
-      `/api/v1/backup/${backupId}/verify`
+      `/backup/${backupId}/verify`
     );
     return response.data;
   },
 
   // Delete backup (if allowed)
   async deleteBackup(backupId: string): Promise<void> {
-    await secureApiClient.delete(`/api/v1/backup/${backupId}`);
+    await secureApiClient.delete(`/backup/${backupId}`);
   },
 
   // Get backup statistics
   async getStatistics(): Promise<BackupStatistics> {
-    const response = await secureApiClient.get('/api/v1/backup/statistics');
+    const response = await secureApiClient.get('/backup/statistics');
     return response.data;
   },
 
@@ -186,7 +186,7 @@ export const backupApi = {
     files_size_mb: number;
     compression_ratio: number;
   }> {
-    const response = await secureApiClient.get('/api/v1/backup/estimate', {
+    const response = await secureApiClient.get('/backup/estimate', {
       params: { backup_type: backupType }
     });
     return response.data;
@@ -197,36 +197,36 @@ export const backupApi = {
 export const scheduleApi = {
   // List all schedules
   async listSchedules(): Promise<BackupSchedule[]> {
-    const response = await secureApiClient.get('/api/v1/backup/schedules');
+    const response = await secureApiClient.get('/backup/schedules');
     return response.data;
   },
 
   // Get specific schedule
   async getSchedule(scheduleId: string): Promise<BackupSchedule> {
-    const response = await secureApiClient.get(`/api/v1/backup/schedules/${scheduleId}`);
+    const response = await secureApiClient.get(`/backup/schedules/${scheduleId}`);
     return response.data;
   },
 
   // Create new schedule
   async createSchedule(schedule: Omit<BackupSchedule, 'id' | 'created_at' | 'updated_at'>): Promise<BackupSchedule> {
-    const response = await secureApiClient.post('/api/v1/backup/schedules', schedule);
+    const response = await secureApiClient.post('/backup/schedules', schedule);
     return response.data;
   },
 
   // Update schedule
   async updateSchedule(scheduleId: string, schedule: Partial<BackupSchedule>): Promise<BackupSchedule> {
-    const response = await secureApiClient.put(`/api/v1/backup/schedules/${scheduleId}`, schedule);
+    const response = await secureApiClient.put(`/backup/schedules/${scheduleId}`, schedule);
     return response.data;
   },
 
   // Delete schedule
   async deleteSchedule(scheduleId: string): Promise<void> {
-    await secureApiClient.delete(`/api/v1/backup/schedules/${scheduleId}`);
+    await secureApiClient.delete(`/backup/schedules/${scheduleId}`);
   },
 
   // Toggle schedule active/inactive
   async toggleSchedule(scheduleId: string, isActive: boolean): Promise<void> {
-    await secureApiClient.post(`/api/v1/backup/schedules/${scheduleId}/toggle`, {
+    await secureApiClient.post(`/backup/schedules/${scheduleId}/toggle`, {
       is_active: isActive
     });
   }
@@ -236,13 +236,13 @@ export const scheduleApi = {
 export const cloudStorageApi = {
   // Get current configuration
   async getConfig(): Promise<CloudStorageConfig> {
-    const response = await secureApiClient.get('/api/v1/backup/cloud-storage');
+    const response = await secureApiClient.get('/backup/cloud-storage');
     return response.data;
   },
 
   // Update configuration
   async updateConfig(config: CloudStorageConfig): Promise<CloudStorageConfig> {
-    const response = await secureApiClient.put('/api/v1/backup/cloud-storage', config);
+    const response = await secureApiClient.put('/backup/cloud-storage', config);
     return response.data;
   },
 
@@ -251,7 +251,7 @@ export const cloudStorageApi = {
     success: boolean;
     message: string;
   }> {
-    const response = await secureApiClient.post('/api/v1/backup/cloud-storage/test', {
+    const response = await secureApiClient.post('/backup/cloud-storage/test', {
       provider
     });
     return response.data;
@@ -262,7 +262,7 @@ export const cloudStorageApi = {
     success: boolean;
     location: string;
   }> {
-    const response = await secureApiClient.post(`/api/v1/backup/${backupId}/upload-cloud`, {
+    const response = await secureApiClient.post(`/backup/${backupId}/upload-cloud`, {
       provider
     });
     return response.data;
@@ -270,14 +270,19 @@ export const cloudStorageApi = {
 };
 
 // WebSocket connection for real-time progress
-export function connectBackupWebSocket(onProgress: (data: any) => void): WebSocket {
-  const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000';
-  const ws = new WebSocket(`${wsUrl}/ws/backup-progress`);
-
-  ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    onProgress(data);
-  };
-
-  return ws;
+export function connectBackupWebSocket(onProgress: (data: any) => void): WebSocket | null {
+  // For now, return null as WebSocket is not implemented on backend
+  // When implemented, it should use ws://localhost:3000 for CSP compliance
+  // or update the CSP policy to allow ws://localhost:8000
+  
+  // Mock WebSocket for now - just return null
+  // const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3000';
+  // const ws = new WebSocket(`${wsUrl}/ws/backup-progress`);
+  // ws.onmessage = (event) => {
+  //   const data = JSON.parse(event.data);
+  //   onProgress(data);
+  // };
+  // return ws;
+  
+  return null;
 }

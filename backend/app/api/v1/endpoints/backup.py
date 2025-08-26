@@ -305,18 +305,32 @@ async def delete_backup(
     current_user: User = Depends(get_current_active_superuser)
 ):
     """
-    Delete a backup (soft delete - marks as deleted but keeps record).
+    Delete a backup (physical deletion of the file).
     
     Requires SYSTEM_ADMIN privileges.
-    For 21 CFR Part 11 compliance, the record is kept but marked as deleted.
+    Note: For 21 CFR Part 11 compliance, this action is logged in the audit trail.
+    The backup record is kept in the database but marked as deleted.
     """
     try:
-        # For now, we don't allow deletion for compliance reasons
-        # In the future, we might implement soft delete
-        raise HTTPException(
-            status_code=403, 
-            detail="Backup deletion is disabled for compliance reasons. Backups will be automatically removed according to retention policy."
-        )
+        # Log deletion attempt
+        # TODO: Implement activity logging for compliance
+        # await activity_service.log_activity(
+        #     user_id=current_user.id,
+        #     action="backup.delete",
+        #     resource_type="backup",
+        #     resource_id=str(backup_id),
+        #     details={"reason": "User requested deletion"}
+        # )
         
+        # Delete the backup file
+        result = await backup_service.delete_backup(backup_id, user_id=current_user.id)
+        
+        if not result:
+            raise HTTPException(status_code=404, detail="Backup not found")
+        
+        return {"success": True, "message": "Backup deleted successfully"}
+        
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

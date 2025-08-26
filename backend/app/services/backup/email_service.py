@@ -405,5 +405,77 @@ class BackupEmailService:
             # Don't raise exception to avoid breaking backup/restore operations
 
 
+    async def send_backup_deletion_email(
+        self,
+        user_id: str,
+        backup_details: Dict[str, Any]
+    ) -> None:
+        """Send email notification for backup deletion"""
+        
+        # Get user and all system admins
+        recipients = await self._get_recipients(user_id)
+        
+        subject = f"🗑️ Backup Deleted - {backup_details['filename']}"
+        
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background-color: #dc3545; color: white; padding: 20px; border-radius: 5px 5px 0 0; }}
+                .content {{ background-color: #f8f9fa; padding: 20px; border: 1px solid #dee2e6; }}
+                .details {{ background-color: white; padding: 15px; margin: 15px 0; border-radius: 5px; }}
+                .details-row {{ display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }}
+                .details-row:last-child {{ border-bottom: none; }}
+                .label {{ font-weight: bold; color: #495057; }}
+                .value {{ color: #212529; }}
+                .footer {{ margin-top: 20px; padding-top: 20px; border-top: 1px solid #dee2e6; font-size: 12px; color: #6c757d; }}
+                .warning {{ background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 10px; border-radius: 5px; margin: 15px 0; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h2>🗑️ Backup Deleted</h2>
+                </div>
+                <div class="content">
+                    <p>A backup has been deleted from the system. This action has been logged for audit purposes.</p>
+                    
+                    <div class="details">
+                        <h3>Deletion Details:</h3>
+                        <div class="details-row">
+                            <span class="label">Filename:</span>
+                            <span class="value">{backup_details['filename']}</span>
+                        </div>
+                        <div class="details-row">
+                            <span class="label">Backup ID:</span>
+                            <span class="value" style="font-family: monospace;">{backup_details['backup_id']}</span>
+                        </div>
+                        <div class="details-row">
+                            <span class="label">Deleted At:</span>
+                            <span class="value">{backup_details['deleted_at']}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="warning">
+                        <strong>⚠️ Important:</strong> This backup has been permanently deleted and cannot be recovered. 
+                        This action has been recorded in the audit log for compliance purposes.
+                    </div>
+                    
+                    <div class="footer">
+                        <p>This is an automated notification from the Clinical Dashboard Backup System.</p>
+                        <p>For 21 CFR Part 11 compliance, all backup deletions are logged and tracked.</p>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        await self._send_email(recipients, subject, html_content)
+        print(f"Deletion notification sent to {len(recipients)} recipients")
+
 # Singleton instance
 backup_email_service = BackupEmailService()

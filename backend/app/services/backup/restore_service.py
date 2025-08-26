@@ -24,7 +24,7 @@ class RestoreService:
     
     def __init__(self):
         self.backup_dir = Path("/data/backups")
-        self.studies_dir = Path("/data/studies")
+        self.data_dir = Path("/data")  # Changed to handle all data
         
     async def restore_backup(
         self,
@@ -103,12 +103,31 @@ class RestoreService:
                 
                 # Step 7: Restore files if included
                 if backup_type in ["full", "files"]:
-                    studies_backup_path = temp_path / "studies"
-                    if studies_backup_path.exists():
-                        print(f"Restoring study files...")
-                        await self._restore_files(studies_backup_path, self.studies_dir)
-                    else:
-                        print(f"Warning: Study files not found in backup")
+                    # Look for organization directories in the backup
+                    org_dirs_restored = False
+                    for org_dir in temp_path.iterdir():
+                        # Skip non-org directories
+                        if org_dir.name in ["metadata.json", "database.sql"] or not org_dir.is_dir():
+                            continue
+                        
+                        # Check if this contains studies
+                        studies_backup_path = org_dir / "studies"
+                        if studies_backup_path.exists():
+                            print(f"Restoring organization data: {org_dir.name}")
+                            # Restore to /data/{org_id}/studies/
+                            target_org_dir = self.data_dir / org_dir.name / "studies"
+                            await self._restore_files(studies_backup_path, target_org_dir)
+                            org_dirs_restored = True
+                    
+                    # Fallback to old structure for compatibility
+                    if not org_dirs_restored:
+                        studies_backup_path = temp_path / "studies"
+                        if studies_backup_path.exists():
+                            print(f"Restoring study files (legacy structure)...")
+                            # For backwards compatibility with old backups
+                            await self._restore_files(studies_backup_path, self.data_dir / "studies")
+                        else:
+                            print(f"Warning: No study files found in backup")
                 
                 # Step 8: Save restore record
                 restore_record = await self._save_restore_record(

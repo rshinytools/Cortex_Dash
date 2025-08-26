@@ -117,6 +117,13 @@ export default function BackupPage() {
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [cloudConfigOpen, setCloudConfigOpen] = useState(false);
   const [selectedBackup, setSelectedBackup] = useState<Backup | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [backupToDelete, setBackupToDelete] = useState<Backup | null>(null);
+  
+  // Operation states
+  const [isCreatingBackup, setIsCreatingBackup] = useState(false);
+  const [isDeletingBackup, setIsDeletingBackup] = useState(false);
+  const [isRestoringBackup, setIsRestoringBackup] = useState(false);
   
   // Progress tracking
   const [activeBackups, setActiveBackups] = useState<Map<string, number>>(new Map());
@@ -311,6 +318,9 @@ export default function BackupPage() {
 
   // Actions
   const createBackup = async () => {
+    if (isCreatingBackup) return; // Prevent double-clicks
+    
+    setIsCreatingBackup(true);
     try {
       const response = await backupApi.createBackup(backupForm);
       
@@ -332,12 +342,15 @@ export default function BackupPage() {
         description: 'Failed to create backup',
         variant: 'destructive',
       });
+    } finally {
+      setIsCreatingBackup(false);
     }
   };
 
   const restoreBackup = async () => {
-    if (!selectedBackup) return;
+    if (!selectedBackup || isRestoringBackup) return;
     
+    setIsRestoringBackup(true);
     try {
       const response = await backupApi.restoreBackup(selectedBackup.id, {
         create_safety_backup: true,
@@ -357,6 +370,34 @@ export default function BackupPage() {
         description: 'Failed to restore backup',
         variant: 'destructive',
       });
+    } finally {
+      setIsRestoringBackup(false);
+    }
+  };
+
+  const deleteBackup = async () => {
+    if (!backupToDelete || isDeletingBackup) return;
+    
+    setIsDeletingBackup(true);
+    try {
+      await backupApi.deleteBackup(backupToDelete.id);
+      
+      toast({
+        title: 'Success',
+        description: `Backup ${backupToDelete.filename} deleted successfully`,
+      });
+      
+      setDeleteDialogOpen(false);
+      setBackupToDelete(null);
+      loadBackups();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete backup',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeletingBackup(false);
     }
   };
 
@@ -622,8 +663,23 @@ export default function BackupPage() {
                                 <Progress value={progress} className="w-20" />
                                 <span className="text-xs">{progress}%</span>
                               </div>
+                            ) : backup.status === 'pending' ? (
+                              <Badge variant="outline" className="bg-yellow-50 text-yellow-900 border-yellow-200">
+                                <Clock className="mr-1 h-3 w-3 text-yellow-600" />
+                                Pending
+                              </Badge>
+                            ) : backup.status === 'in_progress' ? (
+                              <Badge variant="outline" className="bg-blue-50 text-blue-900 border-blue-200">
+                                <RefreshCw className="mr-1 h-3 w-3 text-blue-600 animate-spin" />
+                                In Progress
+                              </Badge>
+                            ) : backup.status === 'failed' ? (
+                              <Badge variant="outline" className="bg-red-50 text-red-900 border-red-200">
+                                <XCircle className="mr-1 h-3 w-3 text-red-600" />
+                                Failed
+                              </Badge>
                             ) : (
-                              <Badge variant="outline" className="bg-green-50">
+                              <Badge variant="outline" className="bg-green-50 text-green-900 border-green-200">
                                 <CheckCircle className="mr-1 h-3 w-3 text-green-600" />
                                 Completed
                               </Badge>
@@ -657,6 +713,18 @@ export default function BackupPage() {
                                 title="Restore"
                               >
                                 <RefreshCw className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  setBackupToDelete(backup);
+                                  setDeleteDialogOpen(true);
+                                }}
+                                title="Delete"
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <Trash2 className="h-4 w-4" />
                               </Button>
                               {backup.cloud_storage && (
                                 <Badge variant="outline">
@@ -1078,11 +1146,25 @@ export default function BackupPage() {
               )}
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setCreateBackupOpen(false)}>
+              <Button 
+                variant="outline" 
+                onClick={() => setCreateBackupOpen(false)}
+                disabled={isCreatingBackup}
+              >
                 Cancel
               </Button>
-              <Button onClick={createBackup}>
-                Create Backup
+              <Button 
+                onClick={createBackup}
+                disabled={isCreatingBackup}
+              >
+                {isCreatingBackup ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Creating Backup...
+                  </>
+                ) : (
+                  'Create Backup'
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -1142,11 +1224,88 @@ export default function BackupPage() {
               </div>
             )}
             <DialogFooter>
-              <Button variant="outline" onClick={() => setRestoreDialogOpen(false)}>
+              <Button 
+                variant="outline" 
+                onClick={() => setRestoreDialogOpen(false)}
+                disabled={isRestoringBackup}
+              >
                 Cancel
               </Button>
-              <Button variant="destructive" onClick={restoreBackup}>
-                Restore System
+              <Button 
+                variant="destructive" 
+                onClick={restoreBackup}
+                disabled={isRestoringBackup}
+              >
+                {isRestoringBackup ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Restoring...
+                  </>
+                ) : (
+                  'Restore System'
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center space-x-2">
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+                <span>Delete Backup</span>
+              </DialogTitle>
+              <DialogDescription>
+                This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            {backupToDelete && (
+              <div className="space-y-4">
+                <div className="rounded-lg bg-red-50 p-4 text-sm">
+                  <p className="font-medium text-red-900">
+                    Are you sure you want to delete this backup?
+                  </p>
+                  <p className="mt-2 text-red-700">
+                    Backup: {backupToDelete.filename}
+                  </p>
+                  <p className="text-red-700">
+                    Created: {format(new Date(backupToDelete.created_at), 'PPpp')}
+                  </p>
+                  <p className="text-red-700">
+                    Size: {backupToDelete.size_mb} MB
+                  </p>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setDeleteDialogOpen(false);
+                  setBackupToDelete(null);
+                }}
+                disabled={isDeletingBackup}
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={deleteBackup}
+                disabled={isDeletingBackup}
+              >
+                {isDeletingBackup ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete Backup
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>

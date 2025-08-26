@@ -28,7 +28,7 @@ class BackupService:
     
     def __init__(self):
         self.backup_dir = Path("/data/backups")
-        self.studies_dir = Path("/data/studies")
+        self.data_dir = Path("/data")  # Changed to backup all data
         self.backup_dir.mkdir(parents=True, exist_ok=True)
         
     async def create_backup(
@@ -65,10 +65,28 @@ class BackupService:
                 
                 # Step 2: Copy files if needed
                 if backup_type in ["full", "files"]:
-                    print(f"Copying study files...")
-                    if self.studies_dir.exists():
-                        studies_backup_path = temp_path / "studies"
-                        shutil.copytree(self.studies_dir, studies_backup_path)
+                    print(f"Copying study data files...")
+                    # Backup all organization and study data
+                    # Structure: /data/{org_id}/studies/{study_id}/
+                    for org_dir in self.data_dir.iterdir():
+                        # Skip backups directory itself
+                        if org_dir.name == "backups" or not org_dir.is_dir():
+                            continue
+                        
+                        # Check if this is an org directory (contains studies folder)
+                        studies_dir = org_dir / "studies"
+                        if studies_dir.exists():
+                            print(f"  Backing up organization: {org_dir.name}")
+                            # Create same structure in backup
+                            org_backup_path = temp_path / org_dir.name / "studies"
+                            org_backup_path.mkdir(parents=True, exist_ok=True)
+                            
+                            # Copy all study data
+                            for study_dir in studies_dir.iterdir():
+                                if study_dir.is_dir():
+                                    print(f"    Backing up study: {study_dir.name}")
+                                    study_backup_path = org_backup_path / study_dir.name
+                                    shutil.copytree(study_dir, study_backup_path)
                 
                 # Step 3: Create metadata file
                 metadata = {
@@ -328,6 +346,66 @@ class BackupService:
         
         calculated_checksum = await self._calculate_checksum(backup_path)
         return calculated_checksum == backup["checksum"]
+    
+    async def delete_backup(self, backup_id: UUID, user_id: UUID) -> bool:
+        """
+        Delete a backup file and its database record
+        
+        Args:
+            backup_id: ID of the backup to delete
+            user_id: ID of the user performing the deletion
+            
+        Returns:
+            True if successful, False if backup not found
+        """
+        # Get backup details first for logging
+        backup = await self.get_backup(backup_id)
+        if not backup:
+            return False
+        
+        # Delete the physical file
+        backup_path = self.backup_dir / backup["filename"]
+        if backup_path.exists():
+            try:
+                backup_path.unlink()
+                print(f"Deleted backup file: {backup['filename']}")
+            except Exception as e:
+                print(f"Error deleting backup file: {str(e)}")
+                # Continue even if file deletion fails (might already be deleted)
+        
+        # Delete the database record
+        # Note: For stricter 21 CFR Part 11 compliance, you might want to 
+        # keep the record and add is_deleted flag instead
+        with Session(engine) as session:
+            query = text("""
+                DELETE FROM backups 
+                WHERE id = :backup_id
+            """)
+            
+            result = session.execute(query, {
+                "backup_id": str(backup_id)
+            })
+            session.commit()
+            
+            if result.rowcount == 0:
+                return False
+        
+        print(f"Backup {backup_id} deleted by user {user_id}")
+        
+        # Send email notification about deletion
+        try:
+            await backup_email_service.send_backup_deletion_email(
+                user_id=str(user_id),
+                backup_details={
+                    "backup_id": str(backup_id),
+                    "filename": backup["filename"],
+                    "deleted_at": datetime.utcnow().isoformat()
+                }
+            )
+        except Exception as email_error:
+            print(f"Failed to send deletion email: {str(email_error)}")
+        
+        return True
 
 
 # Singleton instance

@@ -72,6 +72,7 @@ services:
       - SMTP_TLS=false
       - EMAILS_FROM_EMAIL=noreply@example.com
       - DATA_PATH=/data
+      - ENCRYPTION_KEY=SZHqT7JYLsFghGNdnJO5lFjA3XvILUFOHMKoId8NzLE0x1kXq9hR7KfzYDJfFsw=
     volumes:
       - ./data:/data
       - ./backend/app:/app/app
@@ -132,6 +133,7 @@ services:
       - SECRET_KEY=your-secret-key-here-change-in-production
       - FIRST_SUPERUSER=admin@sagarmatha.ai
       - FIRST_SUPERUSER_PASSWORD=adadad123
+      - ENCRYPTION_KEY=SZHqT7JYLsFghGNdnJO5lFjA3XvILUFOHMKoId8NzLE0x1kXq9hR7KfzYDJfFsw=
     volumes:
       - ./data:/data
       - ./backend/app:/app/app
@@ -163,6 +165,7 @@ services:
       - SECRET_KEY=your-secret-key-here-change-in-production
       - FIRST_SUPERUSER=admin@sagarmatha.ai
       - FIRST_SUPERUSER_PASSWORD=adadad123
+      - ENCRYPTION_KEY=SZHqT7JYLsFghGNdnJO5lFjA3XvILUFOHMKoId8NzLE0x1kXq9hR7KfzYDJfFsw=
     volumes:
       - ./data:/data
       - ./backend/app:/app/app

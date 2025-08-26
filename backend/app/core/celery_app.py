@@ -13,6 +13,7 @@ celery_app = Celery(
         "app.clinical_modules.data_sources.tasks",
         "app.clinical_modules.exports.tasks",
         "app.tasks.study_initialization",
+        "app.worker.email_tasks",
     ]
 )
 
@@ -57,5 +58,22 @@ celery_app.conf.beat_schedule = {
     "generate-scheduled-reports": {
         "task": "app.clinical_modules.exports.tasks.generate_scheduled_reports",
         "schedule": 600.0,  # Every 10 minutes
+    },
+    # Email tasks
+    "process-email-queue": {
+        "task": "process_email_queue",
+        "schedule": 60.0,  # Every minute
+    },
+    "retry-failed-emails": {
+        "task": "retry_failed_emails",
+        "schedule": 300.0,  # Every 5 minutes
+    },
+    "process-scheduled-emails": {
+        "task": "process_scheduled_emails",
+        "schedule": 300.0,  # Every 5 minutes
+    },
+    "cleanup-old-email-history": {
+        "task": "cleanup_old_email_history",
+        "schedule": 604800.0,  # Weekly (7 days)
     },
 }

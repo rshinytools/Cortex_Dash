@@ -9,6 +9,7 @@ from app.api.v1.endpoints import rbac
 from app.api.v1.endpoints import system_health, performance_monitoring, backup_recovery, job_monitoring, backup
 from app.api.v1.endpoints import branding, documentation, dashboard_templates
 from app.api.v1.endpoints.admin import widgets as admin_widgets, dashboards as admin_dashboards, menus as admin_menus
+from app.api.v1.endpoints import email_settings
 from app.core.config import settings
 
 api_router = APIRouter()
@@ -70,6 +71,9 @@ api_router.include_router(performance_monitoring.router, prefix="/performance", 
 api_router.include_router(backup_recovery.router, prefix="/backup-recovery", tags=["backup-recovery"])
 api_router.include_router(backup.router, prefix="", tags=["backup"])  # Real backup implementation
 api_router.include_router(job_monitoring.router, prefix="/jobs", tags=["jobs"])
+
+# Email Settings & Management
+api_router.include_router(email_settings.router, prefix="/email", tags=["email"])
 
 # Branding APIs
 api_router.include_router(branding.router, prefix="/branding", tags=["branding"])

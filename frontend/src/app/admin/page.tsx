@@ -48,7 +48,8 @@ import {
   Trash2,
   LogIn,
   UserPlus,
-  FileDown
+  FileDown,
+  Mail
 } from 'lucide-react';
 import { UserRole } from '@/types';
 import { motion } from 'framer-motion';
@@ -412,6 +413,16 @@ function AdminContent() {
       color: 'bg-amber-500',
       lightColor: 'bg-amber-100',
       badge: 'Enterprise',
+      enabled: true
+    },
+    {
+      title: 'Email Settings',
+      description: 'Email configuration & templates',
+      icon: Mail,
+      path: '/admin/email',
+      color: 'bg-violet-500',
+      lightColor: 'bg-violet-100',
+      stats: { count: '5', label: 'Templates' },
       enabled: true
     }
   ];
@@ -934,6 +945,15 @@ function AdminContent() {
                     >
                       <Database className="h-4 w-4 mr-2" />
                       Backup & Restore
+                    </Button>
+                  </Link>
+                  <Link href="/admin/email" className="block">
+                    <Button 
+                      className="w-full justify-start" 
+                      variant="outline"
+                    >
+                      <Mail className="h-4 w-4 mr-2" />
+                      Email Settings
                     </Button>
                   </Link>
                   <Link href="/admin/audit-trail" className="block">

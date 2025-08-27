@@ -120,7 +120,9 @@
       "Bash(then echo \"Missing AuthGuard: $file\")",
       "Bash(fi)",
       "Bash(export TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTY4NDQzODIsInN1YiI6IjkwZWJiNDIzLTk4NzgtNGI4Yi04NGMyLWMxZWRmMTQ4YWZkZSJ9.bPp_JPJiYiy2XmYFhMUUtXgjlPBIhxShU0fx-PX-JPE\")",
-      "Bash(set PYTHONPATH=.)"
+      "Bash(set PYTHONPATH=.)",
+      "Bash(export TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTY5NDcwMzEsInN1YiI6IjkwZWJiNDIzLTk4NzgtNGI4Yi04NGMyLWMxZWRmMTQ4YWZkZSJ9.IFGZojDI0VhjV4KAwUyYxRYnQgwaTLkwQ5yxCHWFRiw\")",
+      "Bash(export TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTY5NTkxNjAsInN1YiI6IjkwZWJiNDIzLTk4NzgtNGI4Yi04NGMyLWMxZWRmMTQ4YWZkZSJ9.4t015DjixMG4SDd96nrB403oub_LgjjN_bVe5dFHdvY\")"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

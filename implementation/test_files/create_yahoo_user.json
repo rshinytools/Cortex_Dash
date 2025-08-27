@@ -1,0 +1,8 @@
+{
+  "email": "amulyabista@yahoo.com",
+  "password": "Welcome123!",
+  "full_name": "Amulya Bista Yahoo",
+  "role": "admin",
+  "is_active": true,
+  "is_superuser": false
+}

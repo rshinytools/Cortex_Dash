@@ -67,12 +67,13 @@ services:
       - SECRET_KEY=your-secret-key-here-change-in-production
       - FIRST_SUPERUSER=admin@sagarmatha.ai
       - FIRST_SUPERUSER_PASSWORD=adadad123
-      - SMTP_HOST=mailcatcher
-      - SMTP_PORT=1025
-      - SMTP_TLS=false
+      # SMTP settings removed - using database configuration instead
+      # - SMTP_HOST=mailcatcher
+      # - SMTP_PORT=1025
+      # - SMTP_TLS=false
       - EMAILS_FROM_EMAIL=noreply@example.com
       - DATA_PATH=/data
-      - ENCRYPTION_KEY=SZHqT7JYLsFghGNdnJO5lFjA3XvILUFOHMKoId8NzLE0x1kXq9hR7KfzYDJfFsw=
+      - ENCRYPTION_KEY=lfNDmT0NurPGZuiEalqfLmjwqgQcyYh-I05AoVJ6uMo=
     volumes:
       - ./data:/data
       - ./backend/app:/app/app
@@ -133,7 +134,7 @@ services:
       - SECRET_KEY=your-secret-key-here-change-in-production
       - FIRST_SUPERUSER=admin@sagarmatha.ai
       - FIRST_SUPERUSER_PASSWORD=adadad123
-      - ENCRYPTION_KEY=SZHqT7JYLsFghGNdnJO5lFjA3XvILUFOHMKoId8NzLE0x1kXq9hR7KfzYDJfFsw=
+      - ENCRYPTION_KEY=lfNDmT0NurPGZuiEalqfLmjwqgQcyYh-I05AoVJ6uMo=
     volumes:
       - ./data:/data
       - ./backend/app:/app/app
@@ -165,7 +166,7 @@ services:
       - SECRET_KEY=your-secret-key-here-change-in-production
       - FIRST_SUPERUSER=admin@sagarmatha.ai
       - FIRST_SUPERUSER_PASSWORD=adadad123
-      - ENCRYPTION_KEY=SZHqT7JYLsFghGNdnJO5lFjA3XvILUFOHMKoId8NzLE0x1kXq9hR7KfzYDJfFsw=
+      - ENCRYPTION_KEY=lfNDmT0NurPGZuiEalqfLmjwqgQcyYh-I05AoVJ6uMo=
     volumes:
       - ./data:/data
       - ./backend/app:/app/app

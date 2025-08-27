@@ -25,6 +25,9 @@ from app.models import (
     UserUpdateMe,
 )
 from app.utils import generate_new_account_email, send_email
+from app.services.email.email_service import email_service
+from app.models.organization import Organization
+import asyncio
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -96,7 +99,14 @@ def create_user(*, session: SessionDep, user_in: UserCreate, current_user: Curre
 
     user = crud.create_user(session=session, user_create=user_in)
     
-    # Log user creation
+    # Log user creation with proper sequence number for 21 CFR Part 11
+    # Get the next sequence number
+    from sqlmodel import select, func
+    
+    max_seq_statement = select(func.coalesce(func.max(ActivityLog.sequence_number), 0))
+    max_seq = session.exec(max_seq_statement).one()
+    next_seq = max_seq + 1
+    
     activity_log = ActivityLog(
         action=ActivityAction.CREATE,
         resource_type="user",
@@ -107,20 +117,60 @@ def create_user(*, session: SessionDep, user_in: UserCreate, current_user: Curre
             "created_user_role": user.role,
             "created_by": current_user.email
         },
-        timestamp=datetime.utcnow()
+        timestamp=datetime.utcnow(),
+        sequence_number=next_seq,
+        org_id=user.org_id if user.org_id else None
     )
     session.add(activity_log)
     session.commit()
     
-    if settings.emails_enabled and user_in.email:
-        email_data = generate_new_account_email(
-            email_to=user_in.email, username=user_in.email, password=user_in.password
-        )
-        send_email(
-            email_to=user_in.email,
-            subject=email_data.subject,
-            html_content=email_data.html_content,
-        )
+    # Send email using new email system
+    if user_in.email and user_in.password:
+        try:
+            # Queue email using the new email service with template
+            email_variables = {
+                "user_name": user.full_name or user.email,
+                "user_email": user.email,
+                "temp_password": user_in.password,
+                "user_role": user.role,
+                "organization": session.get(Organization, user.org_id).name if user.org_id else "System",
+                "created_by": current_user.full_name or current_user.email,
+                "login_url": f"{settings.FRONTEND_HOST or 'http://localhost:3000'}/login"
+            }
+            
+            # Use asyncio to run the async email queue function
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            queue_id = loop.run_until_complete(
+                email_service.queue_email(
+                    to_email=user.email,
+                    template_key="user_created",
+                    variables=email_variables,
+                    user_id=current_user.id,
+                    priority=1
+                )
+            )
+            loop.close()
+            
+            if queue_id:
+                print(f"User creation email queued with ID: {queue_id}")
+        except Exception as e:
+            # Log error but don't fail user creation
+            print(f"Failed to queue user creation email: {str(e)}")
+            # Fall back to old email system if available
+            if settings.emails_enabled:
+                try:
+                    email_data = generate_new_account_email(
+                        email_to=user_in.email, username=user_in.email, password=user_in.password
+                    )
+                    send_email(
+                        email_to=user_in.email,
+                        subject=email_data.subject,
+                        html_content=email_data.html_content,
+                    )
+                except Exception as old_e:
+                    print(f"Old email system also failed: {str(old_e)}")
+    
     return user
 
 

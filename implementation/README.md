@@ -1,7 +1,6 @@
-# Widget System Implementation Documentation
+# Implementation Files
 
-## Overview
-This folder contains the complete implementation plan and specifications for the flexible widget system that supports any data format (not limited to SDTM/ADaM).
+This directory contains implementation artifacts, test files, documentation from the development process, and the widget system implementation plans.
 
 ## Documentation Index
 
@@ -82,3 +81,33 @@ Complete workflow integration and UX improvements
 ## Questions?
 
 Refer to the specific documentation for detailed information about each component. The workflow summary provides a quick overview of how all pieces fit together.
+
+## Additional Directories
+
+### `/documentation`
+Contains implementation documentation and screenshots:
+- Email system implementation docs
+- Backup system fixes
+- Development screenshots
+- Feature implementation summaries
+
+### `/test_files`
+Contains test scripts and data files used during development:
+- JSON test payloads for API testing
+- Python scripts for testing features
+- Sample user creation files
+
+### `/tokens`
+Contains authentication tokens used during testing (not for production use)
+
+## Note
+These files are preserved for reference but are not required for production deployment. They document the implementation process and can be useful for:
+- Understanding implementation decisions
+- Debugging issues
+- Testing new features
+- Reference for future development
+
+For production deployment, refer to:
+- `/DEPLOYMENT.md` - Complete deployment guide
+- `/.env.prod.template` - Production environment configuration
+- `/docker-compose.prod.yml` - Production Docker setup

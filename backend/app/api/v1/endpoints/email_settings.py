@@ -226,9 +226,14 @@ async def update_email_settings(
     
     update_data = settings_update.model_dump(exclude_unset=True)
     
-    # Encrypt password if being updated
-    if "smtp_password" in update_data and update_data["smtp_password"]:
-        update_data["smtp_password"] = encryption_service.encrypt(update_data["smtp_password"])
+    # Handle password specially
+    if "smtp_password" in update_data:
+        if update_data["smtp_password"]:
+            # Encrypt password if provided
+            update_data["smtp_password"] = encryption_service.encrypt(update_data["smtp_password"])
+        else:
+            # Don't update password if empty string provided - keep existing
+            del update_data["smtp_password"]
     
     for key, value in update_data.items():
         setattr(settings, key, value)

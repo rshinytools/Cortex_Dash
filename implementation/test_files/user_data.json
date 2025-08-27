@@ -1,0 +1,8 @@
+{
+  "email": "newtest123@example.com",
+  "password": "TestPass123!",
+  "full_name": "New Test User 123",
+  "role": "user",
+  "is_active": true,
+  "is_superuser": false
+}

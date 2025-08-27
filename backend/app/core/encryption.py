@@ -22,8 +22,8 @@ class EncryptionService:
         key_str = os.getenv("ENCRYPTION_KEY")
         
         if key_str:
-            # Decode from base64
-            return base64.urlsafe_b64decode(key_str)
+            # The key is already base64 encoded, just convert to bytes
+            return key_str.encode('utf-8')
         else:
             # Generate a new key (should be stored securely in production)
             key = Fernet.generate_key()

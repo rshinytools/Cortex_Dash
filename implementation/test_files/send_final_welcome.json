@@ -1,0 +1,13 @@
+{
+  "to_email": "amulyabista@yahoo.com",
+  "template_key": "user_created",
+  "variables": {
+    "user_name": "Amulya Bista",
+    "user_email": "amulyabista@yahoo.com",
+    "temp_password": "Welcome123!",
+    "user_role": "admin",
+    "organization": "Sagarmatha AI",
+    "created_by": "System Administrator",
+    "login_url": "http://localhost:3000/login"
+  }
+}
